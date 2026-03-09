@@ -1,0 +1,29 @@
+// -------------------------------------
+// Prisma Client Generator
+// -------------------------------------
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------
+// Database Connection
+// -------------------------------------
+datasource db {
+  provider = "postgresql"
+}
+
+// -------------------------------------
+// Models (Tables)
+// -------------------------------------
+
+model Product {
+  id          String   @id @default(uuid()) // Unique random identifier
+  name        String                        // Product name
+  sku         String   @unique              // Stock Keeping Unit - must be unique
+  description String?                       // Description (optional field)
+  price       Float                         // Price
+  quantity    Int      @default(0)          // Quantity in stock (defaults to 0)
+  imageUrl    String?                       // URL link to the image
+  createdAt   DateTime @default(now())      // Auto-generated creation date
+  updatedAt   DateTime @updatedAt           // Auto-updated modification date
+}
