@@ -7,11 +7,10 @@ export default defineConfig({
   server: {
     proxy: {
       // Forward all /api requests to the backend server
+      // No rewrite — the backend also uses the /api prefix (e.g. /api/products → localhost:5000/api/products)
       "/api": {
         target: "http://localhost:5000",
         changeOrigin: true,
-        // Strip the /api prefix before forwarding (e.g. /api/products → /products)
-        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },
