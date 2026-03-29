@@ -1,0 +1,144 @@
+// English translations
+export const en: Record<string, string> = {
+  // Navbar
+  "nav.shop": "Shop",
+  "nav.about": "About",
+  "nav.contact": "Contact",
+  "nav.adminLogin": "Admin Login",
+
+  // Home
+  "home.headline": "Find Your Perfect Suit",
+  "home.subheadline": "Powered by Advanced AI Search",
+  "home.searchPlaceholder": 'Describe the suit you\'re looking for (e.g. "linen beige suit for summer wedding")...',
+  "home.imageSearch": "Search by image",
+  "home.browseCatalog": "Browse Catalog",
+  "home.aiComingSoon": "AI search coming soon",
+
+  // Shop
+  "shop.title": "Our Catalog",
+  "shop.filters": "Filters",
+  "shop.type": "Type",
+  "shop.status": "Availability",
+  "shop.color": "Color",
+  "shop.clearFilters": "Clear filters",
+  "shop.noProducts": "No products found",
+  "shop.allTypes": "All types",
+  "shop.allStatuses": "All statuses",
+  "shop.loading": "Loading products...",
+  "shop.error": "Error loading products",
+
+  // Product types
+  "type.JACKET": "Jacket",
+  "type.PANTS": "Pants",
+  "type.SHIRT": "Shirt",
+  "type.VEST": "Vest",
+  "type.SHOES": "Shoes",
+  "type.TIE": "Tie",
+  "type.BOW_TIE": "Bow Tie",
+  "type.BELT": "Belt",
+
+  // Product status
+  "status.in_stock": "In Stock",
+  "status.out_of_stock": "Out of Stock",
+
+  // Product detail
+  "product.sku": "Product Code",
+  "product.type": "Type",
+  "product.color": "Color",
+  "product.status": "Availability",
+  "product.edit": "Edit",
+  "product.delete": "Delete",
+  "product.deleteConfirm": "Are you sure you want to delete this product?",
+  "product.similar": "Similar Items",
+  "product.similarNote": "Similar product recommendations will be available after the AI search engine is complete.",
+  "product.noImage": "No image",
+  "product.backToShop": "Back to Catalog",
+  "product.notFound": "Product not found",
+
+  // About
+  "about.title": "About Jenudi Fashion",
+  "about.description": "Jenudi Fashion specializes in high-quality men's suits, offering a wide range of styles for every occasion.",
+  "about.address": "Address",
+  "about.phone": "Phone",
+  "about.hours": "Opening Hours",
+  "about.sun": "Sunday",
+  "about.mon": "Monday",
+  "about.tue": "Tuesday",
+  "about.wed": "Wednesday",
+  "about.thu": "Thursday",
+  "about.fri": "Friday",
+  "about.sat": "Saturday",
+  "about.closed": "Closed",
+
+  // Contact
+  "contact.title": "Contact Us",
+  "contact.subtitle": "We'd love to hear from you. Leave your details and we'll get back to you soon.",
+  "contact.name": "Full Name",
+  "contact.email": "Email Address",
+  "contact.message": "Message",
+  "contact.messagePlaceholder": "Write your message here...",
+  "contact.send": "Send Message",
+  "contact.sent": "Message Sent!",
+  "contact.sentNote": "We'll get back to you as soon as possible.",
+
+  // Admin general
+  "admin.dashboard": "Dashboard",
+  "admin.inventory": "Inventory",
+  "admin.uploads": "Uploads",
+  "admin.portal": "Admin Portal",
+
+  // Admin dashboard
+  "admin.greeting": "Good morning, Store Owner",
+  "admin.greetingSub": "Here's what's happening in your store today",
+  "admin.totalProducts": "Total Products",
+  "admin.pendingUploads": "Pending Processing",
+  "admin.agentAlert": "Agent Alert — Live",
+  "admin.agentAlertSub": "AI analysis detected significant market shifts",
+  "admin.trends": "Search Trend Analysis",
+  "admin.agentNote": "Trend analysis will be active after AI integration is complete",
+
+  // Admin product form
+  "admin.addProduct": "Add Product",
+  "admin.editProduct": "Edit Product",
+  "admin.saveProduct": "Save",
+  "admin.cancel": "Cancel",
+  "admin.productName": "Product Name",
+  "admin.productSku": "Product Code (SKU)",
+  "admin.productType": "Type",
+  "admin.productColor": "Color",
+  "admin.productStatus": "Status",
+  "admin.imageUpload": "Upload Image",
+  "admin.imageDisabled": "Image upload will be available after cloud storage setup",
+  "admin.deleteConfirm": "Are you sure you want to delete this product?",
+  "admin.saving": "Saving...",
+  "admin.saveSuccess": "Product saved successfully",
+  "admin.saveError": "Error saving product",
+
+  // Admin uploads
+  "admin.uploadTitle": "Upload New Inventory",
+  "admin.uploadSub": "AI-powered automated image processing",
+  "admin.dropZone": "Drag raw phone photos here to begin automated processing",
+  "admin.dropFeatures": "Background Removal  •  Lighting Enhancement  •  Auto-Centering  •  Color Correction",
+  "admin.uploadComingSoon": "Image upload will be available after cloud storage setup",
+  "admin.processingQueue": "Processing Queue",
+  "admin.reviewAll": "Review All",
+  "admin.publishCatalog": "Publish to Catalog",
+
+  // Admin login
+  "admin.loginTitle": "Admin Login",
+  "admin.loginSub": "Store owner access only",
+  "admin.username": "Username / Email",
+  "admin.password": "Password",
+  "admin.rememberMe": "Remember me",
+  "admin.forgotPassword": "Forgot password?",
+  "admin.loginBtn": "Secure Login",
+  "admin.secureNote": "Connection protected with enterprise-grade encryption",
+  "admin.loginNote": "Authentication will be enabled in the next phase",
+
+  // Common
+  "common.loading": "Loading...",
+  "common.error": "An error occurred, please try again",
+  "common.back": "Back",
+  "common.comingSoon": "Coming Soon",
+  "common.live": "Live",
+};

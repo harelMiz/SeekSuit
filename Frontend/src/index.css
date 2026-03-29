@@ -1,1 +1,109 @@
 @import "tailwindcss";
+
+/* ─── Design Tokens ─── */
+@theme {
+  /* Surface scale */
+  --color-surface: #fcf9f8;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f3f2;
+  --color-surface-container: #f0eded;
+  --color-surface-container-high: #eae7e7;
+  --color-surface-container-highest: #e5e2e1;
+  --color-surface-variant: #e5e2e1;
+
+  /* On-surface */
+  --color-on-surface: #1c1b1b;
+  --color-on-surface-variant: #444748;
+
+  /* Primary */
+  --color-primary: #000000;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #1c1b1b;
+
+  /* Outline */
+  --color-outline: #747878;
+  --color-outline-variant: #c4c7c7;
+
+  /* Tertiary / gold */
+  --color-tertiary-fixed: #ffdea5;
+  --color-tertiary-fixed-dim: #e9c176;
+  --color-on-tertiary-fixed: #261900;
+  --color-on-tertiary-container: #a17f3b;
+  --color-tertiary-container: #261900;
+
+  /* Error / secondary */
+  --color-error: #ba1a1a;
+  --color-secondary: #5d5f5f;
+
+  /* Typography */
+  --font-headline: "Noto Serif", Georgia, serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+}
+
+/* ─── Global Base ─── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: #fcf9f8;
+  color: #1c1b1b;
+  min-height: 100vh;
+  /* Light scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #c4c7c7 #fcf9f8;
+}
+
+/* Scrollbar for Webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #fcf9f8;
+}
+::-webkit-scrollbar-thumb {
+  background: #c4c7c7;
+  border-radius: 3px;
+}
+
+/* ─── Utility: Gold gradient ─── */
+.gold-shimmer {
+  background: linear-gradient(to right, #ffdea5, #e9c176);
+}
+
+/* ─── Material Symbols Outlined icon font settings ─── */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-variation-settings: "FILL" 0, "wght" 200, "GRAD" 0, "opsz" 24;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Headline font helper ─── */
+.font-headline {
+  font-family: var(--font-headline);
+}
+
+/* ─── Bounce keyframe for hero CTA arrow ─── */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
