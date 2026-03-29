@@ -133,7 +133,9 @@ export const he: Record<string, string> = {
   "admin.forgotPassword": "שכחת סיסמה?",
   "admin.loginBtn": "כניסה מאובטחת",
   "admin.secureNote": "החיבור מוגן עם הצפנה ברמה ארגונית",
-  "admin.loginNote": "אימות יופעל בשלב הבא",
+  "admin.loginNote": "הגישה מוגבלת לצוות מורשה בלבד",
+  "admin.loginError": "אימייל או סיסמה שגויים. אנא נסה שנית.",
+  "admin.logout": "התנתקות",
 
   // Common
   "common.loading": "טוען...",

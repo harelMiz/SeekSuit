@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "./context/LanguageContext";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Public pages
 import HomePage from "./pages/HomePage";
@@ -33,24 +35,28 @@ import AdminUploadsPage from "./pages/admin/AdminUploadsPage";
 function App() {
   return (
     <LanguageProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/products/:id" element={<ProductDetailPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
 
-          {/* Admin */}
-          <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/inventory" element={<AdminInventoryPage />} />
-          <Route path="/admin/inventory/new" element={<AdminProductFormPage />} />
-          <Route path="/admin/inventory/:id/edit" element={<AdminProductFormPage />} />
-          <Route path="/admin/uploads" element={<AdminUploadsPage />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Admin login — public */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+
+            {/* Admin pages — protected: require authenticated session */}
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="/admin/inventory" element={<ProtectedRoute><AdminInventoryPage /></ProtectedRoute>} />
+            <Route path="/admin/inventory/new" element={<ProtectedRoute><AdminProductFormPage /></ProtectedRoute>} />
+            <Route path="/admin/inventory/:id/edit" element={<ProtectedRoute><AdminProductFormPage /></ProtectedRoute>} />
+            <Route path="/admin/uploads" element={<ProtectedRoute><AdminUploadsPage /></ProtectedRoute>} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </LanguageProvider>
   );
 }

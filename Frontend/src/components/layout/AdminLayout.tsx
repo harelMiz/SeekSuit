@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, Upload, Settings, HelpCircle, LogOut, Bell, Search } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
 
 const NAV_ITEMS = [
   { to: "/admin", label: "admin.dashboard", icon: LayoutDashboard, exact: true },
@@ -18,6 +19,13 @@ const BOTTOM_ITEMS = [
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { t } = useLang();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  async function handleLogout() {
+    await signOut();
+    navigate("/admin/login");
+  }
 
   function isActive(to: string, exact: boolean) {
     return exact ? location.pathname === to : location.pathname.startsWith(to);
@@ -81,14 +89,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Link>
           ))}
 
-          {/* Logout / Back to site */}
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 transition-colors mt-3"
+          {/* Logout button */}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 transition-colors mt-3"
           >
             <LogOut size={15} />
-            {t("common.back")}
-          </Link>
+            {t("admin.logout")}
+          </button>
         </div>
       </aside>
 

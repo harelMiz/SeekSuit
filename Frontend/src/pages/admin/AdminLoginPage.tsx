@@ -2,17 +2,34 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Lock, Shield } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
+import { supabase } from "../../lib/supabase";
 
 export default function AdminLoginPage() {
   const { t } = useLang();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Authentication will be implemented in Step 4 (Supabase Auth)
-    // For now, any input proceeds to the admin dashboard
+    setError(null);
+    setSubmitting(true);
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: username,
+      password,
+    });
+
+    setSubmitting(false);
+
+    if (authError) {
+      setError(t("admin.loginError"));
+      return;
+    }
+
+    // Successful login — navigate to dashboard
     navigate("/admin");
   }
 
@@ -87,13 +104,19 @@ export default function AdminLoginPage() {
               </button>
             </div>
 
+            {/* Error message */}
+            {error && (
+              <p className="text-xs text-error text-center">{error}</p>
+            )}
+
             {/* Submit — gold gradient */}
             <button
               type="submit"
-              className="gold-shimmer w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-on-tertiary-fixed transition-opacity hover:opacity-90"
+              disabled={submitting}
+              className="gold-shimmer w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-on-tertiary-fixed transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <Lock size={14} />
-              {t("admin.loginBtn")}
+              {submitting ? t("common.loading") : t("admin.loginBtn")}
             </button>
           </form>
 

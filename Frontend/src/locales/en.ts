@@ -133,7 +133,9 @@ export const en: Record<string, string> = {
   "admin.forgotPassword": "Forgot password?",
   "admin.loginBtn": "Secure Login",
   "admin.secureNote": "Connection protected with enterprise-grade encryption",
-  "admin.loginNote": "Authentication will be enabled in the next phase",
+  "admin.loginNote": "Access restricted to authorized personnel only",
+  "admin.loginError": "Incorrect email or password. Please try again.",
+  "admin.logout": "Logout",
 
   // Common
   "common.loading": "Loading...",
