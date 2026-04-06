@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as productService from '../services/product.service';
+import * as storageService from '../services/storage.service';
 import { ProductFilters } from '../types/product.types';
 
 // POST /api/products
@@ -72,13 +73,26 @@ export const updateProduct = async (req: Request, res: Response) => {
 };
 
 // DELETE /api/products/:id
-// Permanently deletes a product by ID.
+// Permanently deletes a product by ID and removes its images from Storage.
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
+    const product = await productService.getProductById(String(req.params.id));
+    if (!product) {
+      res.status(404).json({ error: 'Product not found' });
+      return;
+    }
+
+    // Delete Storage files before removing the DB record
+    if (product.rawImageUrl) {
+      await storageService.deleteFileBySignedUrl(product.rawImageUrl, 'raw-images');
+    }
+    if (product.processedImageUrl) {
+      await storageService.deleteFileBySignedUrl(product.processedImageUrl, 'processed-images');
+    }
+
     await productService.deleteProduct(String(req.params.id));
     res.status(204).send();
   } catch (error: any) {
-    // Handle product not found (Prisma record not found code)
     if (error.code === 'P2025') {
       res.status(404).json({ error: 'Product not found' });
       return;

@@ -11,8 +11,8 @@ const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES
 // Status filter options
 const STATUS_OPTIONS: Array<{ value: ProductStatus | ""; labelKey: string }> = [
   { value: "", labelKey: "shop.allStatuses" },
-  { value: "in_stock", labelKey: "status.in_stock" },
-  { value: "out_of_stock", labelKey: "status.out_of_stock" },
+  { value: "IN_STOCK", labelKey: "status.in_stock" },
+  { value: "OUT_OF_STOCK", labelKey: "status.out_of_stock" },
 ];
 
 export default function ShopPage() {

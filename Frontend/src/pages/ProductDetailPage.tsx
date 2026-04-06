@@ -116,12 +116,12 @@ export default function ProductDetailPage() {
                       <span className="flex items-center gap-1.5">
                         <span
                           className={`w-2 h-2 rounded-full ${
-                            product.status === "in_stock"
+                            product.status === "IN_STOCK"
                               ? "bg-emerald-500"
                               : "bg-outline"
                           }`}
                         />
-                        {product.status === "in_stock"
+                        {product.status === "IN_STOCK"
                           ? "Ready to Ship"
                           : t("status.out_of_stock")}
                       </span>

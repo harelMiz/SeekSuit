@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ImageOff } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
-import { getProduct, createProduct, updateProduct } from "../../services/product.service";
+import { getProduct, createProduct, updateProduct, uploadRawImage } from "../../services/product.service";
 import type { ProductType, ProductStatus } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -21,7 +21,7 @@ const INITIAL_FORM: FormState = {
   sku: "",
   type: "JACKET",
   color: "",
-  status: "in_stock",
+  status: "IN_STOCK",
 };
 
 export default function AdminProductFormPage() {
@@ -34,6 +34,9 @@ export default function AdminProductFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing product data when editing
   useEffect(() => {
@@ -41,10 +44,18 @@ export default function AdminProductFormPage() {
     getProduct(id)
       .then((p) => {
         setForm({ name: p.name, sku: p.sku, type: p.type, color: p.color, status: p.status });
+        if (p.rawImageUrl) setImagePreview(p.rawImageUrl);
       })
       .catch(() => setError(t("common.error")))
       .finally(() => setLoading(false));
   }, [id, t]);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
 
   function handleChange(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -57,8 +68,12 @@ export default function AdminProductFormPage() {
     try {
       if (isEdit && id) {
         await updateProduct(id, form);
+        // Upload new image if one was selected
+        if (imageFile) await uploadRawImage(imageFile, id);
       } else {
-        await createProduct(form);
+        const product = await createProduct(form);
+        // Upload image after product is created so we have its ID
+        if (imageFile) await uploadRawImage(imageFile, product.id);
       }
       navigate("/admin/inventory");
     } catch {
@@ -170,20 +185,49 @@ export default function AdminProductFormPage() {
               onChange={(e) => handleChange("status", e.target.value)}
               className={selectClass}
             >
-              <option value="in_stock">{t("status.in_stock")}</option>
-              <option value="out_of_stock">{t("status.out_of_stock")}</option>
+              <option value="IN_STOCK">{t("status.in_stock")}</option>
+              <option value="OUT_OF_STOCK">{t("status.out_of_stock")}</option>
             </select>
           </div>
 
-          {/* Image upload — disabled until cloud storage (Step 6) */}
+          {/* Image upload */}
           <div>
             <label className="block text-[10px] text-secondary uppercase tracking-widest mb-2">
               {t("admin.imageUpload")}
             </label>
-            <div className="w-full bg-surface-container-low border-2 border-dashed border-outline-variant rounded-xl px-4 py-8 flex flex-col items-center gap-2 opacity-50 cursor-not-allowed">
-              <ImageOff size={24} className="text-secondary" />
-              <span className="text-xs text-secondary">{t("admin.imageDisabled")}</span>
-            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
+            />
+            {imagePreview ? (
+              <div className="relative group">
+                <img
+                  src={imagePreview}
+                  alt="Product preview"
+                  className="w-full max-h-64 object-contain rounded-xl border border-outline-variant bg-surface-container-low"
+                />
+                {/* Click overlay to replace image */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
+                >
+                  <span className="text-white text-xs font-semibold">Replace image</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full bg-surface-container-low border-2 border-dashed border-outline-variant hover:border-primary rounded-xl px-4 py-8 flex flex-col items-center gap-2 transition-colors cursor-pointer"
+              >
+                <ImagePlus size={24} className="text-secondary" />
+                <span className="text-xs text-secondary">{t("admin.imageUpload")}</span>
+              </button>
+            )}
           </div>
 
           {/* Error message */}

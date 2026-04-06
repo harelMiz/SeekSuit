@@ -10,7 +10,7 @@ export type ProductType =
   | "BELT";
 
 // Product status — matches the ProductStatus enum in the backend schema
-export type ProductStatus = "in_stock" | "out_of_stock";
+export type ProductStatus = "IN_STOCK" | "OUT_OF_STOCK";
 
 // Full product object as returned by the API
 export interface Product {

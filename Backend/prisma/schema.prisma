@@ -40,15 +40,34 @@ enum ProductStatus {
 // -------------------------------------
 
 model Product {
-  id                 String        @id @default(uuid())
+  id                 String           @id @default(uuid())
   name               String
-  sku                String        @unique
+  sku                String           @unique
   type               ProductType
   color              String?
-  status             ProductStatus @default(IN_STOCK)
+  status             ProductStatus    @default(IN_STOCK)
   rawImageUrl        String?
   processedImageUrl  String?
   attributes         Json?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  processingJobs     ProcessingJob[]
+}
+
+// Tracks the async AI processing state for each product image
+model ProcessingJob {
+  id        String     @id @default(uuid())
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status    JobStatus  @default(PENDING)
+  errorMsg  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
 }

@@ -1,4 +1,5 @@
 import api from "./api";
+import axios from "axios";
 import type {
   Product,
   CreateProductInput,
@@ -36,4 +37,20 @@ export async function updateProduct(
 // Delete a product by ID
 export async function deleteProduct(id: string): Promise<void> {
   await api.delete(`/products/${id}`);
+}
+
+// Upload a raw product image — returns the Supabase storage path
+export async function uploadRawImage(
+  file: File,
+  productId?: string
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (productId) formData.append("productId", productId);
+
+  const { data } = await axios.post<{ storagePath: string }>(
+    "/api/uploads/raw",
+    formData
+  );
+  return data.storagePath;
 }

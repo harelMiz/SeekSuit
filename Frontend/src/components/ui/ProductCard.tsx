@@ -38,7 +38,7 @@ export default function ProductCard({ product, matchPercentage }: ProductCardPro
             {/* Status badge */}
             <span
               className={`bg-surface/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border border-outline-variant ${
-                product.status === "out_of_stock" ? "text-error" : "text-on-surface"
+                product.status === "OUT_OF_STOCK" ? "text-error" : "text-on-surface"
               }`}
             >
               {t(`status.${product.status}`)}

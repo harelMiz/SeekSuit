@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import axios from "axios";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { getProducts, deleteProduct } from "../../services/product.service";
@@ -9,11 +10,22 @@ import type { Product } from "../../types/product";
 // Number of rows shown per page
 const PAGE_SIZE = 10;
 
+type JobStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
 export default function AdminInventoryPage() {
   const { t } = useLang();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  // Map of productId → current job status (only for jobs triggered this session)
+  const [jobStatuses, setJobStatuses] = useState<Record<string, JobStatus>>({});
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref mirrors state so the setInterval closure always reads the latest statuses
+  const jobStatusesRef = useRef<Record<string, JobStatus>>({});
+  // Image preview lightbox
+  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
 
   function loadProducts() {
     setLoading(true);
@@ -26,10 +38,84 @@ export default function AdminInventoryPage() {
     loadProducts();
   }, []);
 
+  // Close preview on Escape
+  useEffect(() => {
+    if (!preview) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setPreview(null); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [preview]);
+
+  // Keep ref in sync with state so the setInterval closure never reads stale values
+  useEffect(() => {
+    jobStatusesRef.current = jobStatuses;
+  }, [jobStatuses]);
+
+  // Poll /api/jobs every 3s while any job is active
+  useEffect(() => {
+    const hasActive = Object.values(jobStatuses).some(
+      (s) => s === "PENDING" || s === "PROCESSING"
+    );
+
+    if (hasActive && !pollingRef.current) {
+      pollingRef.current = setInterval(async () => {
+        try {
+          const { data } = await axios.get<{ id: string; productId: string; status: JobStatus }[]>(
+            `${API_BASE}/api/jobs`
+          );
+          // Read current statuses from ref — avoids stale closure
+          const current = jobStatusesRef.current;
+          const next = { ...current };
+          let reloadNeeded = false;
+
+          for (const job of data) {
+            if (next[job.productId] !== undefined) {
+              // Job just finished — reload products so thumbnail updates
+              if (
+                (current[job.productId] === "PENDING" || current[job.productId] === "PROCESSING") &&
+                (job.status === "DONE" || job.status === "FAILED")
+              ) {
+                reloadNeeded = true;
+              }
+              next[job.productId] = job.status;
+            }
+          }
+
+          setJobStatuses(next);
+          if (reloadNeeded) loadProducts();
+        } catch {
+          // Silently ignore polling errors
+        }
+      }, 3000);
+    }
+
+    if (!hasActive && pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
+    return () => {
+      if (!hasActive && pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [jobStatuses]);
+
   async function handleDelete(product: Product) {
     if (!window.confirm(t("admin.deleteConfirm"))) return;
     await deleteProduct(product.id);
     loadProducts();
+  }
+
+  async function handleProcess(productId: string) {
+    setJobStatuses((prev) => ({ ...prev, [productId]: "PENDING" }));
+    try {
+      await axios.post(`${API_BASE}/api/jobs/${productId}`);
+      setJobStatuses((prev) => ({ ...prev, [productId]: "PROCESSING" }));
+    } catch {
+      setJobStatuses((prev) => ({ ...prev, [productId]: "FAILED" }));
+    }
   }
 
   // Pagination math
@@ -95,14 +181,20 @@ export default function AdminInventoryPage() {
                   key={product.id}
                   className="group border-b border-outline-variant/50 hover:bg-surface-container-high/30 transition-colors"
                 >
-                  {/* Thumbnail */}
+                  {/* Thumbnail — click to open lightbox */}
                   <td className="px-5 py-4">
                     <div className="w-16 h-20 bg-surface-variant rounded-lg overflow-hidden">
                       {product.processedImageUrl ?? product.rawImageUrl ? (
                         <img
                           src={(product.processedImageUrl ?? product.rawImageUrl)!}
                           alt={product.name}
-                          className="w-full h-full object-cover"
+                          onClick={() =>
+                            setPreview({
+                              url: (product.processedImageUrl ?? product.rawImageUrl)!,
+                              name: product.name,
+                            })
+                          }
+                          className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-200"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -134,18 +226,53 @@ export default function AdminInventoryPage() {
                   <td className="px-4 py-4">
                     <span
                       className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${
-                        product.status === "in_stock"
+                        product.status === "IN_STOCK"
                           ? "bg-emerald-50 text-emerald-700"
                           : "bg-neutral-100 text-neutral-500"
                       }`}
                     >
-                      {t(`status.${product.status}`)}
+                      {t(`status.${product.status.toLowerCase()}`)}
                     </span>
                   </td>
 
                   {/* Actions — fade in on row hover */}
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* AI Process button — hidden once processed */}
+                      {(() => {
+                        const status = jobStatuses[product.id];
+                        const isActive = status === "PENDING" || status === "PROCESSING";
+                        const alreadyProcessed = !!product.processedImageUrl;
+
+                        if (alreadyProcessed && !isActive) return null;
+
+                        return (
+                          <button
+                            onClick={() => handleProcess(product.id)}
+                            disabled={isActive || !product.rawImageUrl}
+                            title={
+                              !product.rawImageUrl
+                                ? "No image to process"
+                                : status === "FAILED"
+                                ? "Failed — retry"
+                                : "Process with AI"
+                            }
+                            className={`p-2 rounded-lg transition-colors ${
+                              status === "FAILED"
+                                ? "text-red-500 hover:bg-surface-container-high"
+                                : isActive
+                                ? "text-amber-500 cursor-not-allowed"
+                                : "text-on-surface-variant hover:text-amber-500 hover:bg-surface-container-high"
+                            }`}
+                          >
+                            {isActive ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <Sparkles size={14} />
+                            )}
+                          </button>
+                        );
+                      })()}
                       <Link
                         to={`/admin/inventory/${product.id}/edit`}
                         className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors"
@@ -188,6 +315,33 @@ export default function AdminInventoryPage() {
                 <ChevronRight size={13} />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Lightbox overlay */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="relative max-w-2xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={preview.url}
+              alt={preview.name}
+              className="max-w-full max-h-[85vh] object-contain"
+            />
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-5 py-3">
+              <p className="text-white text-sm font-semibold">{preview.name}</p>
+            </div>
+            <button
+              onClick={() => setPreview(null)}
+              className="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}

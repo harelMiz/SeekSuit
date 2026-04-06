@@ -25,8 +25,8 @@ export default function AdminDashboardPage() {
       .then((p) => {
         setProducts(p);
         setTotalProducts(p.length);
-        setInStock(p.filter((x) => x.status === "in_stock").length);
-        setOutOfStock(p.filter((x) => x.status === "out_of_stock").length);
+        setInStock(p.filter((x) => x.status === "IN_STOCK").length);
+        setOutOfStock(p.filter((x) => x.status === "OUT_OF_STOCK").length);
       })
       .catch(() => null);
   }, []);
