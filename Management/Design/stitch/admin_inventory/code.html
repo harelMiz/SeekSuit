@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&amp;family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "background": "#fcf9f8",
+              "inverse-primary": "#c8c6c5",
+              "inverse-on-surface": "#f3f0ef",
+              "secondary-container": "#dfe0e0",
+              "on-surface-variant": "#444748",
+              "error-container": "#ffdad6",
+              "surface-tint": "#5f5e5e",
+              "on-tertiary-container": "#a17f3b",
+              "primary-fixed-dim": "#c8c6c5",
+              "tertiary": "#000000",
+              "inverse-surface": "#313030",
+              "outline": "#747878",
+              "on-tertiary-fixed": "#261900",
+              "secondary-fixed-dim": "#c6c6c7",
+              "on-secondary": "#ffffff",
+              "on-surface": "#1c1b1b",
+              "secondary-fixed": "#e2e2e2",
+              "on-tertiary": "#ffffff",
+              "on-primary-container": "#858383",
+              "on-secondary-container": "#616363",
+              "primary-container": "#1c1b1b",
+              "outline-variant": "#c4c7c7",
+              "tertiary-container": "#261900",
+              "secondary": "#5d5f5f",
+              "surface-container-low": "#f6f3f2",
+              "surface-container": "#f0eded",
+              "surface-container-high": "#eae7e7",
+              "on-primary": "#ffffff",
+              "primary": "#000000",
+              "on-error-container": "#93000a",
+              "on-error": "#ffffff",
+              "on-secondary-fixed": "#1a1c1c",
+              "surface-variant": "#e5e2e1",
+              "on-secondary-fixed-variant": "#454747",
+              "tertiary-fixed-dim": "#e9c176",
+              "on-primary-fixed-variant": "#474746",
+              "on-background": "#1c1b1b",
+              "surface-container-highest": "#e5e2e1",
+              "error": "#ba1a1a",
+              "primary-fixed": "#e5e2e1",
+              "on-tertiary-fixed-variant": "#5d4201",
+              "surface-dim": "#dcd9d9",
+              "on-primary-fixed": "#1c1b1b",
+              "tertiary-fixed": "#ffdea5",
+              "surface-container-lowest": "#ffffff",
+              "surface-bright": "#fcf9f8",
+              "surface": "#fcf9f8"
+            },
+            fontFamily: {
+              "headline": ["Noto Serif"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Manrope', sans-serif; background-color: #fcf9f8; color: #1c1b1b; }
+        .font-serif { font-family: 'Noto Serif', serif; }
+        .glass-nav { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .bespoke-gradient { background: linear-gradient(to right, #ffdea5, #e9c176); }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SideNavBar Component -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between pb-8 z-50">
+<div>
+<div class="px-8 py-10">
+<h1 class="text-xl font-serif italic text-white">The Atelier</h1>
+<p class="text-xs font-label uppercase tracking-widest text-neutral-500 mt-1">Admin Console</p>
+</div>
+<nav class="mt-4 flex flex-col space-y-1">
+<a class="flex items-center gap-4 px-6 py-4 text-neutral-400 hover:text-white transition-colors hover:bg-neutral-800/30" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label text-sm">Dashboard</span>
+</a>
+<!-- Active Tab: Inventory -->
+<a class="flex items-center gap-4 px-6 py-4 text-amber-200 bg-neutral-800/50 border-r-2 border-amber-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label text-sm">Inventory</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-neutral-400 hover:text-white transition-colors hover:bg-neutral-800/30" href="#">
+<span class="material-symbols-outlined" data-icon="cloud_upload">cloud_upload</span>
+<span class="font-label text-sm">Uploads</span>
+</a>
+</nav>
+</div>
+<div>
+<nav class="flex flex-col space-y-1">
+<a class="flex items-center gap-4 px-6 py-4 text-neutral-400 hover:text-white transition-colors hover:bg-neutral-800/30" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-neutral-400 hover:text-white transition-colors hover:bg-neutral-800/30" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-label text-sm">Support</span>
+</a>
+<div class="px-6 mt-6">
+<button class="w-full py-3 text-xs font-label border border-neutral-700 text-neutral-400 hover:text-white hover:border-white transition-all">
+                        Logout
+                    </button>
+</div>
+</nav>
+</div>
+</aside>
+<!-- Main Content Shell -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar Component -->
+<header class="docked full-width top-0 sticky z-40 bg-white/80 backdrop-blur-xl flex justify-between items-center px-8 py-4 w-auto">
+<div class="flex items-center gap-4">
+<h2 class="text-2xl font-serif text-neutral-900">Inventory</h2>
+</div>
+<div class="flex items-center gap-8">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-lg" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 w-64 bg-surface-container-low border-none focus:ring-1 focus:ring-amber-400 text-sm font-body outline-none transition-all" placeholder="Search by name or SKU..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-neutral-500">
+<button class="hover:text-amber-600 transition-opacity opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:text-amber-600 transition-opacity opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Page Canvas -->
+<div class="p-12">
+<!-- Table Header Actions -->
+<div class="flex justify-between items-end mb-12">
+<div>
+<p class="font-label text-xs uppercase tracking-widest text-on-surface-variant mb-2">Stock Overview</p>
+<h3 class="text-4xl font-serif">Product Catalogue</h3>
+</div>
+<button class="bespoke-gradient px-8 py-3 rounded-none text-tertiary font-label font-bold text-sm flex items-center gap-2 hover:shadow-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                    Add Product
+                </button>
+</div>
+<!-- Inventory Grid/Table -->
+<div class="bg-surface-container-low p-1 rounded-none overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/20">
+<th class="px-6 py-5 font-label text-xs uppercase tracking-widest text-on-surface-variant font-medium">Item</th>
+<th class="px-6 py-5 font-label text-xs uppercase tracking-widest text-on-surface-variant font-medium">SKU / Type</th>
+<th class="px-6 py-5 font-label text-xs uppercase tracking-widest text-on-surface-variant font-medium">Material / Color</th>
+<th class="px-6 py-5 font-label text-xs uppercase tracking-widest text-on-surface-variant font-medium">Status</th>
+<th class="px-6 py-5 font-label text-xs uppercase tracking-widest text-on-surface-variant font-medium text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-highest transition-colors group">
+<td class="px-6 py-6">
+<div class="flex items-center gap-4">
+<div class="w-16 h-20 bg-surface-variant overflow-hidden">
+<img alt="Suit Thumbnail" class="w-full h-full object-cover" data-alt="close-up of a premium charcoal grey wool suit jacket on a wooden hanger against a minimalist background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBveE9gCWFrL2LDa1kWNN4MJEVw9zwTYHVrhfwDyUpqk_EroBIUEDqe2z2U5KBd00CgVDeTzEJoxwm8XCf8cT-cksh-WlLfmfoepi7FHy16ge0RlLRE5gdd_YsqMW2S9ND5Er2Djy-3O14syUopmtgYGTevvBIQbIAaUQEG6vcx2IxdCZnVmBAot32JQSf95scFd3iSGHQn3YsrTcFmFoqk4P8_MgIJ84nkmfnWfr3NGM7RPMA79hb4ZbYRDCLq2g35plfu_LsHyU"/>
+</div>
+<div>
+<p class="font-serif text-lg leading-tight">The Midnight Peak Lapel</p>
+<p class="text-xs text-on-surface-variant font-body mt-1">Bespoke Collection</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 font-body text-sm">
+<span class="text-on-surface">SKU-2024-MPL</span>
+<p class="text-xs text-on-surface-variant">Full Suit</p>
+</td>
+<td class="px-6 py-6">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-[#1c1c1c]"></div>
+<span class="text-sm font-body">Midnight Navy</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Super 150s Wool</p>
+</td>
+<td class="px-6 py-6">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-700">In Stock</span>
+</td>
+<td class="px-6 py-6 text-right">
+<div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:text-amber-600 transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:text-error transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-highest transition-colors group">
+<td class="px-6 py-6">
+<div class="flex items-center gap-4">
+<div class="w-16 h-20 bg-surface-variant overflow-hidden">
+<img alt="Suit Thumbnail" class="w-full h-full object-cover" data-alt="luxurious tan camel hair overcoat detail showing fabric texture and premium tortoise shell buttons" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsM86NAhRGqxrRnjV11QiIQgLEAT_wM6CcK19pWrLaKW3PxVB_FJfUectsoh6XyidML_gu6T-mZiTbpfgSBPJYfRzV0NTfNsoQaHwnU3KiFMV_JmvZzwjRaKvQU652l5YAM6NSCcHWzjXljfbDOYnpLrcW2v04PV6XJJPj7LgNhO_UwZ5Cjdp0s-SeiMCGJa4hTinBCzZIx3rG05wn3IhQyDSJnB9irdM_Z2alRQ1s7U280_MySFfQMX1JpSBysKCwXGHwJhwQgXE"/>
+</div>
+<div>
+<p class="font-serif text-lg leading-tight">Heritage Camel Overcoat</p>
+<p class="text-xs text-on-surface-variant font-body mt-1">Outerwear</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 font-body text-sm">
+<span class="text-on-surface">SKU-2024-HCO</span>
+<p class="text-xs text-on-surface-variant">Coat</p>
+</td>
+<td class="px-6 py-6">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-[#c2a382]"></div>
+<span class="text-sm font-body">Camel Tan</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Cashmere Blend</p>
+</td>
+<td class="px-6 py-6">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-neutral-100 text-neutral-500">Out of Stock</span>
+</td>
+<td class="px-6 py-6 text-right">
+<div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:text-amber-600 transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:text-error transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-highest transition-colors group">
+<td class="px-6 py-6">
+<div class="flex items-center gap-4">
+<div class="w-16 h-20 bg-surface-variant overflow-hidden">
+<img alt="Suit Thumbnail" class="w-full h-full object-cover" data-alt="refined grey herringbone waistcoat and matching trousers on a tailor mannequin in a high-end workshop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCk8b-gtzr3XEzBI8fwHFXbXTNWK7KBtGfhqHP02Ydja0NRngNp3U2hfCymZLupg0eGvdmSbNWz1aTSHg9ZvNQeUzva4e0pNb8mNsI3wUuLMtaT-nSuYAY7sEJddQX0YeVWvfbmuj_YkrAUIpHM1S3rkSWYIdkk8Uxd_pEtu_vgWtx-6Xs0GZiaAfRKhlPRqEiddnLc4I8oZ2SkImSFLWegoS0JGfaHQr5739qx8RT0zNlic_CyezQGz-zmGbAbMPLYMIosA0fmu8w"/>
+</div>
+<div>
+<p class="font-serif text-lg leading-tight">Evergreen Tweed Vest</p>
+<p class="text-xs text-on-surface-variant font-body mt-1">Casual Bespoke</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 font-body text-sm">
+<span class="text-on-surface">SKU-2024-ETV</span>
+<p class="text-xs text-on-surface-variant">Waistcoat</p>
+</td>
+<td class="px-6 py-6">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-[#2d4030]"></div>
+<span class="text-sm font-body">Forest Green</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Donegal Tweed</p>
+</td>
+<td class="px-6 py-6">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-700">In Stock</span>
+</td>
+<td class="px-6 py-6 text-right">
+<div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:text-amber-600 transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:text-error transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Pagination/Footer Stats -->
+<div class="mt-8 flex justify-between items-center text-on-surface-variant font-label text-xs">
+<p>Showing 1-3 of 48 items</p>
+<div class="flex gap-4">
+<button class="hover:text-amber-600 transition-colors flex items-center gap-1 disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span> Previous
+                    </button>
+<button class="hover:text-amber-600 transition-colors flex items-center gap-1">
+                        Next <span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

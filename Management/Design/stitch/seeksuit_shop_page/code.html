@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="he"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Manrope', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, .font-serif {
+            font-family: 'Noto Serif', serif;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#444748",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "background": "#fcf9f8",
+                        "surface-container": "#f0eded",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e5e2e1",
+                        "tertiary-fixed-dim": "#e9c176",
+                        "on-primary-fixed-variant": "#474746",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#616363",
+                        "surface-tint": "#5f5e5e",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#858383",
+                        "tertiary-container": "#261900",
+                        "on-tertiary-fixed": "#261900",
+                        "outline-variant": "#c4c7c7",
+                        "surface-bright": "#fcf9f8",
+                        "tertiary-fixed": "#ffdea5",
+                        "inverse-primary": "#c8c6c5",
+                        "primary-container": "#1c1b1b",
+                        "on-tertiary-fixed-variant": "#5d4201",
+                        "on-tertiary-container": "#a17f3b",
+                        "secondary-fixed": "#e2e2e2",
+                        "secondary-container": "#dfe0e0",
+                        "on-background": "#1c1b1b",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#dcd9d9",
+                        "surface": "#fcf9f8",
+                        "inverse-on-surface": "#f3f0ef",
+                        "surface-container-high": "#eae7e7",
+                        "secondary": "#5d5f5f",
+                        "on-surface": "#1c1b1b",
+                        "tertiary": "#000000",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "surface-container-low": "#f6f3f2",
+                        "primary-fixed": "#e5e2e1",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#000000",
+                        "inverse-surface": "#313030",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "error": "#ba1a1a"
+                    },
+                    fontFamily: {
+                        "headline": ["Noto Serif"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Top Navigation Bar -->
+<nav class="bg-surface/80 dark:bg-zinc-950/80 backdrop-blur-xl docked full-width top-0 sticky z-50 no-border space-y-4">
+<div class="flex justify-between items-center w-full px-8 py-6 max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-12">
+<a class="text-2xl font-black tracking-tighter text-zinc-950 dark:text-white" href="#">SEEKSUIT</a>
+<div class="hidden md:flex gap-8 font-['Noto_Serif'] antialiased tracking-tight">
+<a class="text-zinc-950 dark:text-white font-bold border-b border-zinc-950 dark:border-white pb-1 transition-colors duration-300" href="#">Shop</a>
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-950 dark:hover:text-white transition-colors duration-300" href="#">About</a>
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-950 dark:hover:text-white transition-colors duration-300" href="#">Contact</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-zinc-900 cursor-pointer" data-icon="language">language</span>
+<span class="material-symbols-outlined text-zinc-900 cursor-pointer" data-icon="lock">lock</span>
+</div>
+</div>
+</nav>
+<main class="max-w-screen-2xl mx-auto px-8 py-12">
+<!-- Shop Header -->
+<header class="flex justify-between items-end mb-16">
+<div>
+<h1 class="text-5xl font-black tracking-tight text-primary">Shop</h1>
+<p class="text-on-surface-variant mt-2 font-body font-light">קולקציית חליפות גברים בעיצוב אישי ומוכן ללבישה</p>
+</div>
+<button class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="close">close</span>
+                Clear filters
+            </button>
+</header>
+<div class="flex flex-col md:flex-row gap-20">
+<!-- Sidebar Filters -->
+<aside class="w-full md:w-[180px] flex-shrink-0 space-y-12">
+<!-- Header Icon -->
+<div class="flex items-center gap-3 border-b border-outline-variant pb-4">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+<span class="font-bold tracking-widest text-xs uppercase">Filters</span>
+</div>
+<!-- Type Filter -->
+<section>
+<h3 class="text-xs font-bold uppercase tracking-widest mb-6 text-on-surface-variant">Type</h3>
+<ul class="space-y-4 text-sm font-medium text-secondary">
+<li class="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+<span>Jacket</span>
+<span class="text-[10px] opacity-40">12</span>
+</li>
+<li class="flex items-center justify-between cursor-pointer text-primary font-bold">
+<span>Pants</span>
+<span class="text-[10px]">08</span>
+</li>
+<li class="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+<span>Shirt</span>
+<span class="text-[10px] opacity-40">24</span>
+</li>
+<li class="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+<span>Vest</span>
+<span class="text-[10px] opacity-40">06</span>
+</li>
+<li class="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+<span>Shoes</span>
+<span class="text-[10px] opacity-40">15</span>
+</li>
+<li class="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+<span>Tie</span>
+<span class="text-[10px] opacity-40">42</span>
+</li>
+<li class="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+<span>Bow Tie</span>
+<span class="text-[10px] opacity-40">18</span>
+</li>
+<li class="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+<span>Belt</span>
+<span class="text-[10px] opacity-40">11</span>
+</li>
+</ul>
+</section>
+<!-- Availability Filter -->
+<section>
+<h3 class="text-xs font-bold uppercase tracking-widest mb-6 text-on-surface-variant">Availability</h3>
+<div class="space-y-4">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="w-4 h-4 border border-outline group-hover:border-primary transition-all rounded-sm flex items-center justify-center">
+<div class="w-2 h-2 bg-primary"></div>
+</div>
+<span class="text-sm">All</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="w-4 h-4 border border-outline-variant group-hover:border-primary transition-all rounded-sm"></div>
+<span class="text-sm text-secondary">In Stock</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="w-4 h-4 border border-outline-variant group-hover:border-primary transition-all rounded-sm"></div>
+<span class="text-sm text-secondary">Out of Stock</span>
+</label>
+</div>
+</section>
+</aside>
+<!-- Product Grid Area -->
+<div class="flex-grow">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-y-16 gap-x-8">
+<!-- Product Card 1 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Modern charcoal grey slim fit suit jacket on a minimalist studio background with soft directional lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVkuUmlqgaVSJCGWl2LCG82Q4xrM0UENOF6HDXc5YuLILt29Y5qhO_kcznc9HgIT58E3KsmtCqk3SohdipCfW4LHMTOHPaps9HFuOCpNI2qavY7Nl8qWO2YxbcUFwutvY7TY5P7741T6j6UvExAiL67jKAqgnDrqgQ4C-yQXB4WE6xYbcfifKfPlYYNdg9UpTNptDOkUyl8QkB0rDeo4dlfw2dJa3wgVFfJ1ELVo1Tzr2zHAwMKxwXKeI5tnupJ-XjgkzR6GIhts0"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant">In Stock</span>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[12px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                                    AI Match 98%
+                                </span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Midnight Wool Jacket</h4>
+<p class="text-on-surface-variant text-sm font-light">Charcoal Grey • Super 120s Wool</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪1,200</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+<!-- Product Card 2 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Close up of navy blue tailored suit pants with crisp crease on a light grey texture background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiu_XXYEhoVIJA3EaEahJoBHYQGMMGFIQp8TKnqAt124r_jkwTkt5KJrROOoGzQ4QJ2KThmuA9Ow5QE5RBwrhTjjgJnNTf9ryXGCmw6N2y-zDBioL9cCcy0Llw0i6_fnSuaqePo1DW2Vu2hq8B_kWSFGjzYKJjoFgefURwy5OsoQezWvc8ZuJhcT0fZqH8naV3jiJGeU0NR8Xuo0tNLff8pQq3ZCMqak9lSheck7olp-ubTZqRxgipVANALyxgNio8vTHgVOE-Y8A"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant text-error">Out of Stock</span>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[12px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                                    AI Match 85%
+                                </span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Formal Navy Trousers</h4>
+<p class="text-on-surface-variant text-sm font-light">Deep Navy • Italian Silk Blend</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪450</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+<!-- Product Card 3 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Crisp white cotton dress shirt with classic collar, professional lighting, clean minimalist composition" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARjxtP8C9wbKgs7l5aEHXUZNPeFMBeuIr-H0g6YYeXz-pFj1a7ksrReO13LmcGopep1_9k3dUK1xK_2XQAuKm6flcNEcnvQESvl5UkpTQnKNgY29QePRm518S25XNctU28u13w0OhWkshV8YG2D1WwgkmOINy_NmTgltrVy_RldGL4d26U2qnr8iILfhxujjSi-_Njrnp6U0OjkbNyS0sJWUIUQhu8i9CHFRoNLqwrL3is46V18Dsp4_qccdu9k30xWGCRlonrkY4"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant">In Stock</span>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[12px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                                    AI Match 92%
+                                </span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Essential White Shirt</h4>
+<p class="text-on-surface-variant text-sm font-light">Egyptian Cotton • Oxford Weave</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪320</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+<!-- Product Card 4 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Luxury dark tan leather oxford shoes on reflective surface with dramatic high-end fashion lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC72Fji7R3ePqd9mReVMwWA698Eyx6OWasf_NV80q5S4D2mUQpWBdJwOqniSDyBh9vlBIod2NkFhQepCtmgtshuNyrBEJzZIWp5MFWwrrSH_3k5LvJDm1qlPHH-rVrrfAimqiIh-wkEEZpFObTR79uA5ceY6RvJxKPg91w9I9hEtQd5kcxdyt_8KQ-34Yob_E4wtddlJUyEv7E5REzHoDy138xYcjaw71LzD99dmaMj9CYZpHzqOTPTX9hqcvQswdq-3u0IrBHb0WA"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant">In Stock</span>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[12px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                                    AI Match 76%
+                                </span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Artisan Tan Oxfords</h4>
+<p class="text-on-surface-variant text-sm font-light">Genuine Leather • Hand Finished</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪890</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+<!-- Product Card 5 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Elegant velvet bow tie in deep burgundy on a textured silk fabric background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvjDmQsKizElpF8gaCyUZ9HbIFbkps3jH1BmgfrI-62opB5ON0laCyOTOwfPE8z-G_ZAlx2-LrMShDmahmFt7B-zlxzI5ta2JdYKEs05dIcXxq5a2-HelXHq4phC8CEKN9jjOi1wH0CEKGdpYSxn_AeDYWfqp8gzkYG_XS8IaTtbu8Y42hQUH_23Nrsupg-IcyOb4lG9Aw2tvWCCOrVozggGSxqWydx1jxHP_jm-FxroZCQuAU9lPJqAzcZL0YKq_e6g5t0fwUJ58"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant">In Stock</span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Royal Velvet Bow Tie</h4>
+<p class="text-on-surface-variant text-sm font-light">Burgundy • Premium Silk Velvet</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪180</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+<!-- Product Card 6 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Sophisticated black leather belt with silver buckle on a minimalist grey background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYSOpHfFxDYkyW_puNbX19dYuXYwugmm996LdpCTTW5jvzdCDUEw2SieoubOQs6_kw5P8rF-y62jIPy4Enlz2meCuf8eLrdP27hpxXYGGfMkjX6IHGYbKftPiAU7VPpTNOPTifzYJz9luVgzhXW_d-xLNAAQmtl7ja_85Q83cPRfveq0orvXrGugmx9qepA3KRXcSYR_tWzfLbknDygvdexmvGUltamHZPqclMBUi-Lv5spUVlpX8-K6oaymmrh0hwRw-lKbqzOhQ"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant">In Stock</span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Classic Dress Belt</h4>
+<p class="text-on-surface-variant text-sm font-light">Black • Full Grain Leather</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪220</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+<!-- Product Card 7 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Tailored glen plaid waistcoat vest in grey wool, professional flat lay style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNYAwsqbbn8_1IwxvWibbt-Nn49zE1-EnQnDLCOXd3wmkeMuO3ZyaNm9f6nZ0Li0BBhMXI2AtGJ4vkE9R-11PqYii4POSL3Rb2F_lVsTpr4gEiSFC72jQF3sX8zqAb7BCor6ysQ5MsJnnKI-Q8RqtWFPe8IAPFzmAXUjW3xFH7w696BlkLLZjyf_PnIcaIHxZYKW6w4_1tpfkppOmUUUmbMeuUPLGTgaFtyRISm_J1QB9dn18FDnJRhhFOVPv4SxDwMBDOS_BQrzQ"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant">In Stock</span>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[12px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                                    AI Match 100%
+                                </span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Glen Plaid Waistcoat</h4>
+<p class="text-on-surface-variant text-sm font-light">Grey Plaid • British Wool</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪580</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+<!-- Product Card 8 -->
+<article class="group">
+<div class="relative aspect-[3/4] overflow-hidden bg-surface-container-low mb-5">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Close up detail of a premium silk tie with micro pattern on a dark luxury background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCvEehRfyvrqiGayblXpyTOMvzMYQkAHcT50JTu-ykHnV4FhzXkda0_kpXt-Y0V3J_O7Ea-7DwaPdO_U_t3tLb2KrULE7uv_KE2TogFEt6mSapeEEzzs4rv8W41J1Jji7AwhpUztJy4ndB16RdGIaU4U8fKB_jQZPCMlJQRSrpxJ5U1QzYnfzBZ_5y3p3XImxvjEqR0nmA6ZDmlCC7SxgxRCL6p2fYrjGCPouYbcOMJSizvXI8cn480AfFOpkrBJekqE5gAysNMbE"/>
+<!-- Badges -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<span class="bg-surface/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border border-outline-variant">In Stock</span>
+</div>
+</div>
+<div class="space-y-1">
+<h4 class="font-serif text-lg font-bold">Micro-Pattern Silk Tie</h4>
+<p class="text-on-surface-variant text-sm font-light">Forest Green • Hand-stitched Silk</p>
+<div class="flex items-center justify-between pt-2">
+<span class="text-primary font-bold">₪145</span>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="favorite">favorite</button>
+</div>
+</div>
+</article>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-zinc-50 dark:bg-zinc-900 w-full mt-20">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12 px-8 py-16 max-w-screen-2xl mx-auto border-t border-zinc-200 dark:border-zinc-800">
+<!-- Brand Column -->
+<div class="space-y-6">
+<span class="font-['Noto_Serif'] text-lg font-bold text-zinc-900 dark:text-zinc-100">SEEKSUIT</span>
+<p class="font-['Manrope'] text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 max-w-xs">
+                    קולקציית הגברים היוקרתית ביותר, המשלבת מסורת של חייטות אישית עם טכנולוגיה מודרנית להתאמה מושלמת.
+                </p>
+</div>
+<!-- Links Column -->
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-4">
+<h5 class="font-bold text-xs uppercase tracking-widest text-zinc-900 dark:text-zinc-100">Company</h5>
+<ul class="space-y-2 font-['Manrope'] text-xs text-zinc-500">
+<li><a class="hover:text-amber-600 transition-colors" href="#">About Us</a></li>
+<li><a class="hover:text-amber-600 transition-colors" href="#">Bespoke Service</a></li>
+<li><a class="hover:text-amber-600 transition-colors" href="#">Store Locator</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h5 class="font-bold text-xs uppercase tracking-widest text-zinc-900 dark:text-zinc-100">Support</h5>
+<ul class="space-y-2 font-['Manrope'] text-xs text-zinc-500">
+<li><a class="hover:text-amber-600 transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="hover:text-amber-600 transition-colors" href="#">Terms of Service</a></li>
+<li><a class="hover:text-amber-600 transition-colors" href="#">Shipping &amp; Returns</a></li>
+</ul>
+</div>
+</div>
+<!-- Newsletter Column -->
+<div class="space-y-6">
+<h5 class="font-bold text-xs uppercase tracking-widest text-zinc-900 dark:text-zinc-100">Join the Atelier</h5>
+<form class="flex gap-2">
+<input class="bg-white dark:bg-zinc-800 border-none px-4 py-2 text-xs w-full focus:ring-1 focus:ring-amber-500" placeholder="Email Address" type="email"/>
+<button class="bg-primary text-on-primary px-6 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all">Join</button>
+</form>
+</div>
+</div>
+<div class="max-w-screen-2xl mx-auto px-8 py-6 border-t border-zinc-100 dark:border-zinc-800 flex justify-center">
+<p class="font-['Manrope'] text-xs text-zinc-400 opacity-80">© 2024 SEEKSUIT - אופנת ג'נודי. All Rights Reserved.</p>
+</div>
+</footer>
+<!-- Floating AI Badge for mobile context -->
+<div class="fixed bottom-8 left-8 z-[100] md:hidden">
+<button class="bg-primary-container text-on-primary-container p-4 rounded-full shadow-2xl flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+</button>
+</div>
+</body></html>

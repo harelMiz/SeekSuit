@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&amp;family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-fixed": "#261900",
+              "surface-container-high": "#eae7e7",
+              "primary": "#000000",
+              "outline": "#747878",
+              "surface-tint": "#5f5e5e",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary": "#ffffff",
+              "primary-container": "#1c1b1b",
+              "background": "#fcf9f8",
+              "on-error-container": "#93000a",
+              "surface-container-highest": "#e5e2e1",
+              "outline-variant": "#c4c7c7",
+              "tertiary-fixed": "#ffdea5",
+              "tertiary-container": "#261900",
+              "surface-container-low": "#f6f3f2",
+              "secondary-fixed": "#e2e2e2",
+              "on-secondary-container": "#616363",
+              "primary-fixed-dim": "#c8c6c5",
+              "tertiary-fixed-dim": "#e9c176",
+              "on-tertiary": "#ffffff",
+              "tertiary": "#000000",
+              "on-tertiary-container": "#a17f3b",
+              "on-surface-variant": "#444748",
+              "on-surface": "#1c1b1b",
+              "on-secondary-fixed": "#1a1c1c",
+              "on-primary-container": "#858383",
+              "error-container": "#ffdad6",
+              "error": "#ba1a1a",
+              "on-background": "#1c1b1b",
+              "inverse-surface": "#313030",
+              "secondary": "#5d5f5f",
+              "on-primary": "#ffffff",
+              "inverse-primary": "#c8c6c5",
+              "surface-variant": "#e5e2e1",
+              "surface": "#fcf9f8",
+              "on-primary-fixed-variant": "#474746",
+              "primary-fixed": "#e5e2e1",
+              "on-tertiary-fixed-variant": "#5d4201",
+              "on-error": "#ffffff",
+              "surface-bright": "#fcf9f8",
+              "secondary-container": "#dfe0e0",
+              "surface-dim": "#dcd9d9",
+              "on-primary-fixed": "#1c1b1b",
+              "on-secondary-fixed-variant": "#454747",
+              "surface-container": "#f0eded",
+              "secondary-fixed-dim": "#c6c6c7",
+              "inverse-on-surface": "#f3f0ef"
+            },
+            fontFamily: {
+              "headline": ["Noto Serif"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .luxury-gradient {
+            background: linear-gradient(to right, #ffdea5, #e9c176);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#fcf9f8]/80 dark:bg-stone-950/80 backdrop-blur-xl">
+<div class="flex justify-between items-center w-full px-8 py-6 max-w-screen-2xl mx-auto">
+<div class="text-xl font-bold tracking-[0.2em] text-stone-900 dark:text-stone-100 font-headline uppercase">
+                THE ATELIER
+            </div>
+<div class="hidden md:flex items-center space-x-12 font-['Noto_Serif'] tracking-tight">
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors" href="#">Collections</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors" href="#">Bespoke</a>
+<a class="text-stone-900 dark:text-white font-semibold border-b border-stone-900 dark:border-stone-100 pb-1" href="#">The House</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors" href="#">Contact</a>
+</div>
+<div class="flex items-center space-x-6">
+<button class="hover:opacity-70 transition-opacity duration-300 active:scale-95">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+</button>
+<button class="hover:opacity-70 transition-opacity duration-300 active:scale-95">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</div>
+</div>
+</nav>
+<main class="pt-32 pb-24">
+<!-- Hero Section -->
+<section class="max-w-screen-2xl mx-auto px-8 mb-24">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end">
+<div class="lg:col-span-7">
+<span class="text-on-tertiary-container font-label tracking-[0.3em] uppercase mb-4 block text-sm">Est. 1988 — אופנת ג'נודי</span>
+<h1 class="text-6xl md:text-8xl font-headline font-bold text-primary leading-none tracking-tight mb-8">
+                        About Our <br/>Atelier
+                    </h1>
+<p class="text-xl md:text-2xl text-on-surface-variant max-w-2xl leading-relaxed">
+                        SeekSuit represents the pinnacle of modern tailoring, blending traditional craftsmanship with contemporary innovation. Our Tel Aviv atelier is dedicated to providing the modern gentleman with a tailored experience that is both personal and profound.
+                    </p>
+</div>
+<div class="lg:col-span-5 relative aspect-[4/5] overflow-hidden group">
+<img alt="Tailor working on a suit" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Close-up of master tailor hands carefully measuring charcoal wool fabric with a vintage measuring tape in a sunlit studio" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2rtLVVlN8qzI0YLSVZWUx9RQAUqifaPp8dm6S8VsgB302rOxFCj90Fbbml--DWbBTHhK2ow81HnXbnB009FiCk0jnwSZrKnTNH4ZFKb-X7mWya33sFsocscxkVOaZRwNqsgc5PDeXBFGZu-2PHsFeRi9GnYTWQ_BgwwWNVgcLRGlQxh2pckYFwzNHWwRCjWAEexu4oOF5No71Pq-bLvbdXuS3yZvvpYJcaCBPBRgGXOY1DlOAsdbYbjNmH0u2aHh0eDk4wkgkvpQ"/>
+<div class="absolute inset-0 ring-1 ring-inset ring-black/10"></div>
+</div>
+</div>
+</section>
+<!-- Values / Story Bento Grid -->
+<section class="max-w-screen-2xl mx-auto px-8 mb-32">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="md:col-span-2 bg-surface-container-low p-12 flex flex-col justify-between min-h-[400px]">
+<div class="max-w-md">
+<h3 class="text-2xl font-headline font-bold mb-4">A Legacy of Excellence</h3>
+<p class="text-on-surface-variant leading-relaxed mb-6">
+                            From the first stitch to the final fitting, our process is an intimate dialogue between the artisan and the wearer. We source only the finest fabrics from Italian and British mills to ensure a garment that lasts generations.
+                        </p>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-px w-12 bg-on-tertiary-container"></div>
+<span class="font-label text-xs tracking-widest uppercase">Handcrafted in Israel</span>
+</div>
+</div>
+<div class="bg-primary p-12 text-on-primary flex flex-col justify-center items-center text-center">
+<span class="material-symbols-outlined text-4xl mb-6 text-tertiary-fixed" data-icon="architecture" style="font-variation-settings: 'FILL' 0;">architecture</span>
+<h3 class="text-xl font-headline font-bold mb-2">Bespoke Precision</h3>
+<p class="text-on-primary-container text-sm leading-relaxed">
+                        Over 40 measurements taken to create a unique pattern that reflects your posture and personality.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Contact & Hours Section -->
+<section class="max-w-screen-2xl mx-auto px-8 grid grid-cols-1 md:grid-cols-2 gap-12">
+<!-- Card 1: Contact Info -->
+<div class="bg-surface-container-lowest p-12 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 opacity-5 translate-x-10 -translate-y-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="location_on">location_on</span>
+</div>
+<h2 class="text-3xl font-headline font-bold mb-12">Visit the Atelier</h2>
+<div class="space-y-10">
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 flex items-center justify-center bg-surface-container-high rounded-full">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</div>
+<div>
+<p class="text-sm font-label uppercase tracking-widest text-on-surface-variant mb-1">Address</p>
+<p class="text-lg font-medium">Atelier Tel Aviv, Israel</p>
+<a class="text-xs text-on-tertiary-container font-bold hover:underline mt-2 inline-block" href="#">View on Map</a>
+</div>
+</div>
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 flex items-center justify-center bg-surface-container-high rounded-full">
+<span class="material-symbols-outlined" data-icon="call">call</span>
+</div>
+<div>
+<p class="text-sm font-label uppercase tracking-widest text-on-surface-variant mb-1">Phone</p>
+<p class="text-lg font-medium">+972-50-000-0000</p>
+</div>
+</div>
+</div>
+<div class="mt-16">
+<button class="luxury-gradient px-8 py-4 text-on-tertiary-fixed font-bold tracking-widest uppercase text-xs rounded-md shadow-sm hover:opacity-90 transition-all">
+                        Book a Consultation
+                    </button>
+</div>
+</div>
+<!-- Card 2: Store Hours -->
+<div class="bg-surface-container-low p-12">
+<h2 class="text-3xl font-headline font-bold mb-12">Operating Hours</h2>
+<div class="space-y-6">
+<div class="flex justify-between items-center border-b border-outline-variant/20 pb-4">
+<span class="font-medium">Sunday - Thursday</span>
+<span class="text-on-surface-variant">10:00 - 19:00</span>
+</div>
+<div class="flex justify-between items-center border-b border-outline-variant/20 pb-4">
+<span class="font-medium">Friday / ערב שבת</span>
+<span class="text-on-surface-variant">10:00 - 15:00</span>
+</div>
+<div class="flex justify-between items-center pb-4">
+<span class="font-medium">Saturday / שבת</span>
+<span class="text-on-tertiary-container font-bold uppercase text-xs tracking-tighter">Closed / סגור</span>
+</div>
+</div>
+<div class="mt-12 p-6 bg-surface-container-highest/50 border-l-2 border-tertiary-fixed-dim">
+<p class="text-sm text-on-surface-variant italic">
+                        Appointments are highly recommended for bespoke tailoring services to ensure personalized attention from our master tailors.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Map Placeholder -->
+<section class="max-w-screen-2xl mx-auto px-8 mt-24">
+<div class="h-96 w-full bg-surface-container-high grayscale contrast-125 overflow-hidden">
+<img alt="Map of Tel Aviv" class="w-full h-full object-cover opacity-60" data-alt="Minimalist monochromatic map of Tel Aviv streets with subtle luxury aesthetic highlighting the central atelier district" data-location="Tel Aviv" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWo2z5kTIM5eXCZ43MORTxjBpSbMqHl-UpDyf7xHOrSBCC82jswpk8BOYzi5u1NQnAwyBLGaYHCdDF1QnvIUYNsvIUUiHnfL--WwE4-yuM4imS2UkeVqxns6gP_CnqIbxPQ7ixu8czc3m9sk_fqCzewApLf5CPNUNc05WpFSjdz18JkSDd2c1OMag0jUe-3KpQtJnt98DoeAVUerKiOAzM15q5Aa7bTtFotnY_SGr7ixIY10QWGsOUxh5CJKJIgIRKfdCWOeYdeI8"/>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-20 px-8 bg-[#f6f3f2] dark:bg-stone-900">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 max-w-screen-2xl mx-auto border-t border-stone-200/20 pt-12">
+<div class="md:col-span-1">
+<div class="text-lg font-bold tracking-widest text-stone-800 dark:text-stone-200 font-headline mb-6">THE ATELIER</div>
+<p class="text-stone-500 dark:text-stone-400 text-sm leading-relaxed max-w-xs">
+                    Excellence in tailoring since 1988. Crafting the modern silhouette through ancestral knowledge.
+                </p>
+</div>
+<div>
+<h4 class="font-label text-xs uppercase tracking-[0.2em] font-bold mb-6 text-stone-900 dark:text-stone-100">House</h4>
+<div class="flex flex-col space-y-4 font-['Manrope'] text-sm tracking-wide">
+<a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Privacy Policy</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Terms of Service</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Shipping &amp; Returns</a>
+</div>
+</div>
+<div>
+<h4 class="font-label text-xs uppercase tracking-[0.2em] font-bold mb-6 text-stone-900 dark:text-stone-100">Social</h4>
+<div class="flex flex-col space-y-4 font-['Manrope'] text-sm tracking-wide">
+<a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Instagram</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">LinkedIn</a>
+</div>
+</div>
+<div>
+<h4 class="font-label text-xs uppercase tracking-[0.2em] font-bold mb-6 text-stone-900 dark:text-stone-100">Newsletter</h4>
+<div class="relative">
+<input class="w-full bg-transparent border-b border-stone-300 dark:border-stone-700 py-2 focus:border-amber-600 outline-none text-sm transition-colors" placeholder="Email Address" type="email"/>
+<button class="absolute right-0 bottom-2">
+<span class="material-symbols-outlined text-stone-400" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<div class="max-w-screen-2xl mx-auto mt-20 text-center">
+<p class="text-stone-400 dark:text-stone-600 text-[10px] tracking-[0.3em] font-label">© 2024 THE ATELIER. ALL RIGHTS RESERVED.</p>
+</div>
+</footer>
+</body></html>

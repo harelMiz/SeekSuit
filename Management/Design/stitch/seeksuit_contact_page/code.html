@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&amp;family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-fixed": "#261900",
+              "surface-container-high": "#eae7e7",
+              "primary": "#000000",
+              "outline": "#747878",
+              "surface-tint": "#5f5e5e",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary": "#ffffff",
+              "primary-container": "#1c1b1b",
+              "background": "#fcf9f8",
+              "on-error-container": "#93000a",
+              "surface-container-highest": "#e5e2e1",
+              "outline-variant": "#c4c7c7",
+              "tertiary-fixed": "#ffdea5",
+              "tertiary-container": "#261900",
+              "surface-container-low": "#f6f3f2",
+              "secondary-fixed": "#e2e2e2",
+              "on-secondary-container": "#616363",
+              "primary-fixed-dim": "#c8c6c5",
+              "tertiary-fixed-dim": "#e9c176",
+              "on-tertiary": "#ffffff",
+              "tertiary": "#000000",
+              "on-tertiary-container": "#a17f3b",
+              "on-surface-variant": "#444748",
+              "on-surface": "#1c1b1b",
+              "on-secondary-fixed": "#1a1c1c",
+              "on-primary-container": "#858383",
+              "error-container": "#ffdad6",
+              "error": "#ba1a1a",
+              "on-background": "#1c1b1b",
+              "inverse-surface": "#313030",
+              "secondary": "#5d5f5f",
+              "on-primary": "#ffffff",
+              "inverse-primary": "#c8c6c5",
+              "surface-variant": "#e5e2e1",
+              "surface": "#fcf9f8",
+              "on-primary-fixed-variant": "#474746",
+              "primary-fixed": "#e5e2e1",
+              "on-tertiary-fixed-variant": "#5d4201",
+              "on-error": "#ffffff",
+              "surface-bright": "#fcf9f8",
+              "secondary-container": "#dfe0e0",
+              "surface-dim": "#dcd9d9",
+              "on-primary-fixed": "#1c1b1b",
+              "on-secondary-fixed-variant": "#454747",
+              "surface-container": "#f0eded",
+              "secondary-fixed-dim": "#c6c6c7",
+              "inverse-on-surface": "#f3f0ef"
+            },
+            fontFamily: {
+              "headline": ["Noto Serif"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .luxury-gradient {
+            background: linear-gradient(135deg, #ffdea5 0%, #e9c176 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#fcf9f8]/80 dark:bg-stone-950/80 backdrop-blur-xl font-['Noto_Serif'] tracking-tight">
+<div class="flex justify-between items-center w-full px-8 py-6 max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-12">
+<a class="text-xl font-bold tracking-[0.2em] text-stone-900 dark:text-stone-100" href="#">THE ATELIER</a>
+<div class="hidden md:flex gap-8 items-center">
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors" href="#">Collections</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors" href="#">Bespoke</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors" href="#">The House</a>
+<a class="text-stone-900 dark:text-white font-semibold border-b border-stone-900 dark:border-stone-100 pb-1" href="#">Contact</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="hover:opacity-70 transition-opacity duration-300 active:scale-95 duration-200">
+<span class="material-symbols-outlined text-stone-900 dark:text-stone-100">shopping_bag</span>
+</button>
+<button class="hover:opacity-70 transition-opacity duration-300 active:scale-95 duration-200">
+<span class="material-symbols-outlined text-stone-900 dark:text-stone-100">person</span>
+</button>
+<div class="flex gap-2 ml-4 text-[10px] font-bold tracking-tighter uppercase opacity-50">
+<span>EN</span>
+<span class="opacity-20">|</span>
+<span class="hover:opacity-100 cursor-pointer">עב</span>
+</div>
+</div>
+</div>
+</nav>
+<main class="pt-32 pb-24 px-8 max-w-screen-2xl mx-auto">
+<!-- Hero Section Asymmetric -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-end mb-24">
+<div class="lg:col-span-7">
+<h1 class="font-headline text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-primary leading-none mb-8">
+                    Get in <span class="italic font-light">Touch</span>
+</h1>
+<p class="text-on-surface-variant text-xl md:text-2xl max-w-2xl leading-relaxed">
+                    Whether you seek a bespoke suit or a simple inquiry, our tailors are here to assist. SeekSuit (אופנת ג'נודי) represents a legacy of precision and elegance.
+                </p>
+</div>
+<div class="lg:col-span-5 relative">
+<div class="aspect-[4/5] bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 ease-in-out" data-alt="Close-up of high-quality charcoal suit fabric being measured by an artisan tailor in a sunlit atelier with vintage tools" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQEPV495xY5E_PtOncXyeLXIZphd-_KTVUOcnf4JXbmw7YjX5Xc--BZg6ekjI4bjMmeEd6YP06TTO8ejJsgAWFCUQvHomWlia2OWKWDiqHPi4Czp8-IegxMxMS6GhrQZRhHnH8hB-_f9QOxVFiDQVn8PMVQJOyfXIgSlipyaLzFNRmOxRyJeiDPSGbkEfrAVX5wLBgrE77JsUwY-bfG2kVI0DcZrM2MBStLgfm6yFZhAuYW4BxMDpB0R2_ySYHUTB6qBFtVIHlvwY"/>
+</div>
+<div class="absolute -bottom-8 -left-8 bg-tertiary-fixed p-8 hidden md:block">
+<span class="font-headline text-on-tertiary-fixed text-lg font-bold block mb-2">Bespoke Excellence</span>
+<p class="text-sm text-on-tertiary-fixed opacity-70">Hand-crafted in Tel Aviv since 1982.</p>
+</div>
+</div>
+</section>
+<!-- Form and Info Bento Grid -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Information Panel -->
+<div class="lg:col-span-1 space-y-8">
+<div class="bg-surface-container-low p-10 h-full flex flex-col justify-between">
+<div>
+<h3 class="font-headline text-2xl mb-6">Our Flagship</h3>
+<div class="space-y-4 text-on-surface-variant">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined mt-1">location_on</span>
+<p>Herzl St 14, Tel Aviv-Yafo,<br/>Israel 6688214</p>
+</div>
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined mt-1">call</span>
+<p>+972 3-510-0000</p>
+</div>
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined mt-1">mail</span>
+<p>atelier@seeksuit.com</p>
+</div>
+</div>
+</div>
+<div class="mt-12 pt-8 border-t border-outline-variant/20">
+<h4 class="text-xs uppercase tracking-widest font-bold mb-4 opacity-40">Opening Hours</h4>
+<div class="flex justify-between text-sm mb-2">
+<span>Sun - Thu</span>
+<span class="font-medium text-primary">09:00 - 19:00</span>
+</div>
+<div class="flex justify-between text-sm">
+<span>Friday</span>
+<span class="font-medium text-primary">09:00 - 14:00</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Contact Form Panel -->
+<div class="lg:col-span-2">
+<div class="bg-surface-container-lowest p-10 md:p-16 relative">
+<!-- Success Overlay (Hidden by default, shown via logic in real app) -->
+<div class="hidden absolute inset-0 z-10 bg-surface-container-lowest/95 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8 transition-opacity duration-500" id="success-state">
+<div class="w-20 h-20 rounded-full luxury-gradient flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-on-tertiary-fixed text-4xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h3 class="font-headline text-3xl mb-4">Thank you for reaching out.</h3>
+<p class="text-on-surface-variant max-w-sm mx-auto">Your message has been received by our head tailors. We will contact you shortly to discuss your requirements.</p>
+<button class="mt-10 text-xs font-bold tracking-[0.2em] uppercase border-b-2 border-primary pb-1 hover:opacity-50 transition-all" onclick="document.getElementById('success-state').classList.add('hidden')">Send Another Inquiry</button>
+</div>
+<form action="#" class="space-y-8" onsubmit="event.preventDefault(); document.getElementById('success-state').classList.remove('hidden');">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant" for="name">Full Name</label>
+<input class="w-full bg-transparent border-0 border-b border-outline-variant focus:ring-0 focus:border-primary py-4 transition-all placeholder:text-outline-variant" id="name" placeholder="E.g. Alexander Genudi" required="" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant" for="email">Email Address</label>
+<input class="w-full bg-transparent border-0 border-b border-outline-variant focus:ring-0 focus:border-primary py-4 transition-all placeholder:text-outline-variant" id="email" placeholder="alexander@domain.com" required="" type="email"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant" for="message">Your Message</label>
+<textarea class="w-full bg-transparent border-0 border-b border-outline-variant focus:ring-0 focus:border-primary py-4 transition-all placeholder:text-outline-variant resize-none" id="message" placeholder="Please describe your interest: Bespoke fitting, inquiry, or collection viewing..." required="" rows="5"></textarea>
+</div>
+<div class="pt-4">
+<button class="w-full py-6 luxury-gradient text-on-tertiary-fixed font-bold tracking-[0.2em] uppercase hover:shadow-xl hover:scale-[1.01] transition-all duration-300 active:scale-95 group flex items-center justify-center gap-4" type="submit">
+<span>Send Inquiry</span>
+<span class="material-symbols-outlined transition-transform group-hover:translate-x-2">arrow_right_alt</span>
+</button>
+</div>
+</form>
+</div>
+</div>
+</section>
+<!-- Secondary Imagery / Atmosphere -->
+<section class="mt-24 grid grid-cols-1 md:grid-cols-4 gap-8">
+<div class="md:col-span-2 aspect-video overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Interior of a luxury tailor shop with dark wood shelving, rolls of premium fabrics, and soft ambient spotlighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDYlCqgLcTgIwuqfRkctCbBgxJ9WUnoRvITQMaCjNTwOgblBLAh7q9wT14LnufJkPgxN4L024uW9kxEWOykxVPLsGj96EWqHHi7UFdZD-HBlub1wq3QmJnFYdpxBPTLYUChuRlpH5Hd5KPhBhkyCJKENUmw8tAX3Htp4HlQK69X_lu77y2HapbE2MaPM244wBHSFDkoDcSG4wXIFDWvG2GHALorXHK3MH4KDCwkIrMDgP1lsK-CBCdjzDoVWcBSDdprqWRwkaPrXg"/>
+</div>
+<div class="aspect-square bg-surface-container-high flex flex-col items-center justify-center p-8 text-center">
+<span class="material-symbols-outlined text-4xl mb-4 text-on-tertiary-container">history_edu</span>
+<p class="font-headline text-lg italic">"A suit is a biography written in fabric."</p>
+</div>
+<div class="aspect-square overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Dapper man in a perfectly tailored charcoal grey suit looking out a high-rise window with soft cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKORB68Uedlr4CUf50pnxpCIRSp1xgF0ZrsIWSRABsqkTqFCmlB0dr3QQhtQSCbWl3R2YcWDpOTl9p-p7fWmu0UPqm_-hk8v6GjOXnz5IRo7htw6Ma2Jc7HVbB2BOKYxdWmFSSGCys8B4GOIgXoHZaBMXM7lJ0kGrilBf5_lGzk_AL82CvF20JkUHxpsJIZhhWIW-PJdxElTmx6iNKB6-fvFmxXAhAanz2zbgFlkzsjfZ8Bun4iiYVMDzz4LR0GS9d8CegkWL9Pno"/>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#f6f3f2] dark:bg-stone-900 w-full py-20 px-8 font-['Manrope'] text-sm tracking-wide">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 max-w-screen-2xl mx-auto border-t border-stone-200/20 pt-12">
+<div>
+<h2 class="text-lg font-bold tracking-widest text-stone-800 dark:text-stone-200 mb-6">THE ATELIER</h2>
+<p class="text-stone-500 dark:text-stone-400 leading-relaxed max-w-xs">Crafting bespoke legacies through the art of tailoring. Visit us in Tel Aviv for a personalized experience.</p>
+</div>
+<div>
+<h4 class="font-bold text-stone-900 dark:text-stone-100 mb-6">Discovery</h4>
+<ul class="space-y-4">
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">New Arrivals</a></li>
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Limited Editions</a></li>
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Accessories</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-stone-900 dark:text-stone-100 mb-6">Client Services</h4>
+<ul class="space-y-4">
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Privacy Policy</a></li>
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Terms of Service</a></li>
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Shipping &amp; Returns</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-stone-900 dark:text-stone-100 mb-6">Connect</h4>
+<ul class="space-y-4">
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">Instagram</a></li>
+<li><a class="text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors duration-300" href="#">LinkedIn</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-screen-2xl mx-auto mt-20 pt-8 border-t border-stone-200/10 flex justify-between items-center text-[10px] uppercase tracking-widest opacity-40">
+<span>© 2024 THE ATELIER. ALL RIGHTS RESERVED.</span>
+<div class="flex gap-4">
+<span>Made in Israel</span>
+<span>SeekSuit Group</span>
+</div>
+</div>
+</footer>
+</body></html>

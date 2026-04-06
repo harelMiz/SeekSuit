@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#444748",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "background": "#fcf9f8",
+                        "surface-container": "#f0eded",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e5e2e1",
+                        "tertiary-fixed-dim": "#e9c176",
+                        "on-primary-fixed-variant": "#474746",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#616363",
+                        "surface-tint": "#5f5e5e",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#858383",
+                        "tertiary-container": "#261900",
+                        "on-tertiary-fixed": "#261900",
+                        "outline-variant": "#c4c7c7",
+                        "surface-bright": "#fcf9f8",
+                        "tertiary-fixed": "#ffdea5",
+                        "inverse-primary": "#c8c6c5",
+                        "primary-container": "#1c1b1b",
+                        "on-tertiary-fixed-variant": "#5d4201",
+                        "on-tertiary-container": "#a17f3b",
+                        "secondary-fixed": "#e2e2e2",
+                        "secondary-container": "#dfe0e0",
+                        "on-background": "#1c1b1b",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#dcd9d9",
+                        "surface": "#fcf9f8",
+                        "inverse-on-surface": "#f3f0ef",
+                        "surface-container-high": "#eae7e7",
+                        "secondary": "#5d5f5f",
+                        "on-surface": "#1c1b1b",
+                        "tertiary": "#000000",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "surface-container-low": "#f6f3f2",
+                        "primary-fixed": "#e5e2e1",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#000000",
+                        "inverse-surface": "#313030",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "error": "#ba1a1a"
+                    },
+                    fontFamily: {
+                        "headline": ["Noto Serif"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .suit-gradient {
+            background: linear-gradient(135deg, #ffdea5 0%, #e9c176 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body antialiased">
+<!-- TopNavBar -->
+<nav class="bg-surface/80 dark:bg-zinc-950/80 backdrop-blur-xl text-zinc-900 dark:text-zinc-100 font-['Noto_Serif'] antialiased tracking-tight docked full-width top-0 sticky z-50 no-border">
+<div class="flex justify-between items-center w-full px-8 py-6 max-w-screen-2xl mx-auto">
+<div class="text-2xl font-black tracking-tighter text-zinc-950 dark:text-white uppercase">SEEKSUIT</div>
+<div class="hidden md:flex items-center space-x-8">
+<a class="text-zinc-950 dark:text-white font-bold border-b border-zinc-950 dark:border-white pb-1" href="#">Shop</a>
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-950 dark:hover:text-white transition-colors duration-300" href="#">About</a>
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-950 dark:hover:text-white transition-colors duration-300" href="#">Contact</a>
+</div>
+<div class="flex items-center space-x-6">
+<button class="hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+</button>
+<button class="hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+</button>
+</div>
+</div>
+</nav>
+<main class="max-w-screen-2xl mx-auto px-8 py-12">
+<!-- Breadcrumb / Back Link -->
+<div class="mb-12">
+<a class="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform" data-icon="arrow_back">arrow_back</span>
+<span class="font-label text-sm tracking-wide">Back to Shop</span>
+</a>
+</div>
+<!-- Product Hero Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
+<!-- Left: Portrait Image -->
+<div class="relative aspect-[3/4] overflow-hidden rounded-xl bg-surface-container shadow-sm">
+<img alt="Bespoke Midnight Navy Suit" class="w-full h-full object-cover" data-alt="high-end editorial photography of a tailored midnight navy suit on a minimalist gray background, sharp lapels, luxury fabric texture, studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcJAk-mi8rqGf_ICUKW6jvX25WPqpMvty4EAjbhMgM9vdlhPgyRbco0RBh6inuXCOkviC29afC6KSNehdkacyEC53kx0Puq1F0zdDNkulK_WwZusZbVaZgLxpkhmxG8ZVBQbv7w-GPWiBZo6WiyDZ9Mb0oiDY8mab4RWvlQ15pdBeoLI4Ywes9Jx7HqB8AO_J95cUl8_ZBNQaaCacFmkpapuOvR1uk45ZmK6_Y5L5qYzT7WuqOgdqXcTipGAu4E_sWg2q1rR5eCFM"/>
+<div class="absolute top-6 left-6">
+<span class="suit-gradient text-tertiary-container px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase shadow-sm">
+                        Bespoke Collection
+                    </span>
+</div>
+</div>
+<!-- Right: Product Info -->
+<div class="space-y-10">
+<div class="space-y-4">
+<span class="text-on-tertiary-container font-label text-xs font-extrabold tracking-[0.2em] uppercase">
+                        Premium Formalwear
+                    </span>
+<h1 class="font-headline text-5xl md:text-6xl font-black text-primary leading-[1.1] tracking-tight">
+                        The Midnight <br/>Heritage Suit
+                    </h1>
+</div>
+<!-- Attributes List -->
+<div class="flex flex-wrap items-center gap-x-8 gap-y-4 py-8 border-y border-outline-variant/30">
+<div class="flex flex-col">
+<span class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Color</span>
+<span class="font-body text-sm font-semibold text-primary">Midnight Navy</span>
+</div>
+<div class="w-px h-8 bg-outline-variant/30 hidden sm:block"></div>
+<div class="flex flex-col">
+<span class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">SKU</span>
+<span class="font-body text-sm font-semibold text-primary">SS-BH-2024-001</span>
+</div>
+<div class="w-px h-8 bg-outline-variant/30 hidden sm:block"></div>
+<div class="flex flex-col">
+<span class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Availability</span>
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span class="font-body text-sm font-semibold text-primary">Ready to Ship</span>
+</div>
+</div>
+</div>
+<p class="text-on-surface-variant leading-relaxed max-w-lg font-body text-lg">
+                    Crafted from Super 150s Merino wool, this signature piece represents the pinnacle of modern tailoring. Featuring a half-canvas construction for a natural drape and long-lasting structure.
+                </p>
+<!-- Actions -->
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="flex-1 bg-primary text-on-primary px-8 py-5 rounded-lg font-bold flex items-center justify-center gap-3 hover:bg-zinc-800 transition-all Active:opacity-70 group">
+<span class="material-symbols-outlined text-xl" data-icon="edit">edit</span>
+                        Edit Master File
+                    </button>
+<button class="px-8 py-5 rounded-lg border border-outline-variant text-on-surface hover:bg-error/5 hover:border-error hover:text-error transition-all flex items-center justify-center gap-3">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+                        Remove Listing
+                    </button>
+</div>
+<!-- Fabric Badge (Atelier Badge) -->
+<div class="pt-6">
+<div class="inline-flex items-center gap-3 bg-surface-container-low p-4 rounded-xl border border-outline-variant/10">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="verified" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified</span>
+<div>
+<p class="text-xs font-bold uppercase tracking-wider text-primary">Super 150s Wool</p>
+<p class="text-[10px] text-on-surface-variant">Authenticated Premium Fabric</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Similar Items Section -->
+<section class="mt-32 space-y-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="space-y-3">
+<div class="flex items-center gap-2 text-tertiary-fixed-dim">
+<span class="material-symbols-outlined" data-icon="sparkles" data-weight="fill" style="font-variation-settings: 'FILL' 1;">colors_spark</span>
+<span class="font-label text-sm font-bold tracking-widest uppercase">Curated Discovery</span>
+</div>
+<h2 class="font-headline text-4xl font-bold tracking-tight">Similar Items</h2>
+</div>
+<div class="bg-primary-container text-on-primary-container px-6 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-sm" data-icon="auto_awesome">auto_awesome</span>
+<span class="text-xs font-medium tracking-wide">AI Match technology coming soon</span>
+</div>
+</div>
+<!-- Horizontal Grid -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
+<!-- Card 1 -->
+<div class="group space-y-4">
+<div class="aspect-[3/4] rounded-lg overflow-hidden bg-surface-container-low transition-transform duration-500 group-hover:scale-[1.02]">
+<img alt="Charcoal Tailored Suit" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" data-alt="studio shot of a premium charcoal grey three-piece suit on a mannequin, soft shadows, high fashion aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwK6Iokz5-CL15kScVqoB3OLTO041HStTEzK7H5xRNJt2Ky92iTJ3ecTR7FBxS58vCUkmgDsDgb5tlBMTF_-KohrqicxQfqBak0_4gWmUcVIWRja-_lVcne4oaCkJ5fxqfj_yaLd8E97uSkCDgDz3WdANtn4-NaMhD1otZy02T5nnV-ZyBjqLNteOVACkcLKoyKMugA7fsiuwIUkgfztdR-M3_WIev0LHnC3MQbRVjCV-L6MYBl2qck8xA_WclwyPAwvmlgE8b5Bs"/>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline text-lg font-bold">The Obsidian Peak</h3>
+<p class="text-on-surface-variant text-sm">Peak Lapel • Charcoal</p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group space-y-4">
+<div class="aspect-[3/4] rounded-lg overflow-hidden bg-surface-container-low transition-transform duration-500 group-hover:scale-[1.02]">
+<img alt="Light Grey Linen Suit" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" data-alt="elegant light grey linen summer suit displayed in a sunlit boutique, airy atmosphere, premium texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-UB4J8IcX2bMAm8FIUHzqPDhYDN1hsmOeQd8Zo7Lcm2l2F3iA6EtOzr52EKTxfYc6n3vTGmSrkGiSqlGTX0nW5uMpJfklREgDc2NYMkt0GsZDd4OfEqDL-N39NGfSlhlRSRHzPs_jdb1KMrbWJqgnlshdJ1UQkhOaqe4gIVKmrTCLtkfjN5hTVQ8U7iuDmy7i0qTr54yip2gKgW2hdoMTHiK5b4tUaRcAC58sBvYbWxBGLBd5KVnZmcbSGglT2o9kcfq3UDxzY5I"/>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline text-lg font-bold">The Azure Breeze</h3>
+<p class="text-on-surface-variant text-sm">Linen Blend • Light Grey</p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group space-y-4">
+<div class="aspect-[3/4] rounded-lg overflow-hidden bg-surface-container-low transition-transform duration-500 group-hover:scale-[1.02]">
+<img alt="Forest Green Tweed Suit" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" data-alt="close-up of a forest green textured tweed jacket with copper buttons, rustic luxury aesthetic, warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDinWKxKHiUdRn8iZsh6m9PQHa8fCYL6IKuz-kUQh8F7qewX-g3DOxnxAHp9RltZh5o2QmYpWlNAIAayx6HZMzHh9os80lnY6zTLC_V4LFXDN-VwU7f0yQAefYIk-ooxvgmm39wCCLGbtgENEqpatJ2tlzIIkZG6_tAX8H-yTcFKMQ2tbRhmtXViL6iTKCR5E5o5fCPQ2Rqi-Bki20qd_DYA3lLAFs1FOfLlszpyBJsXlbw2ZCHO5he59Mb3MctBl8haWKwGCAZ3Qg"/>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline text-lg font-bold">The Highland Forest</h3>
+<p class="text-on-surface-variant text-sm">Heritage Tweed • Pine Green</p>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="group space-y-4">
+<div class="aspect-[3/4] rounded-lg overflow-hidden bg-surface-container-low transition-transform duration-500 group-hover:scale-[1.02]">
+<img alt="Black Tuxedo" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" data-alt="classic black silk lapel tuxedo on a minimalist dark background, evening wear, sharp contrast, formal luxury" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBp0jykZmMCEdb3AqcIOO-vRV1VUlfyXVDNHEI7O2eWu5VIm2qfvbeeAyEps0GHs3L8KkHsEoeGu0-vfQz4o1uKR0UC2P4rmgp97vZeNSDbbXMoWGPjuFmkSxQlAf5s1zmanHHFW9cRUk7Dg-ZKEBdPNzkn9yllKn6HjOUCTswagBclgh94Hc2zRr0vq2mYhamy1-Qc67yDpTfmHno7bupps01Le2RF4q9pIJumB6LiSXZMRNlVZxIfKhR6KaGsV1B4rkLE2kX-KWo"/>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline text-lg font-bold">The Galan Gala</h3>
+<p class="text-on-surface-variant text-sm">Silk Lapel • Onyx Black</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-zinc-50 dark:bg-zinc-900 w-full mt-20 text-zinc-900 dark:text-zinc-100 font-['Manrope'] text-xs leading-relaxed">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12 px-8 py-16 max-w-screen-2xl mx-auto border-t border-zinc-200 dark:border-zinc-800">
+<div class="space-y-4">
+<div class="font-['Noto_Serif'] text-lg font-bold tracking-widest uppercase">SEEKSUIT</div>
+<p class="text-zinc-500 dark:text-zinc-400 max-w-xs">
+                    Curated bespoke tailoring for the modern gentleman. Redefining the digital atelier experience.
+                </p>
+</div>
+<div class="flex flex-col space-y-3">
+<span class="text-zinc-950 dark:text-white font-bold mb-2">Navigation</span>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors" href="#">Privacy Policy</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors" href="#">Terms of Service</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors" href="#">Shipping &amp; Returns</a>
+</div>
+<div class="space-y-4">
+<span class="text-zinc-950 dark:text-white font-bold">Contact</span>
+<p class="text-zinc-500 dark:text-zinc-400">Atelier Tel Aviv, Israel</p>
+<div class="pt-6 border-t border-zinc-200 dark:border-zinc-800">
+<p class="text-[10px] tracking-wide text-zinc-400">© 2024 SEEKSUIT - אופנת ג'נודי. All Rights Reserved.</p>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

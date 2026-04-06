@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="he"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface-variant": "#444748",
+              "outline": "#747878",
+              "on-secondary-fixed": "#1a1c1c",
+              "background": "#fcf9f8",
+              "surface-container": "#f0eded",
+              "on-secondary": "#ffffff",
+              "surface-container-highest": "#e5e2e1",
+              "tertiary-fixed-dim": "#e9c176",
+              "on-primary-fixed-variant": "#474746",
+              "on-error-container": "#93000a",
+              "on-secondary-container": "#616363",
+              "surface-tint": "#5f5e5e",
+              "error-container": "#ffdad6",
+              "on-primary-container": "#858383",
+              "tertiary-container": "#261900",
+              "on-tertiary-fixed": "#261900",
+              "outline-variant": "#c4c7c7",
+              "surface-bright": "#fcf9f8",
+              "tertiary-fixed": "#ffdea5",
+              "inverse-primary": "#c8c6c5",
+              "primary-container": "#1c1b1b",
+              "on-tertiary-fixed-variant": "#5d4201",
+              "on-tertiary-container": "#a17f3b",
+              "secondary-fixed": "#e2e2e2",
+              "secondary-container": "#dfe0e0",
+              "on-background": "#1c1b1b",
+              "on-primary": "#ffffff",
+              "surface-dim": "#dcd9d9",
+              "surface": "#fcf9f8",
+              "inverse-on-surface": "#f3f0ef",
+              "surface-container-high": "#eae7e7",
+              "secondary": "#5d5f5f",
+              "on-surface": "#1c1b1b",
+              "tertiary": "#000000",
+              "on-primary-fixed": "#1c1b1b",
+              "secondary-fixed-dim": "#c6c6c7",
+              "on-tertiary": "#ffffff",
+              "surface-variant": "#e5e2e1",
+              "surface-container-low": "#f6f3f2",
+              "primary-fixed": "#e5e2e1",
+              "surface-container-lowest": "#ffffff",
+              "primary": "#000000",
+              "inverse-surface": "#313030",
+              "on-secondary-fixed-variant": "#454747",
+              "on-error": "#ffffff",
+              "primary-fixed-dim": "#c8c6c5",
+              "error": "#ba1a1a"
+            },
+            fontFamily: {
+              "headline": ["Noto Serif"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .hero-gradient {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.7) 100%);
+        }
+        .gold-shimmer {
+            background: linear-gradient(90deg, #ffdea5 0%, #e9c176 100%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+<!-- TopNavBar -->
+<nav class="bg-surface/80 dark:bg-zinc-950/80 backdrop-blur-xl text-zinc-900 dark:text-zinc-100 font-['Noto_Serif'] antialiased tracking-tight docked full-width top-0 sticky z-50 no-border space-y-4 flat no shadows">
+<div class="flex justify-between items-center w-full px-8 py-6 max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-8">
+<a class="text-2xl font-black tracking-tighter text-zinc-950 dark:text-white uppercase" href="#">SEEKSUIT</a>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-zinc-950 dark:text-white font-bold border-b border-zinc-950 dark:border-white pb-1 hover:text-zinc-950 dark:hover:text-white transition-colors duration-300" href="#">Shop</a>
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-950 dark:hover:text-white transition-colors duration-300" href="#">About</a>
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-950 dark:hover:text-white transition-colors duration-300" href="#">Contact</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="material-symbols-outlined text-2xl hover:text-zinc-950 dark:hover:text-white transition-colors">language</button>
+<button class="material-symbols-outlined text-2xl hover:text-zinc-950 dark:hover:text-white transition-colors">lock</button>
+</div>
+</div>
+</nav>
+<main>
+<!-- Hero Section -->
+<section class="relative h-[942px] w-full overflow-hidden flex items-center px-8 md:px-20">
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover" data-alt="dramatic portrait of a man in a charcoal bespoke suit standing in a modern architectural space with soft cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvNIyGOn4Wac5FMM3lYOGodMAcQCjKxcEdvY4NsMiL0lDOhokb9MihMUaYZGs_IayaBPbwl4o37RlC6aGUisBDiTYQQxcV36dLSxzrWUGNu5Ygo95P4ZQAPHqgH9BqycH2wJeK6vHtSlh_u0tPEQrKoE9yJWyfbVQg1LC20j-seQmUjP-oMigmorFQCz9JV1N6KYnh3U79wOTNx9etPnzvFTvG5HaIdAEJGpIPwjNSdkLL5BQQ0Bcsa7Pm2-dBXE7bj3ivFnhTNME"/>
+<div class="absolute inset-0 hero-gradient"></div>
+</div>
+<div class="relative z-10 max-w-4xl text-white">
+<span class="inline-block font-label text-sm tracking-[0.3em] uppercase mb-6 text-tertiary-fixed opacity-90 border-r-2 border-tertiary-fixed pr-4">Premium Menswear</span>
+<h1 class="font-headline text-5xl md:text-8xl font-black leading-[1.1] mb-12 tracking-tighter">
+                    האומנות שבדיוק.<br/>
+<span class="italic font-light opacity-80">The Bespoke Edge.</span>
+</h1>
+<!-- AI Search Bar -->
+<div class="relative max-w-2xl group">
+<div class="bg-surface/10 backdrop-blur-2xl border border-white/20 p-2 rounded-lg flex items-center gap-4 focus-within:border-tertiary-fixed transition-all duration-500">
+<span class="material-symbols-outlined mr-4 opacity-60">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-lg w-full placeholder:text-white/40 font-light" placeholder="חפש דגם, בד או סגנון..." type="text"/>
+<div class="flex items-center gap-2 pl-2">
+<button class="p-3 hover:bg-white/10 rounded-full transition-colors" title="AI Search">
+<span class="material-symbols-outlined" data-weight="fill">photo_camera</span>
+</button>
+<button class="gold-shimmer text-primary font-bold px-8 py-3 rounded-md hover:opacity-90 transition-opacity whitespace-nowrap">
+                                חפש
+                            </button>
+</div>
+</div>
+</div>
+<div class="mt-20 flex items-center gap-4 opacity-60 hover:opacity-100 transition-opacity cursor-pointer group">
+<span class="font-label text-xs tracking-widest uppercase">Browse Catalog</span>
+<span class="material-symbols-outlined text-sm translate-y-0 group-hover:translate-y-1 transition-transform">expand_more</span>
+</div>
+</div>
+</section>
+<!-- Bento Highlights -->
+<section class="py-24 px-8 max-w-screen-2xl mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[700px]">
+<div class="md:col-span-8 relative rounded-xl overflow-hidden bg-surface-container-low group">
+<img class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700" data-alt="close up detail of high quality wool fabric being measured by a tailor in a sunlit atelier workspace" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuGwhd9JQVaajxzTnLObrp_Q4ZKujOx-TGOn7CVx4z_yKHu4WML1t8WjQlRqyx2idYH0Ad2rtmoOyyX8C7Slcxw0gmMRKO2hG6rt2io9RU_CBp-ZOnZ_43olodhkJ_0LWVEBxpSpFIr882UdNw3RUoaZOvPLPWH28sgeGJresfGNmG9gwLGE83NO7vn5xt5_VhzMdbRp7L38YcOv3l2vY2kCxhKJasv3CSjCl7ZsiMCBjRLn-lvdUJdZD1SKd51grlOo-CT4zDrEI"/>
+<div class="absolute bottom-0 right-0 p-12 bg-gradient-to-t from-black/80 to-transparent w-full text-white text-right">
+<h3 class="font-headline text-3xl mb-2">קולקציית החורף</h3>
+<p class="font-body text-white/70 max-w-md mr-0 ml-auto">גלו את השילוב המושלם בין מסורת איטלקית לחדשנות מודרנית.</p>
+</div>
+</div>
+<div class="md:col-span-4 grid grid-rows-2 gap-6">
+<div class="bg-surface-container-highest rounded-xl p-10 flex flex-col justify-between border-b-4 border-tertiary-fixed">
+<span class="material-symbols-outlined text-4xl text-on-tertiary-container">architecture</span>
+<div>
+<h4 class="font-headline text-2xl mb-2">Bespoke Tailoring</h4>
+<p class="text-on-surface-variant text-sm">התאמה אישית מדויקת לכל מידה, לכל אירוע.</p>
+</div>
+</div>
+<div class="relative rounded-xl overflow-hidden group">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" data-alt="a pair of luxury leather oxford shoes polished to a high shine on a velvet display stand" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0uVIhDbEqkHIivt6SRy8XDRpa0jQKThoabsTA9XahSxQx7dyMZXWTsmKulnk6KVl6WlPJ7Qkl21-6YRM6hBAMsmhRd-hAjG8TcL9wufnFz9yDkw9bfJko26Lcrw51aQf7xdgIM_TNFnFIWs5XNet7mjFeCYRMH8hIjBXqHMpnLCSkYGCCYAGDF7usy0HHBVwgFl0BFP_Fjl8GjpriDll_YCTLWRUsSzW4lP9ZErzRcz6y8UR-UhoUmDpoqYAOERw8aiVbAvSCW5k"/>
+<div class="absolute inset-0 bg-primary/20 group-hover:bg-transparent transition-colors"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Signature Experience -->
+<section class="bg-surface-container-low py-32 overflow-hidden">
+<div class="max-w-screen-2xl mx-auto px-8 grid md:grid-cols-2 gap-20 items-center">
+<div class="relative">
+<div class="absolute -top-10 -right-10 w-64 h-64 bg-tertiary-fixed/20 rounded-full blur-3xl"></div>
+<h2 class="font-headline text-6xl font-black mb-8 leading-tight">החוויה של<br/><span class="text-tertiary-fixed-dim">ג'נודי</span></h2>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-10 max-w-lg">
+                        מאז הקמתנו, חרתנו על דגלנו את ערכי האיכות הבלתי מתפשרת. כל חליפה ב-SeekSuit עוברת תהליך קפדני של בחירת בדים, תפירה עילית וליווי אישי עד לתוצאה המושלמת.
+                    </p>
+<div class="flex flex-wrap gap-4">
+<div class="bg-surface-container-lowest px-6 py-3 rounded-full flex items-center gap-3 shadow-sm">
+<span class="material-symbols-outlined text-tertiary-fixed-dim">verified</span>
+<span class="font-label text-sm font-bold">100% Wool Super 150s</span>
+</div>
+<div class="bg-surface-container-lowest px-6 py-3 rounded-full flex items-center gap-3 shadow-sm">
+<span class="material-symbols-outlined text-tertiary-fixed-dim">straighten</span>
+<span class="font-label text-sm font-bold">Custom Measurements</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<img class="rounded-lg shadow-xl translate-y-8" data-alt="close up of a high-end suit jacket texture and sleeve button details" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYvNvrYbPDWRH7T5yA_BmxObm_4CQBmVSSUY5aDOvDCNsJ0NBSHnsnssMs3LGf5zFkg9XB1T05c9vQ52THUTnaUw37-OvqFmAuagMH3lzRjoi41-Es8OZk20fRZp6KI2hP5Q018MKMYkbEEfDfnoPleVkTxKgktnSeDzNc7bamon9IkTFaaYzwWuMT3mDFfjgtKRTmOL3NK5SEWBLMrlCH5RjjUNshxs9LJVFQ95ZHZfQb4aeypmMSDQTD-VgvKHXLoYWRUBgvdNA"/>
+<img class="rounded-lg shadow-xl" data-alt="interior of a luxury menswear boutique with minimalist displays and warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdlGM7NbjRGe0p6JBqybb_ugcwSKGm1gyO8y-7er4vhjfqRn_xyORe0f8_Wl_q3NIjG8OVRKnzkoXfzQDjmL0NTYFcJovOLYQDzYVOBJSNr3K-ln7XM-fDiU1uyfJJHioNbxjbbivIp_2B1fQ8hl67ykJYIsKy00qAW78MpQZYgKWBZmXHkGIl2Cp0Ygi1VZ_1WVl6-xvTyz6NTYPI6OThSfJM3kDdje5JOqcyd8fVo5j0-OWSMcZQ33TnP1AqMaG8Y1mC5Rn_Ygg"/>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-['Manrope'] text-xs leading-relaxed w-full mt-20 spacing-20 tonal-layering flat">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12 px-8 py-16 max-w-screen-2xl mx-auto border-t border-zinc-200 dark:border-zinc-800">
+<div>
+<h2 class="font-['Noto_Serif'] text-lg font-bold mb-6">SEEKSUIT</h2>
+<p class="text-zinc-500 dark:text-zinc-400 max-w-xs mb-8">
+                    הבית של הגבר הישראלי המודרני למצוינות בלבוש. אופנת ג'נודי - מעל 30 שנות מומחיות.
+                </p>
+<div class="flex gap-4">
+<span class="material-symbols-outlined cursor-pointer hover:text-amber-600">brand_awareness</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-amber-600">public</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-amber-600">mail</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div class="flex flex-col gap-4">
+<h4 class="font-bold text-zinc-900 dark:text-white uppercase tracking-widest text-[10px]">Information</h4>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 transition-colors" href="#">Privacy Policy</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 transition-colors" href="#">Terms of Service</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 transition-colors" href="#">Shipping &amp; Returns</a>
+</div>
+<div class="flex flex-col gap-4">
+<h4 class="font-bold text-zinc-900 dark:text-white uppercase tracking-widest text-[10px]">Categories</h4>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 transition-colors" href="#">Suits</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 transition-colors" href="#">Shirts</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-amber-600 transition-colors" href="#">Accessories</a>
+</div>
+</div>
+<div class="flex flex-col justify-between items-start md:items-end">
+<div class="text-right">
+<h4 class="font-bold text-zinc-900 dark:text-white uppercase tracking-widest text-[10px] mb-4">Newsletter</h4>
+<div class="flex border-b border-zinc-300 dark:border-zinc-700 pb-2">
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 placeholder:text-zinc-400" placeholder="Join the list" type="email"/>
+<span class="material-symbols-outlined text-zinc-400 cursor-pointer">arrow_forward</span>
+</div>
+</div>
+<p class="mt-12 text-zinc-500 dark:text-zinc-400">© 2024 SEEKSUIT - אופנת ג'נודי. All Rights Reserved.</p>
+</div>
+</div>
+</footer>
+</body></html>
