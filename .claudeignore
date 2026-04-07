@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+
+# Version control
+.git/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+__pycache__/
+*.pyc
+
+# Lock files (auto-generated, high token cost)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+*.lock
+
+# Minified / source maps
+*.min.js
+*.min.css
+*.map
+
+# Environment files (secrets should never be sent)
+.env
+.env.*
+
+# Log files
+*.log
+logs/
+
+# Raw assets (images, fonts — binary, unreadable by Claude)
+AIService/background_removal/raw-photos/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.svg
+*.heic
+*.heif
+*.ico
+*.bmp
+*.tiff
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.otf
+
+# Office documents / binary files
+*.docx
+*.xlsx
+*.pdf
+*.zip
+*.tar
+*.gz
+
+# Prisma generated client (derived from schema)
+Backend/node_modules/.prisma/
+
+# IDE
+.vscode/
+.idea/
