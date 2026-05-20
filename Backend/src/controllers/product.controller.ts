@@ -20,11 +20,10 @@ export const createProduct = async (req: Request, res: Response) => {
 };
 
 // GET /api/products
-// Returns all products, optionally filtered by type, status, or color via query params.
+// Returns all products with their images, optionally filtered by type, status, or color.
 export const getAllProducts = async (req: Request, res: Response) => {
   try {
     const filters: ProductFilters = {
-      // req.query values can be string | string[] — we only accept single string values
       type: (req.query.type as string | undefined) as ProductFilters['type'],
       status: (req.query.status as string | undefined) as ProductFilters['status'],
       color: req.query.color as string | undefined,
@@ -37,7 +36,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
 };
 
 // GET /api/products/:id
-// Returns a single product by ID. Responds with 404 if not found.
+// Returns a single product with all its images. Responds with 404 if not found.
 export const getProductById = async (req: Request, res: Response) => {
   try {
     const product = await productService.getProductById(String(req.params.id));
@@ -58,12 +57,10 @@ export const updateProduct = async (req: Request, res: Response) => {
     const product = await productService.updateProduct(String(req.params.id), req.body);
     res.status(200).json(product);
   } catch (error: any) {
-    // Handle product not found (Prisma record not found code)
     if (error.code === 'P2025') {
       res.status(404).json({ error: 'Product not found' });
       return;
     }
-    // Handle duplicate SKU (Prisma unique constraint violation code)
     if (error.code === 'P2002') {
       res.status(409).json({ error: 'A product with this SKU already exists' });
       return;
@@ -73,7 +70,8 @@ export const updateProduct = async (req: Request, res: Response) => {
 };
 
 // DELETE /api/products/:id
-// Permanently deletes a product by ID and removes its images from Storage.
+// Deletes a product. Storage files for all images are removed first,
+// then the DB record is deleted (ProductImages cascade automatically).
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const product = await productService.getProductById(String(req.params.id));
@@ -82,12 +80,14 @@ export const deleteProduct = async (req: Request, res: Response) => {
       return;
     }
 
-    // Delete Storage files before removing the DB record
-    if (product.rawImageUrl) {
-      await storageService.deleteFileBySignedUrl(product.rawImageUrl, 'raw-images');
-    }
-    if (product.processedImageUrl) {
-      await storageService.deleteFileBySignedUrl(product.processedImageUrl, 'processed-images');
+    // Delete Storage files for every image
+    for (const image of product.images) {
+      if (image.rawUrl) {
+        await storageService.deleteFileBySignedUrl(image.rawUrl, 'raw-images');
+      }
+      if (image.processedUrl) {
+        await storageService.deleteFileBySignedUrl(image.processedUrl, 'processed-images');
+      }
     }
 
     await productService.deleteProduct(String(req.params.id));

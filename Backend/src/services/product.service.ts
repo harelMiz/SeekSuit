@@ -1,14 +1,18 @@
 import prisma from '../lib/prisma';
 import { CreateProductInput, UpdateProductInput, ProductFilters } from '../types/product.types';
 
+// Always include images sorted by order when returning a product
+const includeImages = {
+  images: { orderBy: { order: 'asc' as const } },
+};
+
 // Insert a new product row into the database.
 export const createProduct = async (data: CreateProductInput) => {
-  return prisma.product.create({ data });
+  return prisma.product.create({ data, include: includeImages });
 };
 
 // Fetch all products, optionally filtered by type, status, or color.
-// Only filters that are provided will be applied — omitting all returns everything.
-// Results are sorted newest first.
+// Results are sorted newest first. Each product includes its images.
 export const getAllProducts = async (filters: ProductFilters = {}) => {
   return prisma.product.findMany({
     where: {
@@ -17,22 +21,109 @@ export const getAllProducts = async (filters: ProductFilters = {}) => {
       ...(filters.color && { color: filters.color }),
     },
     orderBy: { createdAt: 'desc' },
+    include: includeImages,
   });
 };
 
-// Fetch a single product by its unique ID.
-// Returns null if no product is found.
+// Fetch a single product by its unique ID, including all images.
 export const getProductById = async (id: string) => {
-  return prisma.product.findUnique({ where: { id } });
+  return prisma.product.findUnique({ where: { id }, include: includeImages });
 };
 
 // Update only the provided fields of an existing product.
-// Prisma handles partial updates natively — unspecified fields remain unchanged.
 export const updateProduct = async (id: string, data: UpdateProductInput) => {
-  return prisma.product.update({ where: { id }, data });
+  return prisma.product.update({ where: { id }, data, include: includeImages });
 };
 
 // Permanently delete a product by its unique ID.
+// ProductImages and ProcessingJobs are cascade-deleted by the DB.
 export const deleteProduct = async (id: string) => {
   return prisma.product.delete({ where: { id } });
+};
+
+// ── Image helpers ──
+
+// Create a new ProductImage row.
+// productId can be null for images uploaded before product assignment.
+// If isMain is true and productId is set, demote all other images of that product first.
+export const addProductImage = async (
+  productId: string | null,
+  rawUrl: string,
+  isMain: boolean,
+  order: number
+) => {
+  if (isMain && productId) {
+    await prisma.productImage.updateMany({
+      where: { productId },
+      data: { isMain: false },
+    });
+  }
+  return prisma.productImage.create({
+    data: { productId, rawUrl, isMain, order },
+  });
+};
+
+// Assign an unassigned image to a product (bulk upload flow).
+export const assignImageToProduct = async (
+  imageId: string,
+  productId: string,
+  isMain: boolean,
+  order: number
+) => {
+  if (isMain) {
+    await prisma.productImage.updateMany({
+      where: { productId },
+      data: { isMain: false },
+    });
+  }
+  return prisma.productImage.update({
+    where: { id: imageId },
+    data: { productId, isMain, order },
+  });
+};
+
+// Fetch all ProductImage rows that have no productId (awaiting assignment).
+export const getUnassignedImages = async () => {
+  return prisma.productImage.findMany({
+    where: { productId: null },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+// Set one image as main, demoting all others for that product.
+export const setMainImage = async (productId: string, imageId: string) => {
+  await prisma.productImage.updateMany({
+    where: { productId },
+    data: { isMain: false },
+  });
+  return prisma.productImage.update({
+    where: { id: imageId },
+    data: { isMain: true },
+  });
+};
+
+// Set the processedUrl on a ProductImage after AI processing.
+export const setProcessedUrl = async (imageId: string, processedUrl: string) => {
+  return prisma.productImage.update({
+    where: { id: imageId },
+    data: { processedUrl },
+  });
+};
+
+// Delete a single ProductImage by ID.
+export const deleteProductImage = async (imageId: string) => {
+  return prisma.productImage.delete({ where: { id: imageId } });
+};
+
+// Fetch a single ProductImage by ID (used by the job controller).
+export const getProductImageById = async (imageId: string) => {
+  return prisma.productImage.findUnique({ where: { id: imageId } });
+};
+
+// Fetch all images for a product.
+export const getProductImages = async (productId: string) => {
+  return prisma.productImage.findMany({
+    where: { productId },
+    orderBy: { order: 'asc' },
+  });
 };

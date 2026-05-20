@@ -50,3 +50,7 @@ venv/
 
 # ── Design mockups (reference only, not source code) ──────────────
 Frontend/stitch/
+
+# ── Training data (large binary files — store locally or on cloud) ─
+Products-raw-photos/
+*.zip

@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import { createJob, getAllJobs } from '../controllers/job.controller';
+import { createJobForImage, createJobsForProduct, getAllJobs } from '../controllers/job.controller';
 
 const router = Router();
 
-// GET  /api/jobs         — list all jobs (polled by frontend)
-// POST /api/jobs/:productId — trigger AI processing for a product
+// GET  /api/jobs                          — list all jobs (polled by frontend)
+// POST /api/jobs/image/:imageId           — trigger AI processing for a single image
+// POST /api/jobs/product/:productId       — trigger AI processing for all images of a product
 router.get('/', getAllJobs);
-router.post('/:productId', createJob);
+router.post('/image/:imageId', createJobForImage);
+router.post('/product/:productId', createJobsForProduct);
 
 export default router;

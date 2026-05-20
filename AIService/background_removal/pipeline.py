@@ -1,25 +1,48 @@
 import io
-from rembg import remove
 from PIL import Image, ImageEnhance
+from transformers import AutoModelForImageSegmentation
+import torch
+from torchvision import transforms
+
+# Load RMBG-2.0 model once at startup (singleton — avoids reloading on every request)
+_model = AutoModelForImageSegmentation.from_pretrained("ZhengPeng7/BiRefNet", trust_remote_code=True)
+_model.eval()
+
+_transform = transforms.Compose([
+    transforms.Resize((512, 512)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+
+def _remove_background(pil_image: Image.Image) -> Image.Image:
+    """Remove background using RMBG-2.0, returns RGBA image with transparent background."""
+    input_tensor = _transform(pil_image.convert("RGB")).unsqueeze(0)
+    with torch.no_grad():
+        preds = _model(input_tensor)[-1].sigmoid().cpu()
+    mask = transforms.ToPILImage()(preds[0].squeeze()).resize(pil_image.size)
+    result = pil_image.convert("RGBA")
+    result.putalpha(mask)
+    return result
 
 
 def process_image(image_bytes: bytes) -> bytes:
     """
     Full processing pipeline for a raw product photo:
-    1. Remove background using rembg (pre-trained U-2-Net)
+    1. Remove background using BiRefNet (state-of-the-art background removal)
     2. Enhance sharpness, contrast, and color saturation
     3. Composite onto a clean white background
     4. Return as high-quality JPEG bytes
     """
-    # Step 1: Background removal — outputs RGBA PNG with transparent background
-    removed_bytes = remove(image_bytes)
+    # Step 1: Load image
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-    # Step 2: Load into PIL and split channels
-    img = Image.open(io.BytesIO(removed_bytes)).convert("RGBA")
-    r, g, b, a = img.split()
+    # Step 2: Background removal — returns RGBA with transparent background
+    img_rgba = _remove_background(img)
+    r, g, b, a = img_rgba.split()
     rgb = Image.merge("RGB", (r, g, b))
 
-    # Step 3: Enhancement (applied only to the garment, not the background)
+    # Step 3: Enhancement (applied to the garment only, not the background)
     rgb = ImageEnhance.Sharpness(rgb).enhance(1.4)   # crisper fabric details
     rgb = ImageEnhance.Contrast(rgb).enhance(1.1)    # mild contrast boost
     rgb = ImageEnhance.Color(rgb).enhance(1.15)      # more accurate color

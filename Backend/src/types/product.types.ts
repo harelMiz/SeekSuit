@@ -8,8 +8,6 @@ export interface CreateProductInput {
   type: ProductType;
   color?: string;
   status?: ProductStatus;
-  rawImageUrl?: string;
-  processedImageUrl?: string;
   attributes?: Prisma.InputJsonObject;
 }
 
@@ -21,8 +19,6 @@ export interface UpdateProductInput {
   type?: ProductType;
   color?: string;
   status?: ProductStatus;
-  rawImageUrl?: string;
-  processedImageUrl?: string;
   attributes?: Prisma.InputJsonObject;
 }
 

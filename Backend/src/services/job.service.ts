@@ -1,16 +1,25 @@
 import prisma from '../lib/prisma';
 import { JobStatus } from '@prisma/client';
 
-// Create a new PENDING job for a product
-export const createJob = async (productId: string) => {
-  return prisma.processingJob.create({ data: { productId } });
+// Create a new PENDING job for a specific product image
+export const createJob = async (productImageId: string) => {
+  return prisma.processingJob.create({ data: { productImageId } });
 };
 
-// Fetch all jobs, newest first, including product name for display
+// Fetch all jobs, newest first, including image and product info for display
 export const getAllJobs = async () => {
   return prisma.processingJob.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { product: { select: { id: true, name: true, sku: true } } },
+    include: {
+      image: {
+        select: {
+          id: true,
+          productId: true,
+          isMain: true,
+          product: { select: { id: true, name: true, sku: true } },
+        },
+      },
+    },
   });
 };
 
