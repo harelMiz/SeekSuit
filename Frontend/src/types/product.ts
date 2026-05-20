@@ -12,7 +12,19 @@ export type ProductType =
 // Product status — matches the ProductStatus enum in the backend schema
 export type ProductStatus = "IN_STOCK" | "OUT_OF_STOCK";
 
-// Full product object as returned by the API
+// A single image belonging to a product
+export interface ProductImage {
+  id: string;
+  productId: string;
+  rawUrl: string | null;
+  processedUrl: string | null;
+  isMain: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Full product object as returned by the API (always includes images array)
 export interface Product {
   id: string;
   name: string;
@@ -20,22 +32,19 @@ export interface Product {
   type: ProductType;
   color: string;
   status: ProductStatus;
-  rawImageUrl: string | null;
-  processedImageUrl: string | null;
   attributes: Record<string, unknown> | null;
+  images: ProductImage[];
   createdAt: string;
   updatedAt: string;
 }
 
-// Input for creating a new product
+// Input for creating a new product (images are uploaded separately)
 export interface CreateProductInput {
   name: string;
   sku: string;
   type: ProductType;
   color: string;
   status?: ProductStatus;
-  rawImageUrl?: string;
-  processedImageUrl?: string;
   attributes?: Record<string, unknown>;
 }
 
@@ -47,4 +56,18 @@ export interface ProductFilters {
   type?: ProductType;
   status?: ProductStatus;
   color?: string;
+}
+
+// Helper: return the best display URL for an image (processed > raw)
+export function bestImageUrl(image: ProductImage): string | null {
+  return image.processedUrl ?? image.rawUrl;
+}
+
+// Helper: return the main image of a product, or the first image, or null
+export function mainImage(product: Product): ProductImage | null {
+  return (
+    product.images.find((img) => img.isMain) ??
+    product.images[0] ??
+    null
+  );
 }

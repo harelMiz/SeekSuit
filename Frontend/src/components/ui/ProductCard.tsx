@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ImageOff, Star } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import type { Product } from "../../types/product";
+import { mainImage, bestImageUrl } from "../../types/product";
 
 interface ProductCardProps {
   product: Product;
@@ -19,19 +20,23 @@ export default function ProductCard({ product, matchPercentage }: ProductCardPro
       {/* Image container */}
       <article>
         <div className="relative aspect-[3/4] bg-surface-container-low overflow-hidden rounded-xl mb-4">
-          {product.processedImageUrl ?? product.rawImageUrl ? (
-            <img
-              src={(product.processedImageUrl ?? product.rawImageUrl)!}
-              alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            />
-          ) : (
-            /* No-image placeholder */
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-outline-variant">
-              <ImageOff size={28} />
-              <span className="text-xs text-secondary">{t("product.noImage")}</span>
-            </div>
-          )}
+          {(() => {
+            const img = mainImage(product);
+            const url = img ? bestImageUrl(img) : null;
+            return url ? (
+              <img
+                src={url}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+            ) : (
+              /* No-image placeholder */
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-outline-variant">
+                <ImageOff size={28} />
+                <span className="text-xs text-secondary">{t("product.noImage")}</span>
+              </div>
+            );
+          })()}
 
           {/* Badges — top right stack */}
           <div className="absolute top-3 end-3 flex flex-col gap-2 items-end">

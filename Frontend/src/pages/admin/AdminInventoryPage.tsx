@@ -4,8 +4,9 @@ import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, Sparkles, Lo
 import axios from "axios";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
-import { getProducts, deleteProduct } from "../../services/product.service";
+import { getProducts, deleteProduct, processAllImages } from "../../services/product.service";
 import type { Product } from "../../types/product";
+import { mainImage, bestImageUrl } from "../../types/product";
 
 // Number of rows shown per page
 const PAGE_SIZE = 10;
@@ -24,8 +25,8 @@ export default function AdminInventoryPage() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Ref mirrors state so the setInterval closure always reads the latest statuses
   const jobStatusesRef = useRef<Record<string, JobStatus>>({});
-  // Image preview lightbox
-  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
+  // Image lightbox: stores all images of the product + current index
+  const [preview, setPreview] = useState<{ urls: string[]; name: string; idx: number } | null>(null);
 
   function loadProducts() {
     setLoading(true);
@@ -38,10 +39,14 @@ export default function AdminInventoryPage() {
     loadProducts();
   }, []);
 
-  // Close preview on Escape
+  // Close lightbox on Escape, navigate with arrow keys
   useEffect(() => {
     if (!preview) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setPreview(null); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreview(null);
+      if (e.key === "ArrowRight") setPreview((p) => p && p.urls.length > 1 ? { ...p, idx: (p.idx + 1) % p.urls.length } : p);
+      if (e.key === "ArrowLeft")  setPreview((p) => p && p.urls.length > 1 ? { ...p, idx: (p.idx - 1 + p.urls.length) % p.urls.length } : p);
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [preview]);
@@ -60,7 +65,7 @@ export default function AdminInventoryPage() {
     if (hasActive && !pollingRef.current) {
       pollingRef.current = setInterval(async () => {
         try {
-          const { data } = await axios.get<{ id: string; productId: string; status: JobStatus }[]>(
+          const { data } = await axios.get<{ id: string; status: JobStatus; image: { productId: string } }[]>(
             `${API_BASE}/api/jobs`
           );
           // Read current statuses from ref — avoids stale closure
@@ -69,16 +74,16 @@ export default function AdminInventoryPage() {
           let reloadNeeded = false;
 
           for (const job of data) {
-            if (next[job.productId] !== undefined) {
-              // Job just finished — reload products so thumbnail updates
-              if (
-                (current[job.productId] === "PENDING" || current[job.productId] === "PROCESSING") &&
-                (job.status === "DONE" || job.status === "FAILED")
-              ) {
-                reloadNeeded = true;
-              }
-              next[job.productId] = job.status;
+            const pid = job.image?.productId;
+            if (!pid || next[pid] === undefined) continue;
+            // Job just finished — reload products so thumbnails update
+            if (
+              (current[pid] === "PENDING" || current[pid] === "PROCESSING") &&
+              (job.status === "DONE" || job.status === "FAILED")
+            ) {
+              reloadNeeded = true;
             }
+            next[pid] = job.status;
           }
 
           setJobStatuses(next);
@@ -111,7 +116,7 @@ export default function AdminInventoryPage() {
   async function handleProcess(productId: string) {
     setJobStatuses((prev) => ({ ...prev, [productId]: "PENDING" }));
     try {
-      await axios.post(`${API_BASE}/api/jobs/${productId}`);
+      await processAllImages(productId);
       setJobStatuses((prev) => ({ ...prev, [productId]: "PROCESSING" }));
     } catch {
       setJobStatuses((prev) => ({ ...prev, [productId]: "FAILED" }));
@@ -127,12 +132,18 @@ export default function AdminInventoryPage() {
       {/* Header row */}
       <div className="flex items-start justify-between mb-2">
         <div>
-          <p className="text-xs font-bold tracking-widest uppercase text-secondary mb-1">
-            Stock Overview
-          </p>
-          <h1 className="font-headline text-3xl font-bold text-on-surface">
-            Product Catalogue
+          <div className="flex items-center gap-3 mb-3">
+            <span className="block w-14 h-[1.5px] bg-gradient-to-r from-tertiary-fixed to-tertiary-fixed-dim" />
+            <p className="text-xs font-bold tracking-[0.22em] uppercase text-on-tertiary-container">
+              Stock Overview
+            </p>
+          </div>
+          <h1 className="font-headline font-bold text-on-surface leading-[1.05]">
+            <span className="text-5xl">Product</span>
+            <br />
+            <span className="text-6xl italic text-on-tertiary-container">Catalogue</span>
           </h1>
+          <div className="mt-4 w-20 h-[2px] bg-gradient-to-r from-tertiary-fixed-dim to-tertiary-fixed" />
         </div>
         <Link
           to="/admin/inventory/new"
@@ -154,25 +165,25 @@ export default function AdminInventoryPage() {
         </div>
       ) : (
         <div className="mt-8 bg-surface-container-low p-1 rounded-2xl overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full">
             <thead>
               <tr className="border-b border-outline-variant">
-                <th className="text-start text-[10px] text-secondary uppercase tracking-widest px-5 py-4 font-semibold w-20">
+                <th className="text-start text-sm text-secondary uppercase tracking-widest px-5 py-5 font-semibold w-24">
                   Item
                 </th>
-                <th className="text-start text-[10px] text-secondary uppercase tracking-widest px-4 py-4 font-semibold">
+                <th className="text-start text-sm text-secondary uppercase tracking-widest px-4 py-5 font-semibold">
                   Name
                 </th>
-                <th className="text-start text-[10px] text-secondary uppercase tracking-widest px-4 py-4 font-semibold hidden md:table-cell">
+                <th className="text-start text-sm text-secondary uppercase tracking-widest px-4 py-5 font-semibold hidden md:table-cell">
                   SKU / Type
                 </th>
-                <th className="text-start text-[10px] text-secondary uppercase tracking-widest px-4 py-4 font-semibold hidden md:table-cell">
+                <th className="text-start text-sm text-secondary uppercase tracking-widest px-4 py-5 font-semibold hidden md:table-cell">
                   Color
                 </th>
-                <th className="text-start text-[10px] text-secondary uppercase tracking-widest px-4 py-4 font-semibold">
+                <th className="text-start text-sm text-secondary uppercase tracking-widest px-4 py-5 font-semibold">
                   Status
                 </th>
-                <th className="text-end px-5 py-4 w-20" />
+                <th className="text-end px-5 py-5 w-24" />
               </tr>
             </thead>
             <tbody>
@@ -181,51 +192,61 @@ export default function AdminInventoryPage() {
                   key={product.id}
                   className="group border-b border-outline-variant/50 hover:bg-surface-container-high/30 transition-colors"
                 >
-                  {/* Thumbnail — click to open lightbox */}
-                  <td className="px-5 py-4">
-                    <div className="w-16 h-20 bg-surface-variant rounded-lg overflow-hidden">
-                      {product.processedImageUrl ?? product.rawImageUrl ? (
-                        <img
-                          src={(product.processedImageUrl ?? product.rawImageUrl)!}
-                          alt={product.name}
-                          onClick={() =>
-                            setPreview({
-                              url: (product.processedImageUrl ?? product.rawImageUrl)!,
-                              name: product.name,
-                            })
-                          }
-                          className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-200"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ImageOff size={16} className="text-outline-variant" />
+                  {/* Thumbnail — click opens lightbox with all images */}
+                  <td className="px-5 py-5">
+                    {(() => {
+                      const images = product.images.slice().sort((a, b) => a.order - b.order);
+                      const img = mainImage(product);
+                      const url = img ? bestImageUrl(img) : null;
+                      const urls = images.map((i) => bestImageUrl(i)).filter(Boolean) as string[];
+                      return (
+                        <div className="relative w-16 h-20">
+                          <div className="w-16 h-20 bg-surface-variant rounded-lg overflow-hidden">
+                            {url ? (
+                              <img
+                                src={url}
+                                alt={product.name}
+                                onClick={() => setPreview({ urls, name: product.name, idx: 0 })}
+                                className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-200"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ImageOff size={16} className="text-outline-variant" />
+                              </div>
+                            )}
+                          </div>
+                          {images.length > 1 && (
+                            <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-on-surface text-surface text-[9px] font-bold flex items-center justify-center">
+                              {images.length}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </td>
 
                   {/* Name */}
-                  <td className="px-4 py-4 font-semibold text-on-surface">
+                  <td className="px-4 py-5 font-semibold text-xl text-on-surface">
                     {product.name}
                   </td>
 
                   {/* SKU / Type */}
-                  <td className="px-4 py-4 hidden md:table-cell">
-                    <p className="text-xs font-mono text-secondary">{product.sku}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">
+                  <td className="px-4 py-5 hidden md:table-cell">
+                    <p className="text-base font-mono text-secondary">{product.sku}</p>
+                    <p className="text-base text-on-surface-variant mt-1">
                       {t(`type.${product.type}`)}
                     </p>
                   </td>
 
                   {/* Color */}
-                  <td className="px-4 py-4 text-secondary hidden md:table-cell">
+                  <td className="px-4 py-5 text-lg text-secondary hidden md:table-cell">
                     {product.color}
                   </td>
 
                   {/* Status badge */}
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-5">
                     <span
-                      className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      className={`inline-flex items-center text-base font-semibold px-3 py-1.5 rounded-full ${
                         product.status === "IN_STOCK"
                           ? "bg-emerald-50 text-emerald-700"
                           : "bg-neutral-100 text-neutral-500"
@@ -242,20 +263,21 @@ export default function AdminInventoryPage() {
                       {(() => {
                         const status = jobStatuses[product.id];
                         const isActive = status === "PENDING" || status === "PROCESSING";
-                        const alreadyProcessed = !!product.processedImageUrl;
+                        const hasRaw = product.images.some((img) => img.rawUrl);
+                        const allProcessed = product.images.length > 0 && product.images.every((img) => img.processedUrl);
 
-                        if (alreadyProcessed && !isActive) return null;
+                        if (allProcessed && !isActive) return null;
 
                         return (
                           <button
                             onClick={() => handleProcess(product.id)}
-                            disabled={isActive || !product.rawImageUrl}
+                            disabled={isActive || !hasRaw}
                             title={
-                              !product.rawImageUrl
-                                ? "No image to process"
+                              !hasRaw
+                                ? "No images to process"
                                 : status === "FAILED"
                                 ? "Failed — retry"
-                                : "Process with AI"
+                                : `Process ${product.images.filter((i) => i.rawUrl && !i.processedUrl).length} image(s) with AI`
                             }
                             className={`p-2 rounded-lg transition-colors ${
                               status === "FAILED"
@@ -318,10 +340,10 @@ export default function AdminInventoryPage() {
           </div>
         </div>
       )}
-      {/* Lightbox overlay */}
+      {/* Lightbox overlay — supports multi-image navigation */}
       {preview && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
           onClick={() => setPreview(null)}
         >
           <div
@@ -329,19 +351,44 @@ export default function AdminInventoryPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={preview.url}
+              src={preview.urls[preview.idx]}
               alt={preview.name}
               className="max-w-full max-h-[85vh] object-contain"
             />
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-5 py-3">
+
+            {/* Bottom bar: name + counter */}
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-5 py-3 flex items-center justify-between">
               <p className="text-white text-sm font-semibold">{preview.name}</p>
+              {preview.urls.length > 1 && (
+                <p className="text-white/70 text-xs">{preview.idx + 1} / {preview.urls.length}</p>
+              )}
             </div>
+
+            {/* Close */}
             <button
               onClick={() => setPreview(null)}
               className="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
             >
               ✕
             </button>
+
+            {/* Left / Right arrows — only when multiple images */}
+            {preview.urls.length > 1 && (
+              <>
+                <button
+                  onClick={() => setPreview((p) => p ? { ...p, idx: (p.idx - 1 + p.urls.length) % p.urls.length } : p)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  onClick={() => setPreview((p) => p ? { ...p, idx: (p.idx + 1) % p.urls.length } : p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

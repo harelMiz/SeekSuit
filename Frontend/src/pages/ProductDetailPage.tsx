@@ -2,22 +2,33 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Pencil, Trash2, ImageOff, Sparkles } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import Layout from "../components/layout/Layout";
 import { getProduct, deleteProduct } from "../services/product.service";
-import type { Product } from "../types/product";
+import type { Product, ProductImage } from "../types/product";
+import { bestImageUrl, mainImage } from "../types/product";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useLang();
+  const { session } = useAuth();
+  const isAdmin = session !== null;
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // Index of the image currently shown in the large viewer
+  const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
     if (!id) return;
     getProduct(id)
-      .then(setProduct)
+      .then((p) => {
+        setProduct(p);
+        // Default to the main image index
+        const mainIdx = p.images.findIndex((img) => img.isMain);
+        setActiveIdx(mainIdx >= 0 ? mainIdx : 0);
+      })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);
@@ -55,8 +66,10 @@ export default function ProductDetailPage() {
     );
   }
 
-  const imageUrl = product.processedImageUrl ?? product.rawImageUrl;
-  // Check if product has material info in attributes
+  const images = product.images.sort((a, b) => a.order - b.order);
+  const activeImage: ProductImage | undefined = images[activeIdx];
+  const activeUrl = activeImage ? bestImageUrl(activeImage) : null;
+
   const material =
     product.attributes && typeof product.attributes.material === "string"
       ? product.attributes.material
@@ -77,20 +90,55 @@ export default function ProductDetailPage() {
           </Link>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14">
-            {/* ── Left: Image ── */}
-            <div className="aspect-[3/4] rounded-xl overflow-hidden bg-surface-container">
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-outline-variant">
-                  <ImageOff size={48} />
-                  <span className="text-sm text-secondary">{t("product.noImage")}</span>
+            {/* ── Left: Image gallery ── */}
+            <div className="flex gap-3">
+              {/* Thumbnail strip — only shown when there are multiple images */}
+              {images.length > 1 && (
+                <div className="flex flex-col gap-2 w-16 flex-shrink-0">
+                  {images.map((img, idx) => {
+                    const url = bestImageUrl(img);
+                    return (
+                      <button
+                        key={img.id}
+                        onClick={() => setActiveIdx(idx)}
+                        className={`w-16 h-20 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                          idx === activeIdx
+                            ? "border-on-tertiary-container"
+                            : "border-transparent hover:border-outline-variant"
+                        }`}
+                      >
+                        {url ? (
+                          <img
+                            src={url}
+                            alt={`view ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-surface-container-low flex items-center justify-center">
+                            <ImageOff size={12} className="text-outline-variant" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
+
+              {/* Main image viewer */}
+              <div className="flex-1 aspect-[3/4] rounded-xl overflow-hidden bg-surface-container">
+                {activeUrl ? (
+                  <img
+                    src={activeUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-outline-variant">
+                    <ImageOff size={48} />
+                    <span className="text-sm text-secondary">{t("product.noImage")}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* ── Right: Details ── */}
@@ -105,7 +153,7 @@ export default function ProductDetailPage() {
                 {product.name}
               </h1>
 
-              {/* Attributes row — horizontal with dividers */}
+              {/* Attributes row */}
               <div className="flex items-stretch gap-0 mb-8 border border-outline-variant rounded-xl overflow-hidden">
                 {[
                   { label: t("product.color"), value: product.color },
@@ -144,7 +192,7 @@ export default function ProductDetailPage() {
                 ))}
               </div>
 
-              {/* Atelier Badge — shows if material info is available */}
+              {/* Atelier Badge */}
               {material && (
                 <div className="flex items-center gap-3 mb-8 bg-surface-container-low border border-outline-variant rounded-xl p-4">
                   <span className="text-on-tertiary-container text-xs font-bold tracking-widest uppercase">
@@ -154,27 +202,29 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Action buttons */}
-              <div className="flex gap-3 mt-auto">
-                <Link
-                  to={`/admin/inventory/${product.id}/edit`}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-on-primary font-semibold text-sm rounded-xl transition-opacity hover:opacity-80"
-                >
-                  <Pencil size={14} />
-                  {t("product.edit")}
-                </Link>
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-3 border border-outline-variant text-on-surface-variant hover:border-error hover:text-error text-sm rounded-xl transition-colors"
-                >
-                  <Trash2 size={14} />
-                  {t("product.delete")}
-                </button>
-              </div>
+              {/* Action buttons — admin only */}
+              {isAdmin && (
+                <div className="flex gap-3 mt-auto">
+                  <Link
+                    to={`/admin/inventory/${product.id}/edit`}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-on-primary font-semibold text-sm rounded-xl transition-opacity hover:opacity-80"
+                  >
+                    <Pencil size={14} />
+                    {t("product.edit")}
+                  </Link>
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-2 px-4 py-3 border border-outline-variant text-on-surface-variant hover:border-error hover:text-error text-sm rounded-xl transition-colors"
+                  >
+                    <Trash2 size={14} />
+                    {t("product.delete")}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* ── Similar Items — placeholder for AI search (Step 7) ── */}
+          {/* Similar Items placeholder */}
           <div className="mt-20 pt-12 border-t border-outline-variant">
             <div className="flex items-center gap-2 mb-6">
               <Sparkles size={16} className="text-on-tertiary-container" />
@@ -182,8 +232,6 @@ export default function ProductDetailPage() {
                 {t("product.similar")}
               </h2>
             </div>
-
-            {/* 4-card placeholder grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[1, 2, 3, 4].map((n) => (
                 <div

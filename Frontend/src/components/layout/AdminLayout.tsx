@@ -104,9 +104,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div className="ml-64 flex-1 min-h-screen flex flex-col">
         {/* Sticky top bar */}
         <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-40 px-12 py-5 border-b border-outline-variant flex items-center justify-between">
-          <h2 className="font-headline text-xl font-bold text-on-surface">
-            {pageTitle}
-          </h2>
+          <div className="flex items-center gap-3">
+            <span className="w-1 h-7 rounded-full bg-gradient-to-b from-tertiary-fixed to-tertiary-fixed-dim" />
+            <h2 className="font-headline text-3xl font-bold text-on-surface tracking-tight">
+              {pageTitle}
+            </h2>
+          </div>
 
           <div className="flex items-center gap-3">
             {/* Search input */}
