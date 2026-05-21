@@ -115,6 +115,10 @@ export const he: Record<string, string> = {
   "admin.saveError": "שגיאה בשמירת המוצר",
 
   // Admin uploads
+  "admin.batchTypeLabel": "סוג מוצר להעלאה",
+  "admin.batchTypePlaceholder": "בחר סוג לפני ההעלאה",
+  "admin.batchTypeNote": "כל התמונות בהעלאה זו יעובדו כ",
+  "admin.batchTypeWarning": "יש לבחור סוג מוצר תחילה — ה-AI משתמש במודל שונה לכל סוג.",
   "admin.uploadTitle": "העלאת מלאי חדש",
   "admin.uploadSub": "עיבוד תמונות אוטומטי מבוסס AI",
   "admin.dropZone": "גרור תמונות מהטלפון לכאן לעיבוד אוטומטי",

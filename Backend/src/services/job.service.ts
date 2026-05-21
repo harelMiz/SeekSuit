@@ -16,6 +16,7 @@ export const getAllJobs = async () => {
           id: true,
           productId: true,
           isMain: true,
+          processedUrl: true,
           product: { select: { id: true, name: true, sku: true } },
         },
       },

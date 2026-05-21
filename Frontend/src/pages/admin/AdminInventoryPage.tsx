@@ -1,17 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUpDown, X, Sparkles, Loader2 } from "lucide-react";
 import axios from "axios";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { getProducts, deleteProduct, processAllImages } from "../../services/product.service";
-import type { Product } from "../../types/product";
+import type { Product, ProductType, ProductStatus } from "../../types/product";
 import { mainImage, bestImageUrl } from "../../types/product";
 
 // Number of rows shown per page
 const PAGE_SIZE = 10;
 
 type JobStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
+type SortField = "name" | "sku" | "createdAt";
+type SortDir = "asc" | "desc";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
@@ -22,6 +24,13 @@ export default function AdminInventoryPage() {
   const [page, setPage] = useState(1);
   // Map of productId → current job status (only for jobs triggered this session)
   const [jobStatuses, setJobStatuses] = useState<Record<string, JobStatus>>({});
+  const [sortBy, setSortBy] = useState<SortField>("createdAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [filterType, setFilterType] = useState<ProductType | "">("");
+  const [filterColor, setFilterColor] = useState("");
+  const [filterStatus, setFilterStatus] = useState<ProductStatus | "">("");
+  const [openDropdown, setOpenDropdown] = useState<"type" | "color" | "status" | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Ref mirrors state so the setInterval closure always reads the latest statuses
   const jobStatusesRef = useRef<Record<string, JobStatus>>({});
@@ -51,10 +60,38 @@ export default function AdminInventoryPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [preview]);
 
+  // Close filter dropdowns when clicking outside the bar
+  useEffect(() => {
+    if (!openDropdown) return;
+    function handleClick(e: MouseEvent) {
+      if (barRef.current && !barRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [openDropdown]);
+
   // Keep ref in sync with state so the setInterval closure never reads stale values
   useEffect(() => {
     jobStatusesRef.current = jobStatuses;
   }, [jobStatuses]);
+
+  // On mount, resume polling for any jobs that were started before navigating away
+  useEffect(() => {
+    axios
+      .get<{ id: string; status: JobStatus; image: { productId: string } }[]>(`${API_BASE}/api/jobs`)
+      .then(({ data }) => {
+        const active: Record<string, JobStatus> = {};
+        for (const job of data) {
+          const pid = job.image?.productId;
+          if (!pid || (job.status !== "PENDING" && job.status !== "PROCESSING")) continue;
+          active[pid] = active[pid] === "PROCESSING" || job.status === "PROCESSING" ? "PROCESSING" : "PENDING";
+        }
+        if (Object.keys(active).length > 0) setJobStatuses(active);
+      })
+      .catch(() => {});
+  }, []);
 
   // Poll /api/jobs every 3s while any job is active
   useEffect(() => {
@@ -68,25 +105,35 @@ export default function AdminInventoryPage() {
           const { data } = await axios.get<{ id: string; status: JobStatus; image: { productId: string } }[]>(
             `${API_BASE}/api/jobs`
           );
-          // Read current statuses from ref — avoids stale closure
           const current = jobStatusesRef.current;
+
+          // Group job statuses by productId — only track products we started
+          const jobsByProduct = new Map<string, JobStatus[]>();
+          for (const job of data) {
+            const pid = job.image?.productId;
+            if (!pid || current[pid] === undefined) continue;
+            if (!jobsByProduct.has(pid)) jobsByProduct.set(pid, []);
+            jobsByProduct.get(pid)!.push(job.status);
+          }
+
           const next = { ...current };
           let reloadNeeded = false;
 
-          for (const job of data) {
-            const pid = job.image?.productId;
-            if (!pid || next[pid] === undefined) continue;
-            // Job just finished — reload products so thumbnails update
-            if (
-              (current[pid] === "PENDING" || current[pid] === "PROCESSING") &&
-              (job.status === "DONE" || job.status === "FAILED")
-            ) {
-              reloadNeeded = true;
-            }
-            next[pid] = job.status;
+          for (const [pid, statuses] of jobsByProduct) {
+            const wasActive = current[pid] === "PENDING" || current[pid] === "PROCESSING";
+            const anyActive = statuses.some((s) => s === "PENDING" || s === "PROCESSING");
+            const allFinished = statuses.every((s) => s === "DONE" || s === "FAILED");
+
+            next[pid] = anyActive
+              ? statuses.includes("PROCESSING") ? "PROCESSING" : "PENDING"
+              : statuses.every((s) => s === "DONE") ? "DONE" : "FAILED";
+
+            // Reload only once ALL images of a product are done — not after each one
+            if (wasActive && allFinished) reloadNeeded = true;
           }
 
-          setJobStatuses(next);
+          const changed = Object.keys(next).some((pid) => next[pid] !== current[pid]);
+          if (changed) setJobStatuses(next);
           if (reloadNeeded) loadProducts();
         } catch {
           // Silently ignore polling errors
@@ -107,6 +154,25 @@ export default function AdminInventoryPage() {
     };
   }, [jobStatuses]);
 
+  // Unique type and color values derived from loaded products
+  const availableTypes = useMemo(
+    () => [...new Set(products.map((p) => p.type))].sort(),
+    [products]
+  );
+  const availableColors = useMemo(
+    () => [...new Set(products.map((p) => p.color).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")),
+    [products]
+  );
+
+  function toggleSort(field: SortField) {
+    if (sortBy === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortDir("asc");
+    }
+  }
+
   async function handleDelete(product: Product) {
     if (!window.confirm(t("admin.deleteConfirm"))) return;
     await deleteProduct(product.id);
@@ -123,9 +189,25 @@ export default function AdminInventoryPage() {
     }
   }
 
-  // Pagination math
-  const totalPages = Math.ceil(products.length / PAGE_SIZE);
-  const paginated = products.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Filter → sort → paginate
+  const filtered = products.filter((p) => {
+    if (filterType && p.type !== filterType) return false;
+    if (filterColor && p.color.toLowerCase() !== filterColor.toLowerCase()) return false;
+    if (filterStatus && p.status !== filterStatus) return false;
+    return true;
+  });
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp = 0;
+    switch (sortBy) {
+      case "name":      cmp = a.name.localeCompare(b.name, "he"); break;
+      case "sku":       cmp = a.sku.localeCompare(b.sku); break;
+      case "createdAt": cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+  const activeFilters = [filterType, filterColor, filterStatus].filter(Boolean).length;
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <AdminLayout>
@@ -163,8 +245,166 @@ export default function AdminInventoryPage() {
         <div className="flex items-center justify-center h-48 text-secondary mt-8">
           {t("shop.noProducts")}
         </div>
+      ) : sorted.length === 0 ? (
+        <div className="mt-8 bg-surface-container-low p-1 rounded-2xl overflow-hidden">
+          {/* Sort + filter bars still shown even when empty */}
+          <div className="flex items-center gap-1.5 px-4 py-3 border-b border-outline-variant/60">
+            <span className="text-[10px] text-secondary uppercase tracking-widest mr-2">Sort</span>
+          </div>
+          <div className="flex items-center justify-center h-32 text-secondary text-sm">
+            No products match the current filters.{" "}
+            <button
+              onClick={() => { setFilterType(""); setFilterColor(""); setFilterStatus(""); }}
+              className="ml-1 text-on-tertiary-container font-semibold hover:opacity-70 transition-opacity"
+            >
+              Clear filters
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="mt-8 bg-surface-container-low p-1 rounded-2xl overflow-hidden">
+          {/* Unified sort + filter bar */}
+          <div ref={barRef} className="flex items-center gap-1 px-4 py-2.5 border-b border-outline-variant/60 flex-wrap">
+
+            {/* Sort toggle buttons: Name / SKU / Date Added */}
+            {([
+              { field: "name"      as SortField, label: "Name" },
+              { field: "sku"       as SortField, label: "SKU" },
+              { field: "createdAt" as SortField, label: "Date Added" },
+            ]).map(({ field, label }) => (
+              <button
+                key={field}
+                onClick={() => { toggleSort(field); setPage(1); }}
+                className={`flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                  sortBy === field
+                    ? "bg-on-tertiary-container/15 text-on-tertiary-container"
+                    : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
+                }`}
+              >
+                {label}
+                {sortBy === field
+                  ? sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />
+                  : <ArrowUpDown size={11} className="opacity-25" />}
+              </button>
+            ))}
+
+            {/* Separator */}
+            <span className="w-px h-4 bg-outline-variant/60 mx-1 self-center" />
+
+            {/* Type dropdown filter */}
+            <div className="relative">
+              <button
+                onClick={() => setOpenDropdown(openDropdown === "type" ? null : "type")}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                  filterType || openDropdown === "type"
+                    ? "bg-on-tertiary-container/15 text-on-tertiary-container"
+                    : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
+                }`}
+              >
+                {filterType ? t(`type.${filterType}`) : "Type"}
+                <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "type" ? "rotate-180" : ""}`} />
+              </button>
+              {openDropdown === "type" && (
+                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]">
+                  <button
+                    onClick={() => { setFilterType(""); setOpenDropdown(null); setPage(1); }}
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterType ? "text-on-surface font-semibold" : "text-secondary"}`}
+                  >
+                    All types
+                  </button>
+                  {availableTypes.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => { setFilterType(type); setOpenDropdown(null); setPage(1); }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterType === type ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                    >
+                      {t(`type.${type}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Color dropdown filter */}
+            <div className="relative">
+              <button
+                onClick={() => setOpenDropdown(openDropdown === "color" ? null : "color")}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                  filterColor || openDropdown === "color"
+                    ? "bg-on-tertiary-container/15 text-on-tertiary-container"
+                    : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
+                }`}
+              >
+                {filterColor || "Color"}
+                <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "color" ? "rotate-180" : ""}`} />
+              </button>
+              {openDropdown === "color" && (
+                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[120px] max-h-56 overflow-y-auto">
+                  <button
+                    onClick={() => { setFilterColor(""); setOpenDropdown(null); setPage(1); }}
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterColor ? "text-on-surface font-semibold" : "text-secondary"}`}
+                  >
+                    All colors
+                  </button>
+                  {availableColors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => { setFilterColor(color); setOpenDropdown(null); setPage(1); }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterColor === color ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Status dropdown filter */}
+            <div className="relative">
+              <button
+                onClick={() => setOpenDropdown(openDropdown === "status" ? null : "status")}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                  filterStatus || openDropdown === "status"
+                    ? "bg-on-tertiary-container/15 text-on-tertiary-container"
+                    : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
+                }`}
+              >
+                {filterStatus ? t(`status.${filterStatus.toLowerCase()}`) : "Status"}
+                <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "status" ? "rotate-180" : ""}`} />
+              </button>
+              {openDropdown === "status" && (
+                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]">
+                  <button
+                    onClick={() => { setFilterStatus(""); setOpenDropdown(null); setPage(1); }}
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterStatus ? "text-on-surface font-semibold" : "text-secondary"}`}
+                  >
+                    All statuses
+                  </button>
+                  {(["IN_STOCK", "OUT_OF_STOCK"] as ProductStatus[]).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setFilterStatus(s); setOpenDropdown(null); setPage(1); }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterStatus === s ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                    >
+                      {t(`status.${s.toLowerCase()}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Clear active filters */}
+            {activeFilters > 0 && (
+              <button
+                onClick={() => { setFilterType(""); setFilterColor(""); setFilterStatus(""); setPage(1); }}
+                className="flex items-center gap-1 text-xs font-semibold text-error hover:opacity-70 transition-opacity ml-1 px-2 py-1.5 rounded-lg"
+              >
+                <X size={11} />
+                Clear ({activeFilters})
+              </button>
+            )}
+          </div>
+
           <table className="w-full">
             <thead>
               <tr className="border-b border-outline-variant">
@@ -199,6 +439,7 @@ export default function AdminInventoryPage() {
                       const img = mainImage(product);
                       const url = img ? bestImageUrl(img) : null;
                       const urls = images.map((i) => bestImageUrl(i)).filter(Boolean) as string[];
+                      const mainIdx = images.findIndex((i) => i.isMain);
                       return (
                         <div className="relative w-16 h-20">
                           <div className="w-16 h-20 bg-surface-variant rounded-lg overflow-hidden">
@@ -206,7 +447,7 @@ export default function AdminInventoryPage() {
                               <img
                                 src={url}
                                 alt={product.name}
-                                onClick={() => setPreview({ urls, name: product.name, idx: 0 })}
+                                onClick={() => setPreview({ urls, name: product.name, idx: mainIdx >= 0 ? mainIdx : 0 })}
                                 className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-200"
                               />
                             ) : (
@@ -317,7 +558,7 @@ export default function AdminInventoryPage() {
           {/* Pagination footer */}
           <div className="flex items-center justify-between px-5 py-4 border-t border-outline-variant">
             <p className="text-xs text-secondary">
-              Showing {Math.min((page - 1) * PAGE_SIZE + 1, products.length)}–{Math.min(page * PAGE_SIZE, products.length)} of {products.length} items
+              Showing {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length}{activeFilters > 0 ? ` (filtered from ${products.length})` : ""} items
             </p>
             <div className="flex items-center gap-2">
               <button

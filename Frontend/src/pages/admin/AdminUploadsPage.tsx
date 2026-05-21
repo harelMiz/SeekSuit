@@ -49,6 +49,9 @@ export default function AdminUploadsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
+  // Product type for the current upload batch — must be selected before uploading
+  const [uploadProductType, setUploadProductType] = useState<ProductType | "">("");
+
   // Drag-over state for drop zone
   const [dragging, setDragging] = useState(false);
 
@@ -116,9 +119,13 @@ export default function AdminUploadsPage() {
       const newStates: ImageState[] = newImages.map((image) => ({ image, jobStatus: "PENDING" as JobStatus }));
       setImageStates((prev) => [...newStates, ...prev]);
 
-      // Fire AI jobs for each new image
+      // Fire AI jobs — pass product type so the pipeline picks the right model
       for (const img of newImages) {
-        fetch(`${API_BASE}/api/jobs/image/${img.id}`, { method: "POST" }).catch(() => {});
+        fetch(`${API_BASE}/api/jobs/image/${img.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productType: uploadProductType || null }),
+        }).catch(() => {});
       }
 
       setUploadStatus("done");
@@ -236,16 +243,58 @@ export default function AdminUploadsPage() {
         )}
       </div>
 
+      {/* ── Product type selector ── */}
+      <div className={`rounded-2xl border mb-6 transition-colors ${uploadProductType ? "border-outline-variant bg-surface-container-low" : "border-dashed border-outline bg-surface-container-low/60"}`}>
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${uploadProductType ? "bg-on-tertiary-container" : "bg-outline"}`} />
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-secondary mb-0.5">
+                {t("admin.batchTypeLabel")}
+              </p>
+              {uploadProductType ? (
+                <p className="text-xs text-on-surface-variant">
+                  {t("admin.batchTypeNote")}{" "}
+                  <span className="text-on-tertiary-container font-bold">{t(`type.${uploadProductType}`)}</span>
+                </p>
+              ) : (
+                <p className="text-xs text-outline">{t("admin.batchTypeWarning")}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="relative">
+            <select
+              value={uploadProductType}
+              onChange={(e) => setUploadProductType(e.target.value as ProductType | "")}
+              className={`appearance-none pl-4 pr-8 py-2 rounded-xl border text-sm font-medium outline-none cursor-pointer transition-all ${
+                uploadProductType
+                  ? "bg-on-tertiary-container/10 border-on-tertiary-container/40 text-on-tertiary-container hover:border-on-tertiary-container"
+                  : "bg-surface-container border-outline-variant text-secondary hover:border-outline"
+              }`}
+            >
+              <option value="">{t("admin.batchTypePlaceholder")}</option>
+              {PRODUCT_TYPES.map((type) => (
+                <option key={type} value={type}>{t(`type.${type}`)}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-current opacity-60 text-xs">▾</span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Drop zone ── */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragOver={(e) => { if (!uploadProductType) return; e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 text-center cursor-pointer transition-colors mb-8 ${
-          dragging
-            ? "border-on-tertiary-container bg-tertiary-fixed/10"
-            : "border-outline-variant hover:border-outline bg-surface-container-low"
+        onDrop={(e) => { if (!uploadProductType) { e.preventDefault(); return; } onDrop(e); }}
+        onClick={() => uploadProductType && fileInputRef.current?.click()}
+        className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 text-center transition-colors mb-8 ${
+          !uploadProductType
+            ? "border-outline-variant/40 bg-surface-container-low/50 opacity-50 cursor-not-allowed"
+            : dragging
+            ? "border-on-tertiary-container bg-tertiary-fixed/10 cursor-pointer"
+            : "border-outline-variant hover:border-outline bg-surface-container-low cursor-pointer"
         }`}
       >
         <input
@@ -255,6 +304,7 @@ export default function AdminUploadsPage() {
           multiple
           className="hidden"
           onChange={onFileInputChange}
+          disabled={!uploadProductType}
         />
 
         {uploadStatus === "uploading" ? (

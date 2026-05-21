@@ -1,7 +1,7 @@
 import os
 import time
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from supabase import create_client
 
 from pipeline import process_image
@@ -23,16 +23,24 @@ def health():
 
 
 @app.post("/process")
-async def process(file: UploadFile = File(...)):
+async def process(
+    file: UploadFile = File(...),
+    product_type: str | None = Form(None),
+):
     """
     Accepts a raw product image, runs the AI pipeline,
     uploads the result to Supabase processed-images bucket,
     and returns the public signed URL.
+
+    Optional form field:
+      product_type — Prisma ProductType enum value (e.g. JACKET, PANTS).
+                     If omitted, the pipeline infers type from the filename,
+                     falling back to the default BiRefNet model.
     """
     image_bytes = await file.read()
 
     try:
-        result_bytes = process_image(image_bytes)
+        result_bytes = process_image(image_bytes, filename=file.filename or "image.jpg", product_type=product_type)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
 

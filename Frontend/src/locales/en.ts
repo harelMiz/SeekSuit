@@ -115,6 +115,10 @@ export const en: Record<string, string> = {
   "admin.saveError": "Error saving product",
 
   // Admin uploads
+  "admin.batchTypeLabel": "Product type for this batch",
+  "admin.batchTypePlaceholder": "Select type before uploading",
+  "admin.batchTypeNote": "All images in this upload will be processed as",
+  "admin.batchTypeWarning": "Select a product type first — the AI uses a different model per type.",
   "admin.uploadTitle": "Upload New Inventory",
   "admin.uploadSub": "AI-powered automated image processing",
   "admin.dropZone": "Drag raw phone photos here to begin automated processing",

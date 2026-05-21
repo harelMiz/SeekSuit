@@ -25,8 +25,8 @@ export default function ProductDetailPage() {
     getProduct(id)
       .then((p) => {
         setProduct(p);
-        // Default to the main image index
-        const mainIdx = p.images.findIndex((img) => img.isMain);
+        const sorted = [...p.images].sort((a, b) => a.order - b.order);
+        const mainIdx = sorted.findIndex((img) => img.isMain);
         setActiveIdx(mainIdx >= 0 ? mainIdx : 0);
       })
       .catch(() => setNotFound(true))
@@ -66,7 +66,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const images = product.images.sort((a, b) => a.order - b.order);
+  const images = [...product.images].sort((a, b) => a.order - b.order);
   const activeImage: ProductImage | undefined = images[activeIdx];
   const activeUrl = activeImage ? bestImageUrl(activeImage) : null;
 

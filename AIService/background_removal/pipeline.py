@@ -1,61 +1,124 @@
 import io
+import re
 from PIL import Image, ImageEnhance
 from transformers import AutoModelForImageSegmentation
 import torch
 from torchvision import transforms
 
-# Load RMBG-2.0 model once at startup (singleton — avoids reloading on every request)
-_model = AutoModelForImageSegmentation.from_pretrained("ZhengPeng7/BiRefNet", trust_remote_code=True)
-_model.eval()
+MEAN = [0.485, 0.456, 0.406]
+STD  = [0.229, 0.224, 0.225]
 
-_transform = transforms.Compose([
-    transforms.Resize((512, 512)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
+# Registered models — add new entries here as tests confirm them
+_MODEL_IDS: dict[str, str] = {
+    'default':  'ZhengPeng7/BiRefNet',
+    'portrait': 'ZhengPeng7/BiRefNet-portrait',
+    # 'rmbg2':  'briaai/RMBG-2.0',   # enable once Stage-3A tests confirm
+}
+
+# Which model key to use per product type
+_TYPE_ROUTING: dict[str, str] = {
+    'JACKET': 'portrait',
+    'VEST':   'portrait',
+    # SHIRT works well with default BiRefNet — no portrait needed
+    # PANTS, BOW_TIE, TIE, BELT, SHOES → fallback to 'default' until fine-tuning
+}
+
+# Filename prefix → product type (used when productId is unknown in bulk-upload flow)
+_FILENAME_PREFIXES: list[tuple[str, str]] = [
+    ('bow_tie', 'BOW_TIE'),
+    ('bowtie',  'BOW_TIE'),
+    ('jacket',  'JACKET'),
+    ('suit',    'JACKET'),
+    ('vest',    'VEST'),
+    ('pant',    'PANTS'),
+    ('trouser', 'PANTS'),
+    ('shirt',   'SHIRT'),
+    ('shoe',    'SHOES'),
+    ('belt',    'BELT'),
+    ('tie',     'TIE'),
+]
+
+# Lazy model cache — loaded on first use, then kept warm
+_model_cache: dict[str, tuple] = {}
 
 
-def _remove_background(pil_image: Image.Image) -> Image.Image:
-    """Remove background using RMBG-2.0, returns RGBA image with transparent background."""
-    input_tensor = _transform(pil_image.convert("RGB")).unsqueeze(0)
+def _load_model(key: str) -> tuple:
+    """Load and cache a BiRefNet-family model by registry key."""
+    model_id = _MODEL_IDS[key]
+    model = AutoModelForImageSegmentation.from_pretrained(model_id, trust_remote_code=True)
+    model.eval()
+    t = transforms.Compose([
+        transforms.Resize((512, 512)),
+        transforms.ToTensor(),
+        transforms.Normalize(MEAN, STD),
+    ])
+    return model, t
+
+
+def _get_model(key: str) -> tuple:
+    if key not in _model_cache:
+        _model_cache[key] = _load_model(key)
+    return _model_cache[key]
+
+
+def _infer_type_from_filename(filename: str) -> str | None:
+    """Derive product type from filename prefix (e.g. 'suit_001_front.jpg' → 'JACKET')."""
+    name = filename.lower()
+    # Strip path and extension
+    base = re.split(r'[/\\]', name)[-1]
+    base = base.rsplit('.', 1)[0]
+    for prefix, product_type in _FILENAME_PREFIXES:
+        if base.startswith(prefix):
+            return product_type
+    return None
+
+
+def _select_model_key(product_type: str | None, filename: str) -> str:
+    """Return the model registry key for the given product type, with filename fallback."""
+    if not product_type:
+        product_type = _infer_type_from_filename(filename)
+    return _TYPE_ROUTING.get(product_type or '', 'default')
+
+
+def _remove_background(model, transform, pil_image: Image.Image) -> Image.Image:
+    """Remove background with the given model; returns RGBA image."""
+    tensor = transform(pil_image.convert("RGB")).unsqueeze(0)
     with torch.no_grad():
-        preds = _model(input_tensor)[-1].sigmoid().cpu()
+        preds = model(tensor)[-1].sigmoid().cpu()
     mask = transforms.ToPILImage()(preds[0].squeeze()).resize(pil_image.size)
     result = pil_image.convert("RGBA")
     result.putalpha(mask)
     return result
 
 
-def process_image(image_bytes: bytes) -> bytes:
+def process_image(image_bytes: bytes, filename: str = "image.jpg", product_type: str | None = None) -> bytes:
     """
     Full processing pipeline for a raw product photo:
-    1. Remove background using BiRefNet (state-of-the-art background removal)
-    2. Enhance sharpness, contrast, and color saturation
-    3. Composite onto a clean white background
-    4. Return as high-quality JPEG bytes
+    1. Select model based on product_type (or filename inference if unknown)
+    2. Remove background with chosen BiRefNet variant
+    3. Enhance sharpness, contrast, and color saturation
+    4. Composite onto a clean white background
+    5. Return as high-quality JPEG bytes
     """
-    # Step 1: Load image
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-    # Step 2: Background removal — returns RGBA with transparent background
-    img_rgba = _remove_background(img)
+    model_key = _select_model_key(product_type, filename)
+    model, transform = _get_model(model_key)
+
+    img_rgba = _remove_background(model, transform, img)
     r, g, b, a = img_rgba.split()
     rgb = Image.merge("RGB", (r, g, b))
 
-    # Step 3: Enhancement (applied to the garment only, not the background)
-    rgb = ImageEnhance.Sharpness(rgb).enhance(1.4)   # crisper fabric details
-    rgb = ImageEnhance.Contrast(rgb).enhance(1.1)    # mild contrast boost
-    rgb = ImageEnhance.Color(rgb).enhance(1.15)      # more accurate color
+    rgb = ImageEnhance.Sharpness(rgb).enhance(1.4)
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.1)
+    rgb = ImageEnhance.Color(rgb).enhance(1.15)
 
-    # Step 4: Recombine with original alpha mask
     r2, g2, b2 = rgb.split()
     result = Image.merge("RGBA", (r2, g2, b2, a))
 
-    # Step 5: Paste onto white background for clean catalog look
     background = Image.new("RGB", result.size, (255, 255, 255))
     background.paste(result, mask=a)
 
-    # Step 6: Output as high-quality JPEG
     out = io.BytesIO()
     background.save(out, format="JPEG", quality=92)
     return out.getvalue()

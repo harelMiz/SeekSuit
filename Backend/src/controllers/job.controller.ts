@@ -18,11 +18,15 @@ export const createJobForImage = async (req: Request, res: Response) => {
     return;
   }
 
+  // Product type determines which BG-removal model to use.
+  // Priority: linked product > productType in request body (bulk-upload flow) > null (pipeline uses default)
+  const product = image.productId ? await productService.getProductById(image.productId) : null;
+  const productType = product?.type ?? (req.body?.productType as string | null) ?? null;
+
   const job = await jobService.createJob(imageId);
   res.status(201).json(job);
 
-  // Background processing
-  runProcessing(job.id, imageId, image.rawUrl);
+  runProcessing(job.id, imageId, image.rawUrl, productType);
 };
 
 // POST /api/jobs/product/:productId
@@ -43,20 +47,24 @@ export const createJobsForProduct = async (req: Request, res: Response) => {
     return;
   }
 
+  const product = await productService.getProductById(productId);
+  const productType = product?.type ?? null;
+
   const jobs = await Promise.all(pending.map((img) => jobService.createJob(img.id)));
   res.status(201).json(jobs);
 
-  // Fire background processing for each image
+  // Fire background processing for each image — product type is known here
   for (const img of pending) {
     const job = jobs.find((j) => j.productImageId === img.id);
-    if (job && img.rawUrl) runProcessing(job.id, img.id, img.rawUrl);
+    if (job && img.rawUrl) runProcessing(job.id, img.id, img.rawUrl, productType);
   }
 };
 
 async function runProcessing(
   jobId: string,
   imageId: string,
-  rawUrl: string
+  rawUrl: string,
+  productType?: string | null
 ): Promise<void> {
   try {
     await jobService.updateJobStatus(jobId, 'PROCESSING');
@@ -66,8 +74,11 @@ async function runProcessing(
     if (!imageResponse.ok) throw new Error('Failed to download raw image');
     const buffer = Buffer.from(await imageResponse.arrayBuffer());
 
-    // Send to Python AI service for background removal
-    const processedUrl = await aiService.processImage(buffer, `image_${imageId}.jpg`);
+    // Preserve original filename so the AI service can infer type from it if productType is null
+    const filename = rawUrl.split('/').pop()?.split('?')[0] ?? `image_${imageId}.jpg`;
+
+    // Send to Python AI service — productType selects the right BG-removal model
+    const processedUrl = await aiService.processImage(buffer, filename, productType);
 
     // Save the processed URL on the ProductImage row
     await productService.setProcessedUrl(imageId, processedUrl);
