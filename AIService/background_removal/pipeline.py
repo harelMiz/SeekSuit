@@ -11,6 +11,11 @@ from torchvision import transforms
 MEAN = [0.485, 0.456, 0.406]
 STD  = [0.229, 0.224, 0.225]
 
+# Output canvas — portrait format standard for e-commerce product shots
+_CANVAS_W    = 1200
+_CANVAS_H    = 1600
+_PADDING_RATIO = 0.08  # 8% whitespace on each side relative to the larger content dimension
+
 # Local fine-tuned models live here (mounted as a volume in Docker)
 _FINETUNED_DIR = Path('/app/finetuned_models')
 
@@ -107,6 +112,34 @@ def _select_model_key(product_type: str | None, filename: str) -> str:
     return _TYPE_ROUTING.get(product_type or '', 'default')
 
 
+def _normalize_canvas(img_rgba: Image.Image) -> Image.Image:
+    """
+    Standardize framing regardless of how the photo was taken:
+    1. Crop to the bounding box of non-transparent pixels
+    2. Scale to fit a standard canvas, reserving padding on each side
+    3. Center on a white background
+    Returns an RGB image ready to save.
+    """
+    bbox = img_rgba.getbbox()
+    if bbox:
+        img_rgba = img_rgba.crop(bbox)
+
+    cw, ch = img_rgba.size
+    pad = int(max(cw, ch) * _PADDING_RATIO)
+
+    # Scale content so that content + padding fills the canvas
+    scale = min(_CANVAS_W / (cw + 2 * pad), _CANVAS_H / (ch + 2 * pad))
+    new_cw = max(1, int(cw * scale))
+    new_ch = max(1, int(ch * scale))
+    img_rgba = img_rgba.resize((new_cw, new_ch), Image.LANCZOS)
+
+    canvas = Image.new("RGB", (_CANVAS_W, _CANVAS_H), (255, 255, 255))
+    x = (_CANVAS_W - new_cw) // 2
+    y = (_CANVAS_H - new_ch) // 2
+    canvas.paste(img_rgba, (x, y), mask=img_rgba.split()[3])
+    return canvas
+
+
 def _remove_background(model, transform, pil_image: Image.Image) -> Image.Image:
     """Remove background with the given model; returns RGBA image."""
     tensor = transform(pil_image.convert("RGB")).unsqueeze(0)
@@ -141,10 +174,9 @@ def process_image(image_bytes: bytes, filename: str = "image.jpg", product_type:
     rgb = ImageEnhance.Color(rgb).enhance(1.15)
 
     r2, g2, b2 = rgb.split()
-    result = Image.merge("RGBA", (r2, g2, b2, a))
+    img_rgba = Image.merge("RGBA", (r2, g2, b2, a))
 
-    background = Image.new("RGB", result.size, (255, 255, 255))
-    background.paste(result, mask=a)
+    background = _normalize_canvas(img_rgba)
 
     out = io.BytesIO()
     background.save(out, format="JPEG", quality=92)
