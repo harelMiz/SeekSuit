@@ -73,7 +73,7 @@ for /f %%i in ('docker ps -a --filter "name=^seeksuit-aiservice$" --format "{{.N
 
 if "%AI_EXISTS%"=="" (
     echo [SeekSuit] Starting new AI service container...
-    docker run -d --name seeksuit-aiservice -p 8001:8000 --env-file "%BACKEND_DIR%\.env" seeksuit-aiservice
+    docker run -d --name seeksuit-aiservice -p 8001:8000 --env-file "%BACKEND_DIR%\.env" -v "%AI_DIR%\finetuned_models:/app/finetuned_models" seeksuit-aiservice
 ) else (
     echo [SeekSuit] Restarting AI service container...
     docker restart seeksuit-aiservice

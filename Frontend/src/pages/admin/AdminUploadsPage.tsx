@@ -95,8 +95,17 @@ export default function AdminUploadsPage() {
   }, [imageStates]);
 
   async function loadUnassigned() {
-    const images = await getUnassignedImages();
-    setImageStates(images.map((image) => ({ image })));
+    const [images, jobsRes] = await Promise.all([
+      getUnassignedImages(),
+      fetch(`${API_BASE}/api/jobs`).then((r) => r.json()).catch(() => []),
+    ]);
+    const jobs: { status: JobStatus; image: { id: string; processedUrl?: string } }[] = jobsRes;
+    setImageStates(
+      images.map((image) => {
+        const job = jobs.find((j) => j.image?.id === image.id);
+        return { image, jobStatus: job?.status as JobStatus | undefined };
+      })
+    );
   }
 
   async function handleFiles(files: File[]) {

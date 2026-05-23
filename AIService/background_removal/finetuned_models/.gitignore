@@ -1,0 +1,8 @@
+# Model weight files — download from Google Drive, do not commit
+*.safetensors
+*.bin
+*.pt
+*.pth
+# Keep directory structure and placeholder files
+!.gitkeep
+!.gitignore

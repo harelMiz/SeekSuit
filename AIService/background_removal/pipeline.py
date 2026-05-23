@@ -1,5 +1,8 @@
+import importlib
 import io
 import re
+import sys
+from pathlib import Path
 from PIL import Image, ImageEnhance
 from transformers import AutoModelForImageSegmentation
 import torch
@@ -8,19 +11,25 @@ from torchvision import transforms
 MEAN = [0.485, 0.456, 0.406]
 STD  = [0.229, 0.224, 0.225]
 
-# Registered models — add new entries here as tests confirm them
+# Local fine-tuned models live here (mounted as a volume in Docker)
+_FINETUNED_DIR = Path('/app/finetuned_models')
+
+# Registered models — HuggingFace repo ID or absolute local path
 _MODEL_IDS: dict[str, str] = {
-    'default':  'ZhengPeng7/BiRefNet',
-    'portrait': 'ZhengPeng7/BiRefNet-portrait',
-    # 'rmbg2':  'briaai/RMBG-2.0',   # enable once Stage-3A tests confirm
+    'default':          'ZhengPeng7/BiRefNet',
+    'portrait':         'ZhengPeng7/BiRefNet-portrait',
+    'pants_finetuned':  str(_FINETUNED_DIR / 'pants'),
+    'bow_ties_finetuned': str(_FINETUNED_DIR / 'bow_ties'),
 }
 
 # Which model key to use per product type
 _TYPE_ROUTING: dict[str, str] = {
-    'JACKET': 'portrait',
-    'VEST':   'portrait',
+    'JACKET':  'portrait',
+    'VEST':    'portrait',
+    'PANTS':   'pants_finetuned',
+    'BOW_TIE': 'bow_ties_finetuned',
     # SHIRT works well with default BiRefNet — no portrait needed
-    # PANTS, BOW_TIE, TIE, BELT, SHOES → fallback to 'default' until fine-tuning
+    # TIE, BELT, SHOES → fallback to 'default' until fine-tuning
 }
 
 # Filename prefix → product type (used when productId is unknown in bulk-upload flow)
@@ -45,7 +54,25 @@ _model_cache: dict[str, tuple] = {}
 def _load_model(key: str) -> tuple:
     """Load and cache a BiRefNet-family model by registry key."""
     model_id = _MODEL_IDS[key]
-    model = AutoModelForImageSegmentation.from_pretrained(model_id, trust_remote_code=True)
+    local = Path(model_id)
+
+    if local.is_absolute():
+        if not (local / 'config.json').exists():
+            print(f"[pipeline] Fine-tuned model not found at {model_id}, falling back to portrait")
+            model = AutoModelForImageSegmentation.from_pretrained(
+                _MODEL_IDS['portrait'], trust_remote_code=True
+            )
+        else:
+            # Treat model directory as a Python package so relative imports work
+            finetuned_parent = str(local.parent)
+            if finetuned_parent not in sys.path:
+                sys.path.insert(0, finetuned_parent)
+            pkg = local.name  # e.g. "pants" or "bow_ties"
+            birefnet_mod = importlib.import_module(f"{pkg}.birefnet")
+            model = birefnet_mod.BiRefNet.from_pretrained(str(local))
+    else:
+        model = AutoModelForImageSegmentation.from_pretrained(model_id, trust_remote_code=True)
+
     model.eval()
     t = transforms.Compose([
         transforms.Resize((512, 512)),
