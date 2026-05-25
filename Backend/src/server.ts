@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import productRoutes from './routes/product.routes';
 import uploadRoutes from './routes/upload.routes';
 import jobRoutes from './routes/job.routes';
+import searchRoutes from './routes/search.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables from .env file
@@ -24,6 +25,7 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/products', productRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/search', searchRoutes);
 
 // Global error handler — must be registered after all routes
 app.use(errorHandler);

@@ -77,11 +77,11 @@ async function runProcessing(
     // Preserve original filename so the AI service can infer type from it if productType is null
     const filename = rawUrl.split('/').pop()?.split('?')[0] ?? `image_${imageId}.jpg`;
 
-    // Send to Python AI service — productType selects the right BG-removal model
-    const processedUrl = await aiService.processImage(buffer, filename, productType);
+    // Send to Python AI service — returns processedImageUrl, CLIP embedding, and dominant color
+    const { processedImageUrl: processedUrl, embedding, dominantColor } = await aiService.processImage(buffer, filename, productType);
 
-    // Save the processed URL on the ProductImage row
-    await productService.setProcessedUrl(imageId, processedUrl);
+    // Save the processed URL, CLIP embedding, and dominant color on the ProductImage row
+    await productService.setProcessedUrl(imageId, processedUrl, embedding, dominantColor ?? undefined);
     await jobService.updateJobStatus(jobId, 'DONE');
   } catch (err: any) {
     await jobService.updateJobStatus(jobId, 'FAILED', err.message ?? 'Unknown error');

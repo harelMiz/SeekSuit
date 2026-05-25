@@ -102,12 +102,27 @@ export const setMainImage = async (productId: string, imageId: string) => {
   });
 };
 
-// Set the processedUrl on a ProductImage after AI processing.
-export const setProcessedUrl = async (imageId: string, processedUrl: string) => {
-  return prisma.productImage.update({
+// Set the processedUrl, CLIP embedding, and dominant color on a ProductImage after AI processing.
+// The embedding is stored via raw SQL because Prisma doesn't support the vector type natively.
+export const setProcessedUrl = async (
+  imageId: string,
+  processedUrl: string,
+  embedding?: number[],
+  dominantColor?: string
+) => {
+  await prisma.productImage.update({
     where: { id: imageId },
-    data: { processedUrl },
+    data: { processedUrl, ...(dominantColor ? { dominantColor } : {}) },
   });
+
+  if (embedding && embedding.length > 0) {
+    const pgVector = `[${embedding.join(',')}]`;
+    await prisma.$executeRaw`
+      UPDATE "ProductImage"
+      SET embedding = ${pgVector}::vector
+      WHERE id = ${imageId}
+    `;
+  }
 };
 
 // Delete a single ProductImage by ID.
