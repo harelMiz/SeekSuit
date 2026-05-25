@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Lock } from "lucide-react";
+import { Lock, Camera } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import type { Language } from "../../context/LanguageContext";
 
@@ -12,6 +12,7 @@ export default function Navbar() {
     { to: "/about", label: t("nav.about") },
     { to: "/contact", label: t("nav.contact") },
   ];
+
 
   const otherLang: Language = lang === "he" ? "en" : "he";
 
@@ -55,6 +56,19 @@ export default function Navbar() {
           >
             {otherLang === "en" ? "EN" : "עב"}
           </button>
+
+          {/* Visual search — camera icon */}
+          <Link
+            to="/search"
+            title={t("nav.search")}
+            className={`hidden md:flex items-center justify-center w-8 h-8 transition-colors ${
+              location.pathname === "/search"
+                ? "text-primary"
+                : "text-on-surface-variant hover:text-primary"
+            }`}
+          >
+            <Camera size={16} />
+          </Link>
 
           {/* Admin login — icon button */}
           <Link

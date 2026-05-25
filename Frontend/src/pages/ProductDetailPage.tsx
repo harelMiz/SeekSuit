@@ -4,9 +4,47 @@ import { ArrowLeft, Pencil, Trash2, ImageOff, Sparkles } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import Layout from "../components/layout/Layout";
+import ProductCard from "../components/ui/ProductCard";
 import { getProduct, deleteProduct } from "../services/product.service";
-import type { Product, ProductImage } from "../types/product";
+import api from "../services/api";
+import type { Product, ProductImage, ProductType, ProductStatus } from "../types/product";
 import { bestImageUrl, mainImage } from "../types/product";
+
+interface SearchResult {
+  id: string;
+  name: string;
+  sku: string;
+  type: string;
+  color: string | null;
+  status: string;
+  attributes: Record<string, unknown> | null;
+  processedUrl: string;
+  similarity: number;
+}
+
+function toProduct(r: SearchResult): Product {
+  return {
+    id: r.id,
+    name: r.name,
+    sku: r.sku,
+    type: r.type as ProductType,
+    color: r.color ?? "",
+    status: r.status as ProductStatus,
+    attributes: r.attributes,
+    images: [{
+      id: `similar-${r.id}`,
+      productId: r.id,
+      rawUrl: null,
+      processedUrl: r.processedUrl,
+      isMain: true,
+      order: 0,
+      createdAt: "",
+      updatedAt: "",
+    }],
+    createdAt: "",
+    updatedAt: "",
+  };
+}
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +57,8 @@ export default function ProductDetailPage() {
   const [notFound, setNotFound] = useState(false);
   // Index of the image currently shown in the large viewer
   const [activeIdx, setActiveIdx] = useState(0);
+  const [similarProducts, setSimilarProducts] = useState<SearchResult[] | null>(null);
+  const [similarLoading, setSimilarLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -32,6 +72,15 @@ export default function ProductDetailPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!product?.id) return;
+    setSimilarLoading(true);
+    api.get<{ results: SearchResult[] }>(`/search/similar/${product.id}`, { params: { limit: 4 } })
+      .then(({ data }) => setSimilarProducts(data.results))
+      .catch(() => setSimilarProducts([]))
+      .finally(() => setSimilarLoading(false));
+  }, [product?.id]);
 
   async function handleDelete() {
     if (!product) return;
@@ -224,7 +273,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Similar Items placeholder */}
+          {/* Similar Items */}
           <div className="mt-20 pt-12 border-t border-outline-variant">
             <div className="flex items-center gap-2 mb-6">
               <Sparkles size={16} className="text-on-tertiary-container" />
@@ -232,15 +281,26 @@ export default function ProductDetailPage() {
                 {t("product.similar")}
               </h2>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((n) => (
-                <div
-                  key={n}
-                  className="aspect-[3/4] rounded-xl bg-surface-container-low grayscale hover:grayscale-0 transition-all duration-500"
-                />
-              ))}
-            </div>
-            <p className="text-sm text-secondary mt-4">{t("product.similarNote")}</p>
+
+            {similarLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="aspect-[3/4] rounded-xl bg-surface-container-low animate-pulse" />
+                ))}
+              </div>
+            ) : similarProducts && similarProducts.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-16">
+                {similarProducts.map((r) => (
+                  <ProductCard
+                    key={r.id}
+                    product={toProduct(r)}
+                    matchPercentage={Math.round(r.similarity * 100)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-secondary">{t("product.similarNote")}</p>
+            )}
           </div>
         </div>
       </div>
