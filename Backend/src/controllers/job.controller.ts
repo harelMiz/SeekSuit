@@ -3,6 +3,28 @@ import * as jobService from '../services/job.service';
 import * as productService from '../services/product.service';
 import * as aiService from '../services/ai.service';
 
+// In-memory processing queue — ensures only one AI job runs at a time so the
+// Python AI service (single-threaded) is never overwhelmed by concurrent uploads.
+let _queueActive = 0;
+const _queue: (() => Promise<void>)[] = [];
+const MAX_CONCURRENT = 1;
+
+function enqueueJob(fn: () => Promise<void>): void {
+  _queue.push(fn);
+  _drainQueue();
+}
+
+function _drainQueue(): void {
+  while (_queueActive < MAX_CONCURRENT && _queue.length > 0) {
+    const fn = _queue.shift()!;
+    _queueActive++;
+    fn().finally(() => {
+      _queueActive--;
+      _drainQueue();
+    });
+  }
+}
+
 // POST /api/jobs/image/:imageId
 // Creates a processing job for a single product image and runs AI in the background.
 export const createJobForImage = async (req: Request, res: Response) => {
@@ -26,7 +48,7 @@ export const createJobForImage = async (req: Request, res: Response) => {
   const job = await jobService.createJob(imageId);
   res.status(201).json(job);
 
-  runProcessing(job.id, imageId, image.rawUrl, productType);
+  enqueueJob(() => runProcessing(job.id, imageId, image.rawUrl!, productType));
 };
 
 // POST /api/jobs/product/:productId
@@ -56,7 +78,7 @@ export const createJobsForProduct = async (req: Request, res: Response) => {
   // Fire background processing for each image — product type is known here
   for (const img of pending) {
     const job = jobs.find((j) => j.productImageId === img.id);
-    if (job && img.rawUrl) runProcessing(job.id, img.id, img.rawUrl, productType);
+    if (job && img.rawUrl) enqueueJob(() => runProcessing(job.id, img.id, img.rawUrl!, productType));
   }
 };
 

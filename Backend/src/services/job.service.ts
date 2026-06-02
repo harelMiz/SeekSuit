@@ -24,14 +24,24 @@ export const getAllJobs = async () => {
   });
 };
 
-// Update the status (and optional error message) of a job
+// Update the status (and optional error message) of a job.
+// Uses updateMany so it silently no-ops if the job was deleted (avoids P2025 crash).
 export const updateJobStatus = async (
   id: string,
   status: JobStatus,
   errorMsg?: string
 ) => {
-  return prisma.processingJob.update({
+  return prisma.processingJob.updateMany({
     where: { id },
     data: { status, ...(errorMsg !== undefined && { errorMsg }) },
   });
+};
+
+// Reset any jobs left in PROCESSING state (from a previous crashed server run) to FAILED.
+export const resetStaleProcessingJobs = async () => {
+  const { count } = await prisma.processingJob.updateMany({
+    where: { status: 'PROCESSING' },
+    data: { status: 'FAILED', errorMsg: 'Server restarted while job was in progress' },
+  });
+  if (count > 0) console.log(`[jobs] Reset ${count} stale PROCESSING job(s) to FAILED`);
 };

@@ -6,6 +6,7 @@ import uploadRoutes from './routes/upload.routes';
 import jobRoutes from './routes/job.routes';
 import searchRoutes from './routes/search.routes';
 import { errorHandler } from './middleware/errorHandler';
+import { resetStaleProcessingJobs } from './services/job.service';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -34,6 +35,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  await resetStaleProcessingJobs();
 });

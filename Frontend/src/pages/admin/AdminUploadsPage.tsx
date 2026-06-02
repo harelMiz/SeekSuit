@@ -20,6 +20,7 @@ type JobStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 interface ImageState {
   image: ProductImage;
   jobStatus?: JobStatus;
+  productType?: ProductType | "";
 }
 
 const INITIAL_FORM: CreateProductInput = {
@@ -149,7 +150,7 @@ export default function AdminUploadsPage() {
       }
 
       // Add to grid and immediately trigger AI processing for all new images
-      const newStates: ImageState[] = newImages.map((image) => ({ image, jobStatus: "PENDING" as JobStatus }));
+      const newStates: ImageState[] = newImages.map((image) => ({ image, jobStatus: "PENDING" as JobStatus, productType: uploadProductType }));
       setImageStates((prev) => [...newStates, ...prev]);
 
       // Fire AI jobs — pass product type so the pipeline picks the right model
@@ -203,10 +204,15 @@ export default function AdminUploadsPage() {
   }
 
   async function handleRetry(imageId: string) {
+    const state = imageStates.find((s) => s.image.id === imageId);
     setImageStates((prev) =>
       prev.map((s) => s.image.id === imageId ? { ...s, jobStatus: "PENDING" } : s)
     );
-    await fetch(`${API_BASE}/api/jobs/image/${imageId}`, { method: "POST" }).catch(() => {});
+    await fetch(`${API_BASE}/api/jobs/image/${imageId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productType: state?.productType || null }),
+    }).catch(() => {});
   }
 
   function openAssignForm() {
