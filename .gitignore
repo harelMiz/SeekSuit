@@ -39,6 +39,7 @@ skills-lock.json
 *.pt
 *.onnx
 *.bin
+*.safetensors
 
 # ── Python ────────────────────────────────────────────────────────
 __pycache__/

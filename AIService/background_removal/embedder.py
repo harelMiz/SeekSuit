@@ -177,11 +177,90 @@ def detect_dominant_color(image_bytes: bytes) -> str | None:
 
 
 def _contains_hebrew(text: str) -> bool:
-    return any('֐' <= c <= '׿' or 'יִ' <= c <= 'ﭏ' for c in text)
+    return any('א' <= c <= 'ת' for c in text)
 
 
-# Words that GoogleTranslate gets wrong in isolation without garment context.
-# Applied word-by-word before the full query is sent for translation.
+# ── Hebrew fashion vocabulary ─────────────────────────────────────────────────
+#
+# Maps Hebrew words → list of English synonyms (CLIP-friendly phrases).
+# First entry is the primary translation; extras enable prompt ensembling.
+# Prompt ensembling averages multiple CLIP embeddings to produce a more robust
+# query vector — shown in the original CLIP paper to improve zero-shot accuracy.
+FASHION_SYNONYMS: dict[str, list[str]] = {
+    # Jackets / Suits
+    'חליפה':    ['suit jacket', "men's blazer", 'formal jacket'],
+    'חליפות':   ['suit jackets', "men's blazers", 'formal jackets'],
+    "ג'קט":     ['jacket', 'blazer', 'suit jacket'],
+    "ז'קט":     ['jacket', 'blazer', 'suit jacket'],
+    "ג'קטים":   ['jackets', 'blazers'],
+    "ז'קטים":   ['jackets', 'blazers'],
+    # Vests
+    'ווסט':     ['suit vest', 'waistcoat', "men's vest"],
+    'וסט':      ['suit vest', 'waistcoat', "men's vest"],
+    'ווסטים':   ['suit vests', 'waistcoats'],
+    'וסטים':    ['suit vests', 'waistcoats'],
+    # Pants
+    'מכנסיים':  ['dress trousers', 'formal pants', "men's trousers"],
+    'מכנס':     ['trousers', 'dress pants'],
+    # Shirts
+    'חולצה':    ['dress shirt', 'formal shirt', 'button-down shirt'],
+    'חולצות':   ['dress shirts', 'formal shirts'],
+    # Ties
+    'עניבה':    ['necktie', 'tie', "men's dress tie"],
+    'עניבות':   ['neckties', 'ties'],
+    # Bow ties (single-word forms; two-word phrase handled by _PHRASE_SUBS)
+    'פרפרית':   ['bow tie', 'bowtie'],
+    # Belts
+    'חגורה':    ['belt', 'dress belt', 'leather belt'],
+    'חגורות':   ['belts', 'dress belts'],
+    # Shoes
+    'נעליים':   ['dress shoes', 'formal shoes', 'leather shoes'],
+    'נעל':      ['dress shoe', 'formal shoe'],
+    # Colors — single synonym each (no ensembling needed; colors are precise)
+    'שחור':     ['black'],   'שחורה':   ['black'],
+    'שחורים':   ['black'],   'שחורות':  ['black'],
+    'לבן':      ['white'],   'לבנה':    ['white'],
+    'לבנים':    ['white'],   'לבנות':   ['white'],
+    'חום':      ['brown'],   'חומה':    ['brown'],
+    'חומים':    ['brown'],   'חומות':   ['brown'],
+    'אפור':     ['gray'],    'אפורה':   ['gray'],
+    'אפורים':   ['gray'],    'אפורות':  ['gray'],
+    'כחול':     ['navy blue'],  'כחולה':    ['navy blue'],
+    'כחולים':   ['navy blue'],  'כחולות':   ['navy blue'],
+    'נייבי':    ['navy blue'],
+    'תכלת':     ['sky blue', 'light blue'],
+    'אדום':     ['red'],     'אדומה':   ['red'],
+    'אדומים':   ['red'],     'אדומות':  ['red'],
+    'ירוק':     ['green'],   'ירוקה':   ['green'],
+    'ירוקים':   ['green'],   'ירוקות':  ['green'],
+    'ורוד':     ['pink'],    'ורודה':   ['pink'],
+    'ורודים':   ['pink'],    'ורודות':  ['pink'],
+    'סגול':     ['purple'],  'סגולה':   ['purple'],
+    'סגולים':   ['purple'],  'סגולות':  ['purple'],
+    'כתום':     ['orange'],  'כתומה':   ['orange'],
+    'צהוב':     ['yellow'],  'צהובה':   ['yellow'],
+    "בז'":      ['beige'],   'בז':      ['beige'],
+    "בז׳":      ['beige'],
+    'קרם':      ['cream'],
+    'שמנת':     ['ivory'],
+    'בורדו':    ['burgundy'],
+    'טורקיז':   ['turquoise'],
+    'זית':      ['olive'],
+    # Patterns — single synonym each
+    'מפוספס':   ['striped'],  'מפוספסת':  ['striped'],
+    'מפוספסים': ['striped'],  'מפוספסות': ['striped'],
+    'פסים':     ['striped'],  'פס':       ['striped'],
+    'מנוקד':    ['dotted'],   'מנוקדת':   ['dotted'],
+    'מנוקדים':  ['dotted'],   'מנוקדות':  ['dotted'],
+    'נקודות':   ['polka dot', 'dotted'],
+}
+
+# Multi-word Hebrew phrases to substitute before word-level processing.
+_PHRASE_SUBS: dict[str, list[str]] = {
+    'עניבת פרפר': ['bow tie', 'bowtie', "men's bow tie"],
+}
+
+# Words that GoogleTranslate gets wrong — used in the fallback path.
 _HEBREW_WORD_FIXES: dict[str, str] = {
     'חום':   'brown',
     'חומה':  'brown',
@@ -196,31 +275,82 @@ def _apply_word_fixes(text: str) -> str:
     return ' '.join(_HEBREW_WORD_FIXES.get(w, w) for w in text.split())
 
 
-def embed_text(text: str) -> list[float]:
-    """
-    Embed a text query with CLIP's text encoder.
-    CLIP is trained on English text — Hebrew queries are auto-translated to English
-    via GoogleTranslator before embedding so cross-lingual search works correctly.
-    Returns a unit-normalized list of 512 floats compatible with image embeddings.
-    """
-    query = text
-    if _contains_hebrew(text):
-        try:
-            from deep_translator import GoogleTranslator
-            fixed = _apply_word_fixes(text)
-            translated = GoogleTranslator(source="iw", target="en").translate(fixed)
-            if translated:
-                print(f"[embedder] Translated query: '{text}' → '{translated}'")
-                query = translated
-        except Exception as e:
-            print(f"[embedder] Translation failed, using original text: {e}")
-
+def _encode_texts_averaged(phrases: list[str]) -> list[float]:
+    """Encode phrases with CLIP and return their averaged, renormalized embedding."""
     model, processor = _get_clip()
-    inputs = processor(text=[query], return_tensors="pt", padding=True, truncation=True)
+    inputs = processor(text=phrases, return_tensors="pt", padding=True, truncation=True)
     with torch.no_grad():
         features = model.get_text_features(**inputs)
         features = features / features.norm(dim=-1, keepdim=True)
-    return features[0].tolist()
+        avg = features.mean(dim=0)
+        avg = avg / avg.norm()
+    return avg.tolist()
+
+
+def embed_text(text: str) -> list[float]:
+    """
+    Embed a text query with CLIP's text encoder.
+    For Hebrew queries, attempts word-by-word translation using FASHION_SYNONYMS
+    and builds multiple phrase variants (prompt ensembling) to produce a more
+    robust embedding. Falls back to GoogleTranslator for unknown Hebrew words.
+    Returns a unit-normalized list of 512 floats compatible with image embeddings.
+    """
+    query = text.strip()
+
+    if not _contains_hebrew(query):
+        return _encode_texts_averaged([query])
+
+    # Sub known multi-word phrases before word-level processing
+    phrase_synonym_sets: list[list[str]] = []
+    for phrase, synonyms in _PHRASE_SUBS.items():
+        if phrase in query:
+            query = query.replace(phrase, synonyms[0])
+            if len(synonyms) > 1:
+                phrase_synonym_sets.append(synonyms)
+
+    words = query.split()
+    translated: list[str] = []
+    # Track positions with multiple synonyms for ensembling (only the first type-word)
+    ensemble_pos: tuple[int, list[str]] | None = None
+
+    for word in words:
+        if word in FASHION_SYNONYMS:
+            syns = FASHION_SYNONYMS[word]
+            translated.append(syns[0])
+            if ensemble_pos is None and len(syns) > 1:
+                ensemble_pos = (len(translated) - 1, syns)
+        elif _contains_hebrew(word):
+            # Unknown Hebrew word — fall back to Google Translate
+            try:
+                from deep_translator import GoogleTranslator
+                fixed = _apply_word_fixes(text)
+                result = GoogleTranslator(source="iw", target="en").translate(fixed)
+                if result:
+                    print(f"[embedder] Translated (fallback): '{text}' → '{result}'")
+                    return _encode_texts_averaged([result])
+            except Exception as e:
+                print(f"[embedder] Translation failed, using original: {e}")
+            return _encode_texts_averaged([text])
+        else:
+            translated.append(word)
+
+    # Build variant phrases for prompt ensembling
+    base = ' '.join(translated)
+    variants: list[str] = [base]
+
+    if ensemble_pos is not None:
+        pos, syns = ensemble_pos
+        for syn in syns[1:]:
+            v = translated.copy()
+            v[pos] = syn
+            variants.append(' '.join(v))
+    elif phrase_synonym_sets:
+        # Phrase-level ensembling (e.g. "עניבת פרפר")
+        for extra_syn in phrase_synonym_sets[0][1:]:
+            variants.append(base.replace(phrase_synonym_sets[0][0], extra_syn))
+
+    print(f"[embedder] Word-dict query: '{text}' → {variants}")
+    return _encode_texts_averaged(variants)
 
 
 def embed_image(image_bytes: bytes) -> list[float]:

@@ -69,6 +69,11 @@ export const he: Record<string, string> = {
   "search.resultsFound": "נמצאו {n} תוצאות",
   "search.noResults": "לא נמצאו מוצרים תואמים",
   "search.error": "החיפוש נכשל — אנא נסה שוב",
+  "search.detecting": "מנתח תמונה...",
+  "search.multipleFound": "זיהינו כמה פריטים בתמונה — איזה פריט לחפש?",
+  "search.searchAll": "חפש את כולם",
+  "search.showMore": "הצג עוד תוצאות",
+  "search.backToPicker": "חזור לבחירת פריט",
 
   // About
   "about.title": "אודות אופנת ג'נודי",

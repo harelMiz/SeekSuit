@@ -64,6 +64,19 @@ export interface EmbedResult {
   dominantColor: string | null;
 }
 
+export interface DetectedItem {
+  type: string;
+  label: string;
+  confidence: number;
+  bbox: [number, number, number, number];
+  cropDataUrl: string;
+}
+
+export interface DetectResult {
+  items: DetectedItem[];
+  multipleFound: boolean;
+}
+
 // Send an arbitrary image to the AI service and get its CLIP embedding
 // plus the detected dominant color category (e.g. "BEIGE", "BLACK").
 // Used for query-time visual search — no background removal is applied.
@@ -83,4 +96,24 @@ export async function embedImage(imageBuffer: Buffer, filename: string): Promise
   }
 
   return (await response.json()) as EmbedResult;
+}
+
+// Send an image to the AI service and detect multiple clothing items within it.
+// Returns bounding boxes + crop previews so the frontend can show an item picker.
+export async function detectItems(imageBuffer: Buffer, filename: string): Promise<DetectResult> {
+  const form = new FormData();
+  form.append('file', imageBuffer, { filename, contentType: 'image/jpeg' });
+
+  const response = await fetch(`${AI_SERVICE_URL}/detect`, {
+    method: 'POST',
+    body: form,
+    headers: form.getHeaders(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`AI detect error ${response.status}: ${text}`);
+  }
+
+  return (await response.json()) as DetectResult;
 }

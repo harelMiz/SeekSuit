@@ -45,15 +45,22 @@ if "%REBUILD_BACKEND%"=="true" (
     if errorlevel 1 ( echo [ERROR] Backend build failed. & exit /b 1 )
 )
 
-set BACKEND_EXISTS=
-for /f %%i in ('docker ps -a --filter "name=^seeksuit-backend$" --format "{{.Names}}" 2^>nul') do set BACKEND_EXISTS=%%i
-
-if "%BACKEND_EXISTS%"=="" (
-    echo [SeekSuit] Starting new backend container...
+REM After a rebuild the old container still points to the previous image.
+REM Always recreate (rm + run) when we rebuilt; restart-only when image is unchanged.
+if "%REBUILD_BACKEND%"=="true" (
+    echo [SeekSuit] Recreating backend container from new image...
+    docker rm -f seeksuit-backend >nul 2>&1
     docker run -d --name seeksuit-backend -p 5000:5000 --env-file "%BACKEND_DIR%\.env" seeksuit-backend
 ) else (
-    echo [SeekSuit] Restarting backend container...
-    docker restart seeksuit-backend
+    set BACKEND_EXISTS=
+    for /f %%i in ('docker ps -a --filter "name=^seeksuit-backend$" --format "{{.Names}}" 2^>nul') do set BACKEND_EXISTS=%%i
+    if "!BACKEND_EXISTS!"=="" (
+        echo [SeekSuit] Starting new backend container...
+        docker run -d --name seeksuit-backend -p 5000:5000 --env-file "%BACKEND_DIR%\.env" seeksuit-backend
+    ) else (
+        echo [SeekSuit] Restarting backend container...
+        docker restart seeksuit-backend
+    )
 )
 echo [SeekSuit] Backend running ^-^> http://localhost:5000
 
@@ -68,15 +75,20 @@ if "%REBUILD_AI%"=="true" (
     if errorlevel 1 ( echo [ERROR] AI service build failed. & exit /b 1 )
 )
 
-set AI_EXISTS=
-for /f %%i in ('docker ps -a --filter "name=^seeksuit-aiservice$" --format "{{.Names}}" 2^>nul') do set AI_EXISTS=%%i
-
-if "%AI_EXISTS%"=="" (
-    echo [SeekSuit] Starting new AI service container...
+if "%REBUILD_AI%"=="true" (
+    echo [SeekSuit] Recreating AI service container from new image...
+    docker rm -f seeksuit-aiservice >nul 2>&1
     docker run -d --name seeksuit-aiservice -p 8001:8000 --env-file "%BACKEND_DIR%\.env" -v "%AI_DIR%\finetuned_models:/app/finetuned_models" seeksuit-aiservice
 ) else (
-    echo [SeekSuit] Restarting AI service container...
-    docker restart seeksuit-aiservice
+    set AI_EXISTS=
+    for /f %%i in ('docker ps -a --filter "name=^seeksuit-aiservice$" --format "{{.Names}}" 2^>nul') do set AI_EXISTS=%%i
+    if "!AI_EXISTS!"=="" (
+        echo [SeekSuit] Starting new AI service container...
+        docker run -d --name seeksuit-aiservice -p 8001:8000 --env-file "%BACKEND_DIR%\.env" -v "%AI_DIR%\finetuned_models:/app/finetuned_models" seeksuit-aiservice
+    ) else (
+        echo [SeekSuit] Restarting AI service container...
+        docker restart seeksuit-aiservice
+    )
 )
 echo [SeekSuit] AI Service running ^-^> http://localhost:8001
 

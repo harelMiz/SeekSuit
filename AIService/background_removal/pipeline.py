@@ -16,10 +16,12 @@ _FINETUNED_DIR = Path('/app/finetuned_models')
 
 # Registered models — HuggingFace repo ID or absolute local path
 _MODEL_IDS: dict[str, str] = {
-    'default':          'ZhengPeng7/BiRefNet',
-    'portrait':         'ZhengPeng7/BiRefNet-portrait',
-    'pants_finetuned':  str(_FINETUNED_DIR / 'pants'),
-    'bow_ties_finetuned': str(_FINETUNED_DIR / 'bow_ties'),
+    'default':             'ZhengPeng7/BiRefNet',
+    'portrait':            'ZhengPeng7/BiRefNet-portrait',
+    'pants_finetuned':     str(_FINETUNED_DIR / 'pants'),
+    'bow_ties_finetuned':  str(_FINETUNED_DIR / 'bow_ties'),
+    'jackets_finetuned':   str(_FINETUNED_DIR / 'jackets'),
+    'vests_finetuned':     str(_FINETUNED_DIR / 'vests'),
 }
 
 # Which model key to use per product type
@@ -28,8 +30,7 @@ _TYPE_ROUTING: dict[str, str] = {
     'VEST':    'portrait',
     'PANTS':   'pants_finetuned',
     'BOW_TIE': 'bow_ties_finetuned',
-    # SHIRT works well with default BiRefNet — no portrait needed
-    # TIE, BELT, SHOES → fallback to 'default' until fine-tuning
+    # SHIRT, TIE, BELT, SHOES → fallback to 'default'
 }
 
 # Filename prefix → product type (used when productId is unknown in bulk-upload flow)

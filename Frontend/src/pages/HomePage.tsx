@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect, DragEvent } from "react";
-import { Search, Camera, ChevronDown, X } from "lucide-react";
+import { ArrowLeft, Search, Camera, ChevronDown, X } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import Layout from "../components/layout/Layout";
 import ProductCard from "../components/ui/ProductCard";
+import ItemPickerModal, { type DetectedItem } from "../components/ui/ItemPickerModal";
 import api from "../services/api";
 import type { Product, ProductType, ProductStatus } from "../types/product";
 
 const HOME_SEARCH_KEY = "seeksuit_home_search";
+const INITIAL_VISIBLE = 8;
 
 interface SearchResult {
   id: string;
@@ -44,6 +46,12 @@ function toProduct(r: SearchResult): Product {
   };
 }
 
+async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type || "image/jpeg" });
+}
+
 export default function HomePage() {
   const { t } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,10 +62,15 @@ export default function HomePage() {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [error, setError] = useState<string | null>(null);
-  // Track mode so we don't show match % for text results (CLIP text/image scores are different scales)
   const [searchMode, setSearchMode] = useState<"text" | "image" | null>(null);
+  const [detectedItems, setDetectedItems] = useState<DetectedItem[] | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  // Pending file waiting for picker selection
+  const pendingFileRef = useRef<File | null>(null);
 
   // Restore state when navigating back from a product page
   useEffect(() => {
@@ -92,48 +105,160 @@ export default function HomePage() {
   function clearSearch() {
     setPreviewDataUrl(null);
     setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
     setError(null);
     setTextQuery("");
     setSearchMode(null);
+    setDetectedItems(null);
+    setShowPicker(false);
+    pendingFileRef.current = null;
     sessionStorage.removeItem(HOME_SEARCH_KEY);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
+
+  // Execute image similarity search with a specific file (full image or crop).
+  // Pass productType to restrict results to that type (used when user picks a specific item).
+  const runImageSearch = useCallback(async (file: File, previewUrl: string, productType?: string) => {
+    setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
+    setLoading(true);
+    setLoadingMsg(t("search.searching"));
+    setSearchMode("image");
+    isNewSearchRef.current = true;
+
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+        params: { limit: 20, ...(productType ? { productType } : {}) },
+        timeout: 60000,
+      });
+      setResults(data.results);
+      sessionStorage.setItem(HOME_SEARCH_KEY, JSON.stringify({
+        previewDataUrl: previewUrl,
+        mode: "image",
+        results: data.results,
+      }));
+    } catch {
+      setError(t("search.error"));
+    } finally {
+      setLoading(false);
+      setLoadingMsg("");
+    }
+  }, [t]);
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) return;
     setError(null);
     setTextQuery("");
+    setDetectedItems(null);
+    setShowPicker(false);
+    pendingFileRef.current = file;
 
     const reader = new FileReader();
     reader.onload = async (e) => {
       const dataUrl = e.target?.result as string;
       setPreviewDataUrl(dataUrl);
       setResults(null);
+      setVisibleCount(INITIAL_VISIBLE);
       setLoading(true);
-      setSearchMode("image");
-      isNewSearchRef.current = true;
+      setLoadingMsg(t("search.detecting"));
 
+      // Try multi-item detection first
       const form = new FormData();
       form.append("file", file);
       try {
-        const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
-          headers: { "Content-Type": "multipart/form-data" },
-          timeout: 60000,
-        });
-        setResults(data.results);
-        sessionStorage.setItem(HOME_SEARCH_KEY, JSON.stringify({
-          previewDataUrl: dataUrl,
-          mode: "image",
-          results: data.results,
-        }));
+        const { data } = await api.post<{ items: DetectedItem[]; multipleFound: boolean }>(
+          "/search/detect",
+          form,
+          { headers: { "Content-Type": "multipart/form-data" }, timeout: 60000 }
+        );
+
+        if (data.multipleFound && data.items.length > 1) {
+          setDetectedItems(data.items);
+          setShowPicker(true);
+          setLoading(false);
+          setLoadingMsg("");
+          return;
+        }
       } catch {
-        setError(t("search.error"));
-      } finally {
-        setLoading(false);
+        // Detection failure is non-fatal — fall through to direct search
       }
+
+      setLoading(false);
+      await runImageSearch(file, dataUrl);
     };
     reader.readAsDataURL(file);
-  }, [t]);
+  }, [t, runImageSearch]);
+
+  // Run a separate search per detected item crop and merge results by product ID.
+  // Used when the user picks "search all items" from the item picker.
+  const runMultiSearch = async (items: DetectedItem[], previewUrl: string) => {
+    setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
+    setLoading(true);
+    setLoadingMsg(t("search.searching"));
+    setSearchMode("image");
+    isNewSearchRef.current = true;
+
+    try {
+      const searches = await Promise.all(
+        items.map(async (item) => {
+          const croppedFile = await dataUrlToFile(item.cropDataUrl, `crop_${item.type}.jpg`);
+          const form = new FormData();
+          form.append("file", croppedFile);
+          try {
+            const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
+              headers: { "Content-Type": "multipart/form-data" },
+              params: { limit: 10 },
+              timeout: 60000,
+            });
+            return data.results;
+          } catch {
+            return [] as SearchResult[];
+          }
+        })
+      );
+
+      // Merge — keep the highest similarity score per product across all item searches
+      const byId = new Map<string, SearchResult>();
+      for (const batch of searches) {
+        for (const r of batch) {
+          const existing = byId.get(r.id);
+          if (!existing || r.similarity > existing.similarity) byId.set(r.id, r);
+        }
+      }
+
+      const merged = Array.from(byId.values())
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 20);
+
+      setResults(merged);
+      sessionStorage.setItem(HOME_SEARCH_KEY, JSON.stringify({
+        previewDataUrl: previewUrl,
+        mode: "image",
+        results: merged,
+      }));
+    } catch {
+      setError(t("search.error"));
+    } finally {
+      setLoading(false);
+      setLoadingMsg("");
+    }
+  };
+
+  const handlePickerSelect = async (item: DetectedItem | "all") => {
+    const preview = previewDataUrl;
+    setShowPicker(false);
+
+    if (item === "all") {
+      await runMultiSearch(detectedItems!, preview!);
+      return;
+    }
+    const croppedFile = await dataUrlToFile(item.cropDataUrl, `crop_${item.type}.jpg`);
+    await runImageSearch(croppedFile, preview!, item.type);
+  };
 
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -148,14 +273,17 @@ export default function HomePage() {
     if (!q) return;
 
     setLoading(true);
+    setLoadingMsg("");
     setError(null);
     setPreviewDataUrl(null);
     setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
     setSearchMode("text");
     isNewSearchRef.current = true;
 
     try {
       const { data } = await api.post<{ results: SearchResult[] }>("/search/text", { query: q }, {
+        params: { limit: 20 },
         timeout: 60000,
       });
       setResults(data.results);
@@ -248,19 +376,14 @@ export default function HomePage() {
                 </div>
               </div>
             ) : (
-              /* Image preview */
               <div className="relative rounded-xl overflow-hidden border border-white/20 bg-black/20">
                 {loading ? (
                   <div className="min-h-48 flex flex-col items-center justify-center gap-3 py-10">
                     <span className="w-7 h-7 border-2 border-white/25 border-t-white rounded-full animate-spin" />
-                    <span className="text-sm text-white/60">{t("search.searching")}</span>
+                    <span className="text-sm text-white/60">{loadingMsg || t("search.searching")}</span>
                   </div>
                 ) : (
-                  <img
-                    src={previewDataUrl}
-                    alt="Query"
-                    className="w-full max-h-72 object-contain"
-                  />
+                  <img src={previewDataUrl} alt="Query" className="w-full max-h-72 object-contain" />
                 )}
                 {!loading && (
                   <button
@@ -270,6 +393,13 @@ export default function HomePage() {
                     <X size={16} />
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Item picker (shown below preview after detection, hidden once user picks) */}
+            {detectedItems && showPicker && !loading && (
+              <div className="mt-4">
+                <ItemPickerModal items={detectedItems} onSelect={handlePickerSelect} />
               </div>
             )}
 
@@ -301,36 +431,57 @@ export default function HomePage() {
       {results !== null && (
         <section ref={resultsRef} className="bg-surface py-20">
           <div className="max-w-7xl mx-auto px-6 md:px-12">
+            {detectedItems && !showPicker && (
+              <div className="mb-6">
+                <button
+                  onClick={() => { setShowPicker(true); setResults(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  <ArrowLeft size={13} />
+                  {t("search.backToPicker")}
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-3 mb-10">
               <div className="h-px flex-1 bg-outline-variant" />
               <p className="text-xs font-bold tracking-widest uppercase text-on-surface-variant">
                 {results.length > 0
-                  ? t("search.resultsFound").replace("{n}", String(results.length))
+                  ? t("search.resultsFound").replace("{n}", String(Math.min(visibleCount, results.length)))
                   : t("search.noResults")}
               </p>
               <div className="h-px flex-1 bg-outline-variant" />
             </div>
 
             {results.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-16">
-                {results.map((result) => (
-                  <ProductCard
-                    key={result.id}
-                    product={toProduct(result)}
-                    matchPercentage={
-                      searchMode === "image"
-                        ? Math.round(result.similarity * 100)
-                        // sqrt calibration for fashion-store context:
-                        // rises fast at low end (weak→found), slow at high end (found→exact).
-                        // anchors: 0.25 (CLIP floor)→~41%, 0.296 (item found)→~90%, 0.31+→100%
-                        : Math.min(
-                            Math.round(Math.sqrt(Math.max(result.similarity - 0.238, 0) / 0.072) * 100),
-                            100
-                          )
-                    }
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-16">
+                  {results.slice(0, visibleCount).map((result) => (
+                    <ProductCard
+                      key={result.id}
+                      product={toProduct(result)}
+                      matchPercentage={
+                        searchMode === "image"
+                          ? Math.round(result.similarity * 100)
+                          : Math.min(
+                              Math.round(Math.sqrt(Math.max(result.similarity - 0.238, 0) / 0.072) * 100),
+                              100
+                            )
+                      }
+                    />
+                  ))}
+                </div>
+
+                {visibleCount < results.length && (
+                  <div className="mt-12 flex justify-center">
+                    <button
+                      onClick={() => setVisibleCount(results.length)}
+                      className="px-8 py-3 border border-outline-variant text-sm font-semibold text-on-surface-variant rounded-xl hover:border-primary hover:text-primary transition-colors"
+                    >
+                      {t("search.showMore")} ({results.length - visibleCount})
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
