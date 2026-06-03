@@ -155,6 +155,11 @@ export const en: Record<string, string> = {
   "search.resultsFound": "{n} results found",
   "search.noResults": "No matching products found",
   "search.error": "Search failed — please try again",
+  "search.detecting": "Analyzing image...",
+  "search.multipleFound": "We found multiple items — which one do you want to search for?",
+  "search.searchAll": "Search all items",
+  "search.showMore": "Show more results",
+  "search.backToPicker": "Back to item selection",
 
   // Common
   "common.loading": "Loading...",

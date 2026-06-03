@@ -1,10 +1,13 @@
 import { useState, useRef, useCallback, useEffect, DragEvent, ChangeEvent } from "react";
 
 const SEARCH_STORAGE_KEY = "seeksuit_image_search";
-import { Camera, UploadCloud, X, Search } from "lucide-react";
+const INITIAL_VISIBLE = 8;
+
+import { ArrowLeft, Camera, UploadCloud, X, Search } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import Layout from "../components/layout/Layout";
 import ProductCard from "../components/ui/ProductCard";
+import ItemPickerModal, { type DetectedItem } from "../components/ui/ItemPickerModal";
 import api from "../services/api";
 import type { Product, ProductType, ProductStatus } from "../types/product";
 
@@ -20,7 +23,6 @@ interface SearchResult {
   similarity: number;
 }
 
-// Adapt a flat search result to the Product shape ProductCard expects
 function toProduct(r: SearchResult): Product {
   return {
     id: r.id,
@@ -47,6 +49,13 @@ function toProduct(r: SearchResult): Product {
   };
 }
 
+// Convert a data URL or base64 string to a File for multipart upload
+async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type || "image/jpeg" });
+}
+
 export default function ImageSearchPage() {
   const { t } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,8 +64,12 @@ export default function ImageSearchPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState<string>("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [error, setError] = useState<string | null>(null);
+  const [detectedItems, setDetectedItems] = useState<DetectedItem[] | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
 
   // Restore search state when navigating back from a product page
   useEffect(() => {
@@ -78,8 +91,10 @@ export default function ImageSearchPage() {
     if (!file.type.startsWith("image/")) return;
     setSelectedFile(file);
     setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
+    setDetectedItems(null);
+    setShowPicker(false);
     setError(null);
-    // Use data URL so it survives sessionStorage serialization
     const reader = new FileReader();
     reader.onload = (e) => setPreviewUrl(e.target?.result as string);
     reader.readAsDataURL(file);
@@ -101,27 +116,33 @@ export default function ImageSearchPage() {
     setPreviewUrl(null);
     setSelectedFile(null);
     setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
+    setDetectedItems(null);
+    setShowPicker(false);
     setError(null);
     sessionStorage.removeItem(SEARCH_STORAGE_KEY);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const search = async () => {
-    if (!selectedFile) return;
-    setLoading(true);
-    setError(null);
+  // Run similarity search with a given file (full image or cropped item).
+  // Pass productType to restrict results to that type (used when user picks a specific item).
+  const runSearch = async (file: File, productType?: string) => {
     setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
+    setLoading(true);
+    setLoadingMsg(t("search.searching"));
+    setError(null);
 
     const form = new FormData();
-    form.append("file", selectedFile);
+    form.append("file", file);
 
     try {
       const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
         headers: { "Content-Type": "multipart/form-data" },
+        params: { limit: 20, ...(productType ? { productType } : {}) },
         timeout: 60000,
       });
       setResults(data.results);
-      // Save state so back-navigation restores the results
       if (previewUrl) {
         sessionStorage.setItem(
           SEARCH_STORAGE_KEY,
@@ -132,7 +153,108 @@ export default function ImageSearchPage() {
       setError(t("search.error"));
     } finally {
       setLoading(false);
+      setLoadingMsg("");
     }
+  };
+
+  // Run a separate search per detected item crop and merge results by product ID.
+  // Used when the user picks "search all items" from the item picker.
+  const runMultiSearch = async (items: DetectedItem[]) => {
+    setResults(null);
+    setVisibleCount(INITIAL_VISIBLE);
+    setLoading(true);
+    setLoadingMsg(t("search.searching"));
+    setError(null);
+
+    try {
+      const searches = await Promise.all(
+        items.map(async (item) => {
+          const croppedFile = await dataUrlToFile(item.cropDataUrl, `crop_${item.type}.jpg`);
+          const form = new FormData();
+          form.append("file", croppedFile);
+          try {
+            const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
+              headers: { "Content-Type": "multipart/form-data" },
+              params: { limit: 10 },
+              timeout: 60000,
+            });
+            return data.results;
+          } catch {
+            return [] as SearchResult[];
+          }
+        })
+      );
+
+      // Merge — keep the highest similarity score per product across all item searches
+      const byId = new Map<string, SearchResult>();
+      for (const batch of searches) {
+        for (const r of batch) {
+          const existing = byId.get(r.id);
+          if (!existing || r.similarity > existing.similarity) byId.set(r.id, r);
+        }
+      }
+
+      const merged = Array.from(byId.values())
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 20);
+
+      setResults(merged);
+      if (previewUrl) {
+        sessionStorage.setItem(
+          SEARCH_STORAGE_KEY,
+          JSON.stringify({ previewDataUrl: previewUrl, results: merged })
+        );
+      }
+    } catch {
+      setError(t("search.error"));
+    } finally {
+      setLoading(false);
+      setLoadingMsg("");
+    }
+  };
+
+  // Detect items first; if multiple found, show picker; if single/none, search directly
+  const search = async () => {
+    if (!selectedFile) return;
+    setLoading(true);
+    setLoadingMsg(t("search.detecting"));
+    setError(null);
+    setDetectedItems(null);
+    setShowPicker(false);
+
+    const form = new FormData();
+    form.append("file", selectedFile);
+
+    try {
+      const { data } = await api.post<{ items: DetectedItem[]; multipleFound: boolean }>(
+        "/search/detect",
+        form,
+        { headers: { "Content-Type": "multipart/form-data" }, timeout: 60000 }
+      );
+
+      if (data.multipleFound && data.items.length > 1) {
+        setDetectedItems(data.items);
+        setShowPicker(true);
+        setLoading(false);
+        setLoadingMsg("");
+        return;
+      }
+    } catch {
+      // Detection failure is non-fatal — fall through to direct search
+    }
+
+    setLoading(false);
+    await runSearch(selectedFile);
+  };
+
+  const handlePickerSelect = async (item: DetectedItem | "all") => {
+    setShowPicker(false);
+    if (item === "all") {
+      await runMultiSearch(detectedItems!);
+      return;
+    }
+    const croppedFile = await dataUrlToFile(item.cropDataUrl, `crop_${item.type}.jpg`);
+    await runSearch(croppedFile, item.type);
   };
 
   return (
@@ -182,13 +304,8 @@ export default function ImageSearchPage() {
               </div>
             ) : (
               <div className="relative">
-                {/* Preview + clear button */}
                 <div className="relative rounded-2xl overflow-hidden aspect-[4/3] bg-surface-container-low">
-                  <img
-                    src={previewUrl}
-                    alt="Query"
-                    className="w-full h-full object-contain"
-                  />
+                  <img src={previewUrl} alt="Query" className="w-full h-full object-contain" />
                   <button
                     onClick={clearImage}
                     className="absolute top-3 right-3 bg-surface/80 backdrop-blur-sm rounded-full p-1.5 text-on-surface hover:text-error transition-colors"
@@ -197,56 +314,93 @@ export default function ImageSearchPage() {
                   </button>
                 </div>
 
-                {/* Search button */}
-                <button
-                  onClick={search}
-                  disabled={loading}
-                  className="mt-4 w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-bold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {loading ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
-                      {t("search.searching")}
-                    </>
-                  ) : (
-                    <>
-                      <Search size={16} />
-                      {t("search.searchBtn")}
-                    </>
-                  )}
-                </button>
+                {/* Item picker (shown after detection, hidden once user picks) */}
+                {detectedItems && showPicker && !loading && (
+                  <div className="mt-4">
+                    <ItemPickerModal items={detectedItems} onSelect={handlePickerSelect} />
+                  </div>
+                )}
+
+                {/* Search button (hidden while picker is showing or items were detected) */}
+                {!detectedItems && (
+                  <button
+                    onClick={search}
+                    disabled={loading}
+                    className="mt-4 w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-bold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
+                        {loadingMsg || t("search.searching")}
+                      </>
+                    ) : (
+                      <>
+                        <Search size={16} />
+                        {t("search.searchBtn")}
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {/* Loading overlay while search runs after picker selection */}
+                {loading && detectedItems !== null && !showPicker && (
+                  <div className="mt-4 flex items-center justify-center gap-2 text-sm text-on-surface-variant py-2">
+                    <span className="w-4 h-4 border-2 border-outline border-t-on-surface-variant rounded-full animate-spin" />
+                    {loadingMsg}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Error */}
-          {error && (
-            <p className="text-error text-sm mb-8">{error}</p>
-          )}
+          {error && <p className="text-error text-sm mb-8">{error}</p>}
 
           {/* Results */}
           {results !== null && (
             <div>
+              {detectedItems && !showPicker && (
+                <button
+                  onClick={() => { setShowPicker(true); setResults(null); }}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors mb-6"
+                >
+                  <ArrowLeft size={13} />
+                  {t("search.backToPicker")}
+                </button>
+              )}
               <div className="flex items-center gap-3 mb-8">
                 <div className="h-px flex-1 bg-outline-variant" />
                 <p className="text-xs font-bold tracking-widest uppercase text-on-surface-variant">
                   {results.length > 0
-                    ? t("search.resultsFound").replace("{n}", String(results.length))
+                    ? t("search.resultsFound").replace("{n}", String(Math.min(visibleCount, results.length)))
                     : t("search.noResults")}
                 </p>
                 <div className="h-px flex-1 bg-outline-variant" />
               </div>
 
               {results.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-16">
-                  {results.map((result) => (
-                    <ProductCard
-                      key={result.id}
-                      product={toProduct(result)}
-                      matchPercentage={Math.round(result.similarity * 100)}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-16">
+                    {results.slice(0, visibleCount).map((result) => (
+                      <ProductCard
+                        key={result.id}
+                        product={toProduct(result)}
+                        matchPercentage={Math.round(result.similarity * 100)}
+                      />
+                    ))}
+                  </div>
+
+                  {visibleCount < results.length && (
+                    <div className="mt-12 flex justify-center">
+                      <button
+                        onClick={() => setVisibleCount(results.length)}
+                        className="px-8 py-3 border border-outline-variant text-sm font-semibold text-on-surface-variant rounded-xl hover:border-primary hover:text-primary transition-colors"
+                      >
+                        {t("search.showMore")} ({results.length - visibleCount})
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

@@ -2,10 +2,12 @@ import os
 import time
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import Response
 from supabase import create_client
 
 from pipeline import process_image
 from embedder import embed_image, embed_text, detect_dominant_color
+from detector import detect_items
 
 load_dotenv()
 
@@ -71,6 +73,24 @@ async def process(
     return {"processedImageUrl": signed_url, "embedding": embedding, "dominantColor": dominant_color}
 
 
+@app.post("/process-preview")
+async def process_preview(
+    file: UploadFile = File(...),
+    product_type: str | None = Form(None),
+):
+    """
+    Same pipeline as /process (background removal + enhancement) but returns
+    the processed JPEG bytes directly instead of uploading to Supabase.
+    Used for local batch testing (e.g. VTO sample preparation).
+    """
+    image_bytes = await file.read()
+    try:
+        result_bytes = process_image(image_bytes, filename=file.filename or "image.jpg", product_type=product_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
+    return Response(content=result_bytes, media_type="image/jpeg")
+
+
 @app.post("/embed")
 async def embed(file: UploadFile = File(...)):
     """
@@ -85,6 +105,23 @@ async def embed(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Embedding failed: {e}")
     return {"embedding": embedding, "dominantColor": dominant_color}
+
+
+@app.post("/detect")
+async def detect_endpoint(file: UploadFile = File(...)):
+    """
+    Detect multiple clothing items in an image using OWL-ViT.
+    Returns a list of detected items with type, bounding box, confidence,
+    and a cropped preview image (base64 data URL) for each item.
+    Used by the frontend to let users select which garment to search for
+    when an uploaded photo contains more than one item.
+    """
+    image_bytes = await file.read()
+    try:
+        items = detect_items(image_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Detection failed: {e}")
+    return {"items": items, "multipleFound": len(items) > 1}
 
 
 @app.post("/embed-text")

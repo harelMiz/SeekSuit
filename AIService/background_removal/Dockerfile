@@ -17,9 +17,10 @@ RUN pip install --no-cache-dir \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download BiRefNet and CLIP model weights at build time to avoid cold-start delay
+# Pre-download model weights at build time to avoid cold-start delay
 RUN python -c "from transformers import AutoModelForImageSegmentation; AutoModelForImageSegmentation.from_pretrained('ZhengPeng7/BiRefNet', trust_remote_code=True)"
 RUN python -c "from transformers import CLIPModel, CLIPProcessor; CLIPModel.from_pretrained('openai/clip-vit-base-patch32'); CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32')"
+RUN python -c "from transformers import AutoImageProcessor, AutoModelForObjectDetection; AutoModelForObjectDetection.from_pretrained('valentinafeve/yolos-fashionpedia'); AutoImageProcessor.from_pretrained('valentinafeve/yolos-fashionpedia')"
 
 COPY . .
 

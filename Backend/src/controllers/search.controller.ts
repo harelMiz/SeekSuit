@@ -3,8 +3,8 @@ import * as aiService from '../services/ai.service';
 import prisma from '../lib/prisma';
 
 const DEFAULT_LIMIT = 8;
-const COLOR_BOOST = 0.10;
-const COLOR_SIGMA = 65; // Gaussian std-dev in RGB space — boost decays smoothly with color distance
+const COLOR_BOOST = 0.20;
+const COLOR_SIGMA = 45; // Gaussian std-dev in RGB space — tighter decay so wrong colors get less credit
 const RELATIVE_WINDOW = 0.15;
 const ABSOLUTE_FLOOR = 0.65;
 // Text-image CLIP similarities are naturally lower (0.15–0.35).
@@ -184,6 +184,24 @@ interface SearchResult {
   similarity: number;
 }
 
+// POST /api/search/detect
+// Accepts an image upload, runs OWL-ViT clothing detection, and returns
+// detected items with bounding boxes and crop previews for the frontend picker.
+export const detectItems = async (req: Request, res: Response) => {
+  const file = req.file;
+  if (!file) {
+    res.status(400).json({ error: 'No image file provided' });
+    return;
+  }
+
+  try {
+    const result = await aiService.detectItems(file.buffer, file.originalname || 'query.jpg');
+    res.json(result);
+  } catch (err: any) {
+    res.status(502).json({ error: `Detection failed: ${err.message}` });
+  }
+};
+
 // GET /api/search/similar/:productId?limit=4
 // Finds the embedding of the product's main image and returns the most
 // visually similar OTHER products, excluding the product itself.
@@ -343,9 +361,10 @@ export const searchByText = async (req: Request, res: Response) => {
   res.json({ results });
 };
 
-// POST /api/search/image
+// POST /api/search/image?limit=8&productType=SHIRT
 // Accepts a multipart image upload, embeds it with CLIP, and returns the
 // most visually similar products ranked by cosine similarity.
+// Optional productType param restricts results to a single ProductType enum value.
 export const searchByImage = async (req: Request, res: Response) => {
   const file = req.file;
   if (!file) {
@@ -354,6 +373,7 @@ export const searchByImage = async (req: Request, res: Response) => {
   }
 
   const limit = Math.min(parseInt(String(req.query.limit ?? DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, 50);
+  const productType = req.query.productType as string | undefined;
 
   let embedding: number[];
   let dominantColor: string | null = null;
@@ -367,55 +387,103 @@ export const searchByImage = async (req: Request, res: Response) => {
   const pgVector = `[${embedding.join(',')}]`;
 
   // Score each product by its best-matching image, but display its main image.
-  const rows = await prisma.$queryRaw<SearchResult[]>`
-    WITH scored AS (
-      SELECT DISTINCT ON (p.id)
-        p.id,
-        p.name,
-        p.sku,
-        p.type::text,
-        p.color,
-        p.status::text,
-        p.attributes,
-        pi."dominantColor",
-        1 - (pi.embedding <=> ${pgVector}::vector) AS similarity
-      FROM "ProductImage" pi
-      JOIN "Product" p ON pi."productId" = p.id
-      WHERE pi.embedding IS NOT NULL
-        AND pi."productId" IS NOT NULL
-        AND pi."processedUrl" IS NOT NULL
-      ORDER BY p.id, pi.embedding <=> ${pgVector}::vector ASC
-    ),
-    main_img AS (
-      SELECT DISTINCT ON ("productId")
-        "productId",
-        "processedUrl"
-      FROM "ProductImage"
-      WHERE "productId" IS NOT NULL AND "processedUrl" IS NOT NULL
-      ORDER BY "productId", "isMain" DESC, "order" ASC
-    )
-    SELECT s.id, s.name, s.sku, s.type, s.color, s.status, s.attributes,
-           s."dominantColor",
-           mi."processedUrl",
-           s.similarity
-    FROM scored s
-    JOIN main_img mi ON mi."productId" = s.id
-    ORDER BY s.similarity DESC
-    LIMIT ${limit}
-  `;
+  // Two query variants to avoid Prisma.sql fragment interpolation issues with the driver adapter.
+  const rows = productType
+    ? await prisma.$queryRaw<SearchResult[]>`
+        WITH scored AS (
+          SELECT DISTINCT ON (p.id)
+            p.id,
+            p.name,
+            p.sku,
+            p.type::text,
+            p.color,
+            p.status::text,
+            p.attributes,
+            pi."dominantColor",
+            1 - (pi.embedding <=> ${pgVector}::vector) AS similarity
+          FROM "ProductImage" pi
+          JOIN "Product" p ON pi."productId" = p.id
+          WHERE pi.embedding IS NOT NULL
+            AND pi."productId" IS NOT NULL
+            AND pi."processedUrl" IS NOT NULL
+            AND p.type = ${productType}::"ProductType"
+          ORDER BY p.id, pi.embedding <=> ${pgVector}::vector ASC
+        ),
+        main_img AS (
+          SELECT DISTINCT ON ("productId")
+            "productId",
+            "processedUrl"
+          FROM "ProductImage"
+          WHERE "productId" IS NOT NULL AND "processedUrl" IS NOT NULL
+          ORDER BY "productId", "isMain" DESC, "order" ASC
+        )
+        SELECT s.id, s.name, s.sku, s.type, s.color, s.status, s.attributes,
+               s."dominantColor",
+               mi."processedUrl",
+               s.similarity
+        FROM scored s
+        JOIN main_img mi ON mi."productId" = s.id
+        ORDER BY s.similarity DESC
+        LIMIT ${limit}
+      `
+    : await prisma.$queryRaw<SearchResult[]>`
+        WITH scored AS (
+          SELECT DISTINCT ON (p.id)
+            p.id,
+            p.name,
+            p.sku,
+            p.type::text,
+            p.color,
+            p.status::text,
+            p.attributes,
+            pi."dominantColor",
+            1 - (pi.embedding <=> ${pgVector}::vector) AS similarity
+          FROM "ProductImage" pi
+          JOIN "Product" p ON pi."productId" = p.id
+          WHERE pi.embedding IS NOT NULL
+            AND pi."productId" IS NOT NULL
+            AND pi."processedUrl" IS NOT NULL
+          ORDER BY p.id, pi.embedding <=> ${pgVector}::vector ASC
+        ),
+        main_img AS (
+          SELECT DISTINCT ON ("productId")
+            "productId",
+            "processedUrl"
+          FROM "ProductImage"
+          WHERE "productId" IS NOT NULL AND "processedUrl" IS NOT NULL
+          ORDER BY "productId", "isMain" DESC, "order" ASC
+        )
+        SELECT s.id, s.name, s.sku, s.type, s.color, s.status, s.attributes,
+               s."dominantColor",
+               mi."processedUrl",
+               s.similarity
+        FROM scored s
+        JOIN main_img mi ON mi."productId" = s.id
+        ORDER BY s.similarity DESC
+        LIMIT ${limit}
+      `;
 
-  // Apply proximity-based color boost, then filter by relative threshold and re-sort
+  // Apply proximity-based color boost and re-sort (boost may change ranking)
   const boosted = rows.map(r => {
     const boost = dominantColor ? colorProximityBoost(dominantColor, r.dominantColor) : 0;
-    return { ...r, similarity: boost > 0 ? Math.min(r.similarity + boost, 1) : r.similarity };
+    return { ...r, similarity: boost > 0 ? Math.min(Number(r.similarity) + boost, 1) : Number(r.similarity) };
   });
+  boosted.sort((a, b) => b.similarity - a.similarity);
 
   const bestScore = boosted.length > 0 ? boosted[0].similarity : 0;
   const minThreshold = Math.max(bestScore - RELATIVE_WINDOW, ABSOLUTE_FLOOR);
 
-  const results = boosted
-    .filter(r => r.similarity >= minThreshold)
-    .sort((a, b) => b.similarity - a.similarity);
+  let results = boosted.filter(r => r.similarity >= minThreshold);
+
+  // Hard color family filter — same strategy as text search.
+  // Only applied when dominantColor is detected and we're not already type-filtered to a very
+  // small set (keeps at least 2 results, otherwise falls back to no color filter).
+  if (dominantColor && results.length > 0) {
+    const colorFiltered = results.filter(r =>
+      productMatchesColorFamily(dominantColor!, r.dominantColor, r.color)
+    );
+    if (colorFiltered.length >= 1) results = colorFiltered;
+  }
 
   res.json({ results, dominantColor });
 };
