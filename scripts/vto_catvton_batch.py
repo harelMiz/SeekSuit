@@ -20,6 +20,7 @@ CATVTON_DIR = Path("/workspace/CatVTON")
 if str(CATVTON_DIR) not in sys.path:
     sys.path.insert(0, str(CATVTON_DIR))
 
+import cv2
 import torch
 import numpy as np
 from PIL import Image
@@ -98,9 +99,26 @@ def load_models():
     return pipeline, mask_processor, automasker
 
 
+def remove_brand_tags(img: Image.Image) -> Image.Image:
+    """Inpaint red/orange brand labels from garment photos before VTO."""
+    bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+
+    mask1 = cv2.inRange(hsv, np.array([0,   120, 80]), np.array([10,  255, 255]))
+    mask2 = cv2.inRange(hsv, np.array([160, 120, 80]), np.array([180, 255, 255]))
+    mask  = cv2.bitwise_or(mask1, mask2)
+
+    kernel = np.ones((7, 7), np.uint8)
+    mask   = cv2.dilate(mask, kernel, iterations=2)
+
+    result = cv2.inpaint(bgr, mask, inpaintRadius=5, flags=cv2.INPAINT_TELEA)
+    return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+
+
 def run_vto(pipeline, mask_processor, automasker,
             person: Image.Image, garment: Image.Image, cloth_type: str) -> Image.Image:
     person  = resize_and_crop(person,  (WIDTH, HEIGHT))
+    garment = remove_brand_tags(garment)
     garment = resize_and_padding(garment, (WIDTH, HEIGHT))
 
     mask = automasker(person, cloth_type)["mask"]
