@@ -108,10 +108,11 @@ def remove_brand_tags(img: Image.Image) -> Image.Image:
     mask2 = cv2.inRange(hsv, np.array([160, 120, 80]), np.array([180, 255, 255]))
     mask  = cv2.bitwise_or(mask1, mask2)
 
-    kernel = np.ones((7, 7), np.uint8)
-    mask   = cv2.dilate(mask, kernel, iterations=2)
+    # Dilate aggressively to cover the full label (including non-red text/logo on it)
+    kernel = np.ones((15, 15), np.uint8)
+    mask   = cv2.dilate(mask, kernel, iterations=4)
 
-    result = cv2.inpaint(bgr, mask, inpaintRadius=5, flags=cv2.INPAINT_TELEA)
+    result = cv2.inpaint(bgr, mask, inpaintRadius=10, flags=cv2.INPAINT_TELEA)
     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
 
 
