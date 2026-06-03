@@ -3,45 +3,63 @@ VTO Batch Test — runs garments from vto_samples/ through the Kolors VTO model.
 Designed to run on RunPod (GPU required).
 
 Folder structure expected:
-  vto_samples/
-    JACKET/  *.jpg
-    VEST/    *.jpg
-    PANTS/   *.jpg
+  scripts/vto_samples/
+    JACKETS/  *.jpg
+    VESTS/    *.jpg
+    PANTS/    *.jpg
 
 Output saved to:
-  vto_results/
-    JACKET/  <sku>_vto.jpg
-    VEST/    <sku>_vto.jpg
-    PANTS/   <sku>_vto.jpg
+  scripts/vto_results/
+    JACKETS/  <sku>_vto.jpg
+    VESTS/    <sku>_vto.jpg
+    PANTS/    <sku>_vto.jpg
 
 Usage (on RunPod):
-  pip install diffusers transformers accelerate huggingface_hub Pillow torch
-  python vto_batch_test.py
+  Step 1 — discover the model API (run once, share output with Claude):
+    pip install huggingface_hub
+    python scripts/discover_kolors.py
+
+  Step 2 — run the batch after load_pipeline() is confirmed:
+    pip install diffusers transformers accelerate huggingface_hub Pillow torch
+    python scripts/vto_batch_test.py
 """
 
-import sys, shutil, time
+import sys
 from pathlib import Path
 import torch
 from PIL import Image
 
-SAMPLES_DIR = Path(__file__).parent / "vto_samples"
-OUTPUT_DIR  = Path(__file__).parent / "vto_results"
-MODEL_IMAGE = Path(__file__).parent / "model.png"
-SEED        = 42
-STEPS       = 30
-GUIDANCE    = 2.0
+REPO_ROOT   = Path(__file__).parent.parent
+SCRIPTS_DIR = Path(__file__).parent
+SAMPLES_DIR = SCRIPTS_DIR / "vto_samples"
+OUTPUT_DIR  = SCRIPTS_DIR / "vto_results"
+MODEL_IMAGE = REPO_ROOT / "Management" / "Architecture" / "model.png"
+WEIGHTS_DIR = Path("./kolors_vto_space")
+
+SEED     = 42
+STEPS    = 30
+GUIDANCE = 2.0
 
 
 def load_pipeline():
-    from huggingface_hub import snapshot_download
+    """
+    Load the Kolors-VTO inference pipeline.
+
+    IMPORTANT: run discover_kolors.py first to confirm the correct
+    pipeline class and call signature for this model.  The code below
+    is a best-guess placeholder and will be updated once app.py is known.
+    """
+    if not WEIGHTS_DIR.exists():
+        raise FileNotFoundError(
+            f"Weights not found at {WEIGHTS_DIR}. "
+            "Run scripts/discover_kolors.py first."
+        )
+
     from diffusers import DiffusionPipeline
 
-    print("Downloading Kolors-VTO weights (first run only, ~15 GB)...")
-    snapshot_download("Kwai-Kolors/Kolors-Virtual-Try-On", local_dir="./kolors_vto_weights")
-
-    print("Loading pipeline...")
+    print(f"Loading pipeline from {WEIGHTS_DIR}...")
     pipe = DiffusionPipeline.from_pretrained(
-        "./kolors_vto_weights",
+        str(WEIGHTS_DIR),
         torch_dtype=torch.float16,
         use_safetensors=True,
     ).to("cuda")
@@ -50,6 +68,12 @@ def load_pipeline():
 
 
 def run_vto(pipe, garment: Image.Image, model_person: Image.Image) -> Image.Image:
+    """
+    Run one VTO inference pass.
+
+    IMPORTANT: the keyword arguments (image/condition_image) are a
+    placeholder.  Update after inspecting app.py from discover_kolors.py.
+    """
     generator = torch.Generator("cuda").manual_seed(SEED)
     result = pipe(
         image=model_person.resize((768, 1024)),
@@ -74,12 +98,11 @@ def collect_samples() -> list[tuple[str, Path]]:
 
 def main():
     if not MODEL_IMAGE.exists():
-        # Also check .jpg fallback
         jpg = MODEL_IMAGE.with_suffix(".jpg")
         if jpg.exists():
             model_img = Image.open(jpg).convert("RGB")
         else:
-            print(f"[ERROR] model.png not found at {MODEL_IMAGE}")
+            print(f"[ERROR] model image not found at {MODEL_IMAGE}")
             sys.exit(1)
     else:
         model_img = Image.open(MODEL_IMAGE).convert("RGB")
