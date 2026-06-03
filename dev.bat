@@ -11,7 +11,7 @@ setlocal enabledelayedexpansion
 set SCRIPT_DIR=%~dp0
 set BACKEND_DIR=%SCRIPT_DIR%Backend
 set FRONTEND_DIR=%SCRIPT_DIR%Frontend
-set AI_DIR=%SCRIPT_DIR%AIService\background_removal
+set AI_DIR=%SCRIPT_DIR%AIService
 
 set REBUILD_BACKEND=false
 set REBUILD_AI=false

@@ -5,9 +5,9 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response
 from supabase import create_client
 
-from pipeline import process_image
-from embedder import embed_image, embed_text, detect_dominant_color
-from detector import detect_items
+from bg_removal import process_image
+from image_search import embed_image, embed_text, detect_dominant_color
+from clothing_detector import detect_items
 
 load_dotenv()
 

@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/Backend"
 FRONTEND_DIR="$SCRIPT_DIR/Frontend"
-AI_DIR="$SCRIPT_DIR/AIService/background_removal"
+AI_DIR="$SCRIPT_DIR/AIService"
 
 REBUILD=false
 if [[ "$1" == "--rebuild" || "$1" == "-r" ]]; then
