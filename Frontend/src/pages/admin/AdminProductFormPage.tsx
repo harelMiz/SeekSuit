@@ -11,6 +11,7 @@ import {
   deleteProductImage,
   setMainImage,
 } from "../../services/product.service";
+import { COLOR_OPTIONS, colorLabel } from "../../lib/colorMap";
 import type { ProductType, ProductStatus, ProductImage } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -50,12 +51,31 @@ export default function AdminProductFormPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const [colorSearch, setColorSearch] = useState("");
+  const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
+  const colorRef = useRef<HTMLDivElement>(null);
+
+  const filteredColors = COLOR_OPTIONS.filter((key) =>
+    colorLabel(key).includes(colorSearch) || key.toLowerCase().includes(colorSearch.toLowerCase())
+  );
+
   // Images already saved in the DB (edit mode)
   const [savedImages, setSavedImages] = useState<ProductImage[]>([]);
   // Images selected locally, not yet uploaded
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Close color dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (colorRef.current && !colorRef.current.contains(e.target as Node)) {
+        setColorDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Load existing product data when editing
   useEffect(() => {
@@ -240,17 +260,37 @@ export default function AdminProductFormPage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div ref={colorRef} className="relative">
               <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
                 {t("admin.productColor")}
               </label>
               <input
                 type="text"
                 required
-                value={form.color}
-                onChange={(e) => handleChange("color", e.target.value)}
+                placeholder="חפש צבע..."
+                value={colorSearch || colorLabel(form.color)}
+                onFocus={() => { setColorSearch(""); setColorDropdownOpen(true); }}
+                onChange={(e) => { setColorSearch(e.target.value); setColorDropdownOpen(true); }}
                 className={inputClass}
+                autoComplete="off"
               />
+              {colorDropdownOpen && filteredColors.length > 0 && (
+                <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-surface-container-low border border-outline-variant rounded-lg shadow-lg text-sm">
+                  {filteredColors.map((key) => (
+                    <li
+                      key={key}
+                      onMouseDown={() => {
+                        handleChange("color", key);
+                        setColorSearch("");
+                        setColorDropdownOpen(false);
+                      }}
+                      className={`px-3 py-2 cursor-pointer hover:bg-surface-container text-on-surface ${form.color === key ? "font-semibold text-primary" : ""}`}
+                    >
+                      {colorLabel(key)}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 

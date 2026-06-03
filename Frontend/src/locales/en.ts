@@ -11,6 +11,9 @@ export const en: Record<string, string> = {
   "home.subheadline": "Powered by Advanced AI Search",
   "home.searchPlaceholder": 'Describe the suit you\'re looking for (e.g. "linen beige suit for summer wedding")...',
   "home.imageSearch": "Search by image",
+  "home.orImageSearch": "Or search by image",
+  "home.imageDropTitle": "Drag & drop an image, or click to select",
+  "home.imageDropSub": "We'll find similar items from our collection",
   "home.browseCatalog": "Browse Catalog",
   "home.aiComingSoon": "AI search coming soon",
 
@@ -50,7 +53,7 @@ export const en: Record<string, string> = {
   "product.delete": "Delete",
   "product.deleteConfirm": "Are you sure you want to delete this product?",
   "product.similar": "Similar Items",
-  "product.similarNote": "Similar product recommendations will be available after the AI search engine is complete.",
+  "product.similarNote": "No similar products found.",
   "product.noImage": "No image",
   "product.backToShop": "Back to Catalog",
   "product.notFound": "Product not found",
@@ -140,6 +143,18 @@ export const en: Record<string, string> = {
   "admin.loginNote": "Access restricted to authorized personnel only",
   "admin.loginError": "Incorrect email or password. Please try again.",
   "admin.logout": "Logout",
+
+  // Image search
+  "nav.search": "Search by Image",
+  "search.title": "Search by Image",
+  "search.subtitle": "Upload a photo of any garment and we'll find the closest matches in our collection",
+  "search.dropZone": "Drag & drop an image, or click to browse",
+  "search.dropZoneSub": "JPG, PNG, WEBP — any photo from the web or your phone",
+  "search.searchBtn": "Find Similar Items",
+  "search.searching": "Searching...",
+  "search.resultsFound": "{n} results found",
+  "search.noResults": "No matching products found",
+  "search.error": "Search failed — please try again",
 
   // Common
   "common.loading": "Loading...",

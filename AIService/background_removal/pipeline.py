@@ -3,7 +3,7 @@ import io
 import re
 import sys
 from pathlib import Path
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 from transformers import AutoModelForImageSegmentation
 import torch
 from torchvision import transforms
@@ -23,8 +23,9 @@ _FINETUNED_DIR = Path('/app/finetuned_models')
 _MODEL_IDS: dict[str, str] = {
     'default':          'ZhengPeng7/BiRefNet',
     'portrait':         'ZhengPeng7/BiRefNet-portrait',
-    'pants_finetuned':  str(_FINETUNED_DIR / 'pants'),
-    'bow_ties_finetuned': str(_FINETUNED_DIR / 'bow_ties'),
+    'pants_finetuned':     str(_FINETUNED_DIR / 'pants'),
+    'bow_ties_finetuned':  str(_FINETUNED_DIR / 'bow_ties'),
+    'ties_finetuned':      str(_FINETUNED_DIR / 'ties'),
 }
 
 # Which model key to use per product type
@@ -33,8 +34,9 @@ _TYPE_ROUTING: dict[str, str] = {
     'VEST':    'portrait',
     'PANTS':   'pants_finetuned',
     'BOW_TIE': 'bow_ties_finetuned',
+    'TIE':     'ties_finetuned',
     # SHIRT works well with default BiRefNet — no portrait needed
-    # TIE, BELT, SHOES → fallback to 'default' until fine-tuning
+    # BELT, SHOES → fallback to 'default' until fine-tuning
 }
 
 # Filename prefix → product type (used when productId is unknown in bulk-upload flow)
@@ -60,6 +62,7 @@ def _load_model(key: str) -> tuple:
     """Load and cache a BiRefNet-family model by registry key."""
     model_id = _MODEL_IDS[key]
     local = Path(model_id)
+    print(f"[pipeline] Loading model: {key} ({model_id})")
 
     if local.is_absolute():
         if not (local / 'config.json').exists():
@@ -160,7 +163,7 @@ def process_image(image_bytes: bytes, filename: str = "image.jpg", product_type:
     4. Composite onto a clean white background
     5. Return as high-quality JPEG bytes
     """
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
 
     model_key = _select_model_key(product_type, filename)
     model, transform = _get_model(model_key)

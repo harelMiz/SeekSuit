@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Upload, X, Check, Loader2, Sparkles, Star, ChevronRight, RefreshCw } from "lucide-react";
+import { Upload, X, Check, Loader2, Sparkles, Star, ChevronRight, RefreshCw, ZoomIn } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import {
@@ -9,6 +9,7 @@ import {
   processAllImages,
   deleteProductImage,
 } from "../../services/product.service";
+import { COLOR_OPTIONS, colorLabel } from "../../lib/colorMap";
 import type { ProductImage, ProductType, ProductStatus, CreateProductInput } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -19,6 +20,7 @@ type JobStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 interface ImageState {
   image: ProductImage;
   jobStatus?: JobStatus;
+  productType?: ProductType | "";
 }
 
 const INITIAL_FORM: CreateProductInput = {
@@ -54,6 +56,29 @@ export default function AdminUploadsPage() {
 
   // Drag-over state for drop zone
   const [dragging, setDragging] = useState(false);
+
+  // Lightbox — URL of the image currently being previewed full-size
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Color combobox state for the assignment panel
+  const [colorSearch, setColorSearch] = useState("");
+  const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
+  const colorRef = useRef<HTMLDivElement>(null);
+
+  const filteredColors = COLOR_OPTIONS.filter((key) =>
+    colorLabel(key).includes(colorSearch) || key.toLowerCase().includes(colorSearch.toLowerCase())
+  );
+
+  // Close color dropdown when clicking outside the combobox
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (colorRef.current && !colorRef.current.contains(e.target as Node)) {
+        setColorDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Load unassigned images on mount
   useEffect(() => {
@@ -125,7 +150,7 @@ export default function AdminUploadsPage() {
       }
 
       // Add to grid and immediately trigger AI processing for all new images
-      const newStates: ImageState[] = newImages.map((image) => ({ image, jobStatus: "PENDING" as JobStatus }));
+      const newStates: ImageState[] = newImages.map((image) => ({ image, jobStatus: "PENDING" as JobStatus, productType: uploadProductType }));
       setImageStates((prev) => [...newStates, ...prev]);
 
       // Fire AI jobs — pass product type so the pipeline picks the right model
@@ -179,10 +204,15 @@ export default function AdminUploadsPage() {
   }
 
   async function handleRetry(imageId: string) {
+    const state = imageStates.find((s) => s.image.id === imageId);
     setImageStates((prev) =>
       prev.map((s) => s.image.id === imageId ? { ...s, jobStatus: "PENDING" } : s)
     );
-    await fetch(`${API_BASE}/api/jobs/image/${imageId}`, { method: "POST" }).catch(() => {});
+    await fetch(`${API_BASE}/api/jobs/image/${imageId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productType: state?.productType || null }),
+    }).catch(() => {});
   }
 
   function openAssignForm() {
@@ -372,12 +402,14 @@ export default function AdminUploadsPage() {
               const isSelected = selected.has(image.id);
               const isProcessing = jobStatus === "PENDING" || jobStatus === "PROCESSING";
               const isFailed = jobStatus === "FAILED";
+              // First selected image becomes the main image for the new product
+              const isMainSelected = isSelected && Array.from(selected)[0] === image.id;
 
               return (
                 <div
                   key={image.id}
                   onClick={() => toggleSelect(image.id)}
-                  className={`relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer transition-all ${
+                  className={`relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer transition-all group ${
                     isSelected
                       ? "ring-2 ring-on-tertiary-container ring-offset-2"
                       : "hover:opacity-90"
@@ -409,6 +441,13 @@ export default function AdminUploadsPage() {
                     </div>
                   )}
 
+                  {/* Main-image star — first selected gets the star */}
+                  {isMainSelected && !isFailed && (
+                    <div className="absolute bottom-1.5 left-1.5 bg-amber-400/90 rounded-full p-1">
+                      <Star size={12} className="text-amber-900" fill="currentColor" />
+                    </div>
+                  )}
+
                   {/* Failed — retry + delete buttons */}
                   {isFailed && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50">
@@ -432,20 +471,29 @@ export default function AdminUploadsPage() {
                     </div>
                   )}
 
-                  {/* Selected checkmark */}
-                  {isSelected && !isFailed && (
-                    <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-on-tertiary-container text-surface flex items-center justify-center">
-                      <Check size={11} />
-                    </div>
+                  {/* Top-right: checkmark (selected) or delete (not selected) */}
+                  {!isFailed && (
+                    isSelected ? (
+                      <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-on-tertiary-container text-surface flex items-center justify-center">
+                        <Check size={13} />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRemoveImage(image.id); }}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-red-500/80 flex items-center justify-center transition-all"
+                      >
+                        <X size={13} />
+                      </button>
+                    )
                   )}
 
-                  {/* Delete button on hover — non-failed, non-selected images */}
-                  {!isSelected && !isFailed && (
+                  {/* Zoom button — always visible on hover */}
+                  {url && !isFailed && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleRemoveImage(image.id); }}
-                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 text-white opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setLightboxUrl(url); }}
+                      className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all hover:bg-black/70"
                     >
-                      <X size={10} />
+                      <ZoomIn size={13} />
                     </button>
                   )}
                 </div>
@@ -485,29 +533,33 @@ export default function AdminUploadsPage() {
               </button>
             </div>
 
-            {/* Selected images preview */}
+            {/* Selected images preview — ordered by selection order */}
             <div className="px-8 py-4 border-b border-outline-variant">
               <p className="text-[10px] text-secondary uppercase tracking-widest mb-3">
                 {selected.size} image{selected.size > 1 ? "s" : ""} selected
               </p>
               <div className="flex gap-2 flex-wrap">
-                {imageStates
-                  .filter((s) => selected.has(s.image.id))
-                  .map(({ image }, idx) => {
-                    const url = image.processedUrl ?? image.rawUrl;
-                    return (
-                      <div key={image.id} className="relative w-12 h-16 rounded-lg overflow-hidden bg-surface-container">
-                        {url && <img src={url} alt="" className="w-full h-full object-cover" />}
-                        {idx === 0 && (
-                          <div className="absolute bottom-0 inset-x-0 bg-amber-400/80 flex items-center justify-center py-0.5">
-                            <Star size={8} className="text-amber-900" fill="currentColor" />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                {(() => {
+                  const selectionOrder = Array.from(selected);
+                  return imageStates
+                    .filter((s) => selected.has(s.image.id))
+                    .sort((a, b) => selectionOrder.indexOf(a.image.id) - selectionOrder.indexOf(b.image.id))
+                    .map(({ image }, idx) => {
+                      const url = image.processedUrl ?? image.rawUrl;
+                      return (
+                        <div key={image.id} className="relative w-12 h-16 rounded-lg overflow-hidden bg-surface-container">
+                          {url && <img src={url} alt="" className="w-full h-full object-cover" />}
+                          {idx === 0 && (
+                            <div className="absolute bottom-0 inset-x-0 bg-amber-400/80 flex items-center justify-center py-0.5">
+                              <Star size={8} className="text-amber-900" fill="currentColor" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                })()}
               </div>
-              <p className="text-[10px] text-outline mt-2">First image will be set as main</p>
+              <p className="text-[10px] text-outline mt-2">First selected image will be set as main</p>
             </div>
 
             {/* Form */}
@@ -553,17 +605,37 @@ export default function AdminUploadsPage() {
                     ))}
                   </select>
                 </div>
-                <div>
+                <div ref={colorRef} className="relative">
                   <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
                     {t("admin.productColor")}
                   </label>
                   <input
                     type="text"
                     required
-                    value={form.color}
-                    onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
+                    placeholder="חפש צבע..."
+                    value={colorSearch || colorLabel(form.color)}
+                    onFocus={() => { setColorSearch(""); setColorDropdownOpen(true); }}
+                    onChange={(e) => { setColorSearch(e.target.value); setColorDropdownOpen(true); }}
                     className={inputClass}
+                    autoComplete="off"
                   />
+                  {colorDropdownOpen && filteredColors.length > 0 && (
+                    <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-surface-container-low border border-outline-variant rounded-lg shadow-lg text-sm">
+                      {filteredColors.map((key) => (
+                        <li
+                          key={key}
+                          onMouseDown={() => {
+                            setForm((p) => ({ ...p, color: key }));
+                            setColorSearch("");
+                            setColorDropdownOpen(false);
+                          }}
+                          className={`px-3 py-2 cursor-pointer hover:bg-surface-container text-on-surface ${form.color === key ? "font-semibold text-primary" : ""}`}
+                        >
+                          {colorLabel(key)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
 
@@ -608,6 +680,26 @@ export default function AdminUploadsPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+      {/* ── Lightbox ── */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-colors"
+          >
+            <X size={16} />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Preview"
+            className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </AdminLayout>

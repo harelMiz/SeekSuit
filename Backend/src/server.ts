@@ -4,7 +4,9 @@ import dotenv from 'dotenv';
 import productRoutes from './routes/product.routes';
 import uploadRoutes from './routes/upload.routes';
 import jobRoutes from './routes/job.routes';
+import searchRoutes from './routes/search.routes';
 import { errorHandler } from './middleware/errorHandler';
+import { resetStaleProcessingJobs } from './services/job.service';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -24,6 +26,7 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/products', productRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/search', searchRoutes);
 
 // Global error handler — must be registered after all routes
 app.use(errorHandler);
@@ -32,6 +35,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  await resetStaleProcessingJobs();
 });

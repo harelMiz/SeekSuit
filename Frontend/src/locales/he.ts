@@ -11,6 +11,9 @@ export const he: Record<string, string> = {
   "home.subheadline": "חיפוש מתקדם מבוסס בינה מלאכותית",
   "home.searchPlaceholder": 'תאר את החליפה שאתה מחפש (לדוגמה: "חליפה כחולה לחתונת קיץ")...',
   "home.imageSearch": "חיפוש לפי תמונה",
+  "home.orImageSearch": "או חפש לפי תמונה",
+  "home.imageDropTitle": "גרור תמונה לכאן, או לחץ לבחירה",
+  "home.imageDropSub": "נמצא פריטים דומים מהמלאי שלנו",
   "home.browseCatalog": "עיין בקטלוג",
   "home.aiComingSoon": "חיפוש AI יהיה זמין בקרוב",
 
@@ -50,10 +53,22 @@ export const he: Record<string, string> = {
   "product.delete": "מחיקה",
   "product.deleteConfirm": "האם אתה בטוח שברצונך למחוק מוצר זה?",
   "product.similar": "פריטים דומים",
-  "product.similarNote": "המלצות פריטים דומים יהיו זמינות לאחר השלמת מנוע החיפוש החכם",
+  "product.similarNote": "לא נמצאו פריטים דומים",
   "product.noImage": "אין תמונה",
   "product.backToShop": "חזרה לקטלוג",
   "product.notFound": "המוצר לא נמצא",
+
+  // Image search
+  "nav.search": "חיפוש לפי תמונה",
+  "search.title": "חיפוש לפי תמונה",
+  "search.subtitle": "העלה תמונה של פריט כלשהו ונמצא את הפריטים הדומים ביותר בקולקציה שלנו",
+  "search.dropZone": "גרור תמונה לכאן, או לחץ לבחירה",
+  "search.dropZoneSub": "JPG, PNG, WEBP — כל תמונה מהרשת או מהטלפון",
+  "search.searchBtn": "מצא פריטים דומים",
+  "search.searching": "מחפש...",
+  "search.resultsFound": "נמצאו {n} תוצאות",
+  "search.noResults": "לא נמצאו מוצרים תואמים",
+  "search.error": "החיפוש נכשל — אנא נסה שוב",
 
   // About
   "about.title": "אודות אופנת ג'נודי",

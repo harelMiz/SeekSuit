@@ -1,0 +1,99 @@
+{
+  "IoU_finetune_last_epochs": -50,
+  "SDPA_enabled": false,
+  "architectures": [
+    "BiRefNet"
+  ],
+  "auto_map": {
+    "AutoModelForImageSegmentation": "birefnet.BiRefNet"
+  },
+  "auxiliary_classification": false,
+  "batch_size": 4,
+  "batch_size_valid": 1,
+  "bb": "swin_v1_l",
+  "compile": true,
+  "cxt": [
+    384,
+    768,
+    1536
+  ],
+  "cxt_num": 3,
+  "data_root_dir": "/root/datasets/dis",
+  "dec_att": "ASPPDeformable",
+  "dec_blk": "BasicDecBlk",
+  "dec_channels_inter": "fixed",
+  "dec_ipt": true,
+  "dec_ipt_split": true,
+  "device": 0,
+  "dtype": "float32",
+  "ender": "",
+  "freeze_bb": false,
+  "lambda_adv_d": 0.0,
+  "lambda_adv_g": 0.0,
+  "lambdas_cls": {
+    "ce": 5.0
+  },
+  "lambdas_pix_last": {
+    "bce": 30,
+    "cnt": 0,
+    "iou": 0.5,
+    "iou_patch": 0.0,
+    "mse": 0,
+    "reg": 0,
+    "ssim": 10,
+    "structure": 0,
+    "triplet": 0
+  },
+  "lat_blk": "BasicLatBlk",
+  "lateral_channels_in_collection": [
+    3072,
+    1536,
+    768,
+    384
+  ],
+  "load_all": true,
+  "lr": 0.0001,
+  "lr_decay_epochs": [
+    100000.0
+  ],
+  "lr_decay_rate": 0.5,
+  "model": "BiRefNet",
+  "ms_supervision": true,
+  "mul_scl_ipt": "cat",
+  "num_workers": 4,
+  "only_S_MAE": false,
+  "optimizer": "AdamW",
+  "out_ref": true,
+  "precisionHigh": true,
+  "preproc_methods": [
+    "flip",
+    "enhance",
+    "rotate",
+    "pepper"
+  ],
+  "progressive_ref": "",
+  "prompt4loc": "dense",
+  "rand_seed": 7,
+  "refine": "",
+  "refine_iteration": 1,
+  "scale": "",
+  "size": 1024,
+  "squeeze_block": "BasicDecBlk_x1",
+  "sys_home_dir": "/root",
+  "task": "DIS5K",
+  "training_set": "DIS-TR",
+  "transformers_version": "5.0.0",
+  "use_fp16": false,
+  "verbose_eval": true,
+  "weights": {
+    "pvt_v2_b0": "/root/weights/pvt_v2_b0.pth",
+    "pvt_v2_b1": "/root/weights/pvt_v2_b1.pth",
+    "pvt_v2_b2": "/root/weights/pvt_v2_b2.pth",
+    "pvt_v2_b5": "/root/weights/pvt_v2_b5.pth",
+    "swin_v1_b": "/root/weights/swin_base_patch4_window12_384_22kto1k.pth",
+    "swin_v1_l": "/root/weights/swin_large_patch4_window12_384_22kto1k.pth",
+    "swin_v1_s": "/root/weights/swin_small_patch4_window7_224_22kto1k_finetune.pth",
+    "swin_v1_t": "/root/weights/swin_tiny_patch4_window7_224_22kto1k_finetune.pth"
+  },
+  "weights_root_dir": "/root/weights"
+}
