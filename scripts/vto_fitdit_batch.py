@@ -67,7 +67,7 @@ def get_pants_alpha(fitdit_gen, img: Image, target_size: tuple) -> np.ndarray:
     mask_img = (
         Image.fromarray(hard_mask, mode="L")
         .resize(target_size, Image.BILINEAR)
-        .filter(ImageFilter.GaussianBlur(radius=4))
+        .filter(ImageFilter.GaussianBlur(radius=1.5))
     )
     return np.array(mask_img).astype(float) / 255.0
 
