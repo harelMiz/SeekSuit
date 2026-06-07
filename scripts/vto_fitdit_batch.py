@@ -1,7 +1,7 @@
 """
-FitDiT batch VTO — puts JACKETS and VESTS on the model using FitDiT,
-then inpaints matching suit trousers on the lower body using SD inpainting.
-PANTS are skipped (use the inpainting step instead for a matched pair look).
+FitDiT batch VTO — two-pass inference per garment:
+  Pass 1: Upper-body  — puts JACKETS / VESTS on the model
+  Pass 2: Lower-body  — puts the closest-color pants on the Pass-1 result
 
 Setup (run once):
   python scripts/vto_fitdit_download.py
@@ -20,8 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-FITDIT_DIR  = Path("/workspace/FitDiT")
-INPAINT_DIR = Path("/workspace/sd-inpainting")
+FITDIT_DIR = Path("/workspace/FitDiT")
 sys.path.insert(0, str(FITDIT_DIR))
 
 mock_gr = types.ModuleType("gradio")
@@ -43,103 +42,30 @@ SCALE      = 2.0
 SEED       = 42
 RESOLUTION = "768x1024"
 
-CLOTH_CATEGORY = {
-    "JACKETS": "Upper-body",
-    "VESTS":   "Upper-body",
-}
-
-_COLORS = [
-    ((10, 10, 10),   (60,  60,  70),  "black"),
-    ((30, 30, 70),   (90,  90, 150),  "navy blue"),
-    ((50, 50, 50),   (115, 115, 115), "dark gray"),
-    ((115,115,115),  (190, 190, 190), "gray"),
-    ((50, 20, 10),   (120, 65,  40),  "dark brown"),
-    ((80, 15, 15),   (150, 65,  65),  "burgundy"),
-    ((15, 55, 15),   (60,  110, 60),  "dark green"),
-    ((160,120, 60),  (220, 180, 110), "tan"),
-]
+UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
-def get_garment_color(garment_path: Path) -> str:
+def get_avg_rgb(img_path: Path) -> np.ndarray:
     from PIL import Image
-    arr = np.array(Image.open(garment_path).convert("RGB"))
+    arr = np.array(Image.open(img_path).convert("RGB"))
     non_bg = arr[arr.mean(axis=2) < 210]
-    if len(non_bg) == 0:
-        return "dark gray"
-    r, g, b = non_bg.mean(axis=0).astype(int)
-    best, best_d = "dark gray", float("inf")
-    for (rlo, glo, blo), (rhi, ghi, bhi), name in _COLORS:
-        rc, gc, bc = (rlo + rhi) / 2, (glo + ghi) / 2, (blo + bhi) / 2
-        d = (r - rc) ** 2 + (g - gc) ** 2 + (b - bc) ** 2
+    return non_bg.mean(axis=0) if len(non_bg) else np.array([50.0, 50.0, 60.0])
+
+
+def find_matching_pants(jacket_path: Path) -> Path | None:
+    pants_dir = SAMPLES_DIR / "PANTS"
+    if not pants_dir.exists():
+        return None
+    pants_list = sorted(pants_dir.glob("*.jpg"))
+    if not pants_list:
+        return None
+    jacket_rgb = get_avg_rgb(jacket_path)
+    best, best_d = None, float("inf")
+    for p in pants_list:
+        d = float(np.sum((get_avg_rgb(p) - jacket_rgb) ** 2))
         if d < best_d:
-            best_d, best = d, name
+            best_d, best = d, p
     return best
-
-
-def create_lower_mask(w: int, h: int, waist_frac: float = 0.40):
-    from PIL import Image, ImageDraw
-    mask = Image.new("RGB", (w, h), "black")
-    ImageDraw.Draw(mask).rectangle([0, int(h * waist_frac), w, h], fill="white")
-    return mask
-
-
-def load_inpaint_pipe():
-    import torch
-    from diffusers import StableDiffusionInpaintPipeline
-
-    ckpt = INPAINT_DIR / "sd-v1-5-inpainting.ckpt"
-    if ckpt.exists():
-        print(f"  source (ckpt): {ckpt}")
-        pipe = StableDiffusionInpaintPipeline.from_single_file(
-            str(ckpt),
-            torch_dtype=torch.float16,
-            safety_checker=None,
-            requires_safety_checker=False,
-        )
-    else:
-        src = str(INPAINT_DIR) if INPAINT_DIR.exists() else "runwayml/stable-diffusion-inpainting"
-        print(f"  source (dir): {src}")
-        pipe = StableDiffusionInpaintPipeline.from_pretrained(
-            src,
-            torch_dtype=torch.float16,
-            safety_checker=None,
-            feature_extractor=None,
-            requires_safety_checker=False,
-        )
-    pipe.enable_model_cpu_offload()
-    return pipe
-
-
-def inpaint_pants(pipe, vto_img, color: str):
-    import torch
-    W, H = vto_img.size
-    iw, ih = 512, 768
-    small = vto_img.resize((iw, ih))
-    mask  = create_lower_mask(iw, ih, waist_frac=0.38)
-
-    prompt = (
-        f"full body fashion photo, male model wearing {color} suit trousers, "
-        f"matching {color} blazer jacket, formal business attire, "
-        f"tailored suit pants, straight leg, pressed crease, studio white background"
-    )
-    neg = (
-        "shorts, jeans, casual pants, bare legs, skirt, dress, "
-        "bad anatomy, deformed, blurry, low quality, different color pants"
-    )
-    gen = torch.Generator(device=DEVICE).manual_seed(SEED)
-    out = pipe(
-        prompt=prompt,
-        negative_prompt=neg,
-        image=small,
-        mask_image=mask,
-        height=ih,
-        width=iw,
-        num_inference_steps=40,
-        guidance_scale=12.0,
-        generator=gen,
-        strength=1.0,
-    ).images[0]
-    return out.resize((W, H))
 
 
 def get_person_path() -> Path:
@@ -153,7 +79,7 @@ def get_person_path() -> Path:
 def collect_samples() -> list:
     items = []
     for d in sorted(SAMPLES_DIR.iterdir()):
-        if not d.is_dir() or d.name not in CLOTH_CATEGORY:
+        if not d.is_dir() or d.name not in UPPER_TYPES:
             continue
         for img in sorted(d.glob("*.jpg")):
             items.append((d.name, img))
@@ -171,6 +97,7 @@ def main():
     OUTPUT_DIR.mkdir(exist_ok=True)
     Image.open(person_path).convert("RGB").save(str(temp_person), quality=95)
     person_path = temp_person
+    temp_vto = SCRIPTS_DIR / "temp_vto.jpg"
 
     samples = collect_samples()
     if not samples:
@@ -182,8 +109,6 @@ def main():
 
     print("Loading FitDiT...")
     fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
-    print("Loading SD inpainting...")
-    inpaint = load_inpaint_pipe()
 
     print(f"\n{len(samples)} garment(s)...\n")
 
@@ -191,46 +116,76 @@ def main():
     ok = err = 0
 
     for ptype, img_path in samples:
-        cat = CLOTH_CATEGORY[ptype]
         out_dir = OUTPUT_DIR / ptype
         out_dir.mkdir(exist_ok=True)
         out_path = out_dir / f"{img_path.stem}_vto.jpg"
 
-        print(f"  [{ptype}] {img_path.stem} ... ", end="", flush=True)
+        print(f"  [{ptype}] {img_path.stem} ...", end="", flush=True)
         try:
-            if cat not in cached_masks:
+            # Pass 1: upper body
+            if "Upper-body" not in cached_masks:
                 pre_mask, pose_img = fitdit.generate_mask(
-                    str(person_path), cat, 0, 0, 0, 0,
+                    str(person_path), "Upper-body", 0, 0, 0, 0,
                 )
-                cached_masks[cat] = (pre_mask, np.array(pose_img))
-            pre_mask, pose_arr = cached_masks[cat]
+                cached_masks["Upper-body"] = (pre_mask, np.array(pose_img))
+            pre_mask_u, pose_arr_u = cached_masks["Upper-body"]
 
-            vto = fitdit.process(
+            vto_upper = fitdit.process(
                 vton_img=str(person_path),
                 garm_img=str(img_path),
-                pre_mask=pre_mask,
-                pose_image=pose_arr,
+                pre_mask=pre_mask_u,
+                pose_image=pose_arr_u,
                 n_steps=STEPS,
                 image_scale=SCALE,
                 seed=SEED,
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
+            print(" jacket ok", end="", flush=True)
 
-            # Save FitDiT-only result for comparison
-            vto.save(out_dir / f"{img_path.stem}_fitdit.jpg", quality=92)
+            # Save upper-only for comparison
+            vto_upper.save(out_dir / f"{img_path.stem}_jacket.jpg", quality=92)
 
-            color = get_garment_color(img_path)
-            print(f"[{color}] pants... ", end="", flush=True)
-            final = inpaint_pants(inpaint, vto, color)
+            # Pass 2: lower body with closest-color pants
+            pants_img = find_matching_pants(img_path)
+            if pants_img:
+                vto_upper.convert("RGB").save(str(temp_vto), quality=95)
+
+                if "Lower-body" not in cached_masks:
+                    pre_mask_l, pose_img_l = fitdit.generate_mask(
+                        str(person_path), "Lower-body", 0, 0, 0, 0,
+                    )
+                    cached_masks["Lower-body"] = (pre_mask_l, np.array(pose_img_l))
+                pre_mask_l, pose_arr_l = cached_masks["Lower-body"]
+
+                final = fitdit.process(
+                    vton_img=str(temp_vto),
+                    garm_img=str(pants_img),
+                    pre_mask=pre_mask_l,
+                    pose_image=pose_arr_l,
+                    n_steps=STEPS,
+                    image_scale=SCALE,
+                    seed=SEED,
+                    num_images_per_prompt=1,
+                    resolution=RESOLUTION,
+                )[0]
+                print(f" + pants({pants_img.stem}) ok", flush=True)
+            else:
+                final = vto_upper
+                print(" [no pants found]", flush=True)
+
             final.save(out_path, quality=92)
-            print("ok")
             ok += 1
         except Exception as e:
             import traceback
-            print(f"FAIL  {e}")
+            print(f" FAIL  {e}")
             traceback.print_exc()
             err += 1
+
+    # Clean up temp files
+    for t in [temp_person, temp_vto]:
+        if t.exists():
+            t.unlink(missing_ok=True)
 
     print(f"\nDone — {ok} ok, {err} failed")
     print(f"Results: {OUTPUT_DIR.resolve()}")
