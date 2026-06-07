@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 
 FITDIT_DIR = Path("/workspace/FitDiT")
 sys.path.insert(0, str(FITDIT_DIR))
@@ -52,29 +53,15 @@ def get_jacket_rgb(jacket_path: Path) -> np.ndarray:
     return non_bg.mean(axis=0) if len(non_bg) else np.array([50.0, 50.0, 60.0])
 
 
-def recolor_pants(vto_img, jacket_rgb: np.ndarray, waist_frac: float = 0.40):
-    """Recolor gray pants in the lower body to match the jacket color."""
-    from PIL import Image
-    arr = np.array(vto_img).astype(float)
-    waist_y = int(arr.shape[0] * waist_frac)
-    lower = arr[waist_y:]
-
-    r, g, b = lower[:,:,0], lower[:,:,1], lower[:,:,2]
-    lum = r * 0.299 + g * 0.587 + b * 0.114
-    max_c = np.maximum(np.maximum(r, g), b)
-    min_c = np.minimum(np.minimum(r, g), b)
-    sat = (max_c - min_c) / np.maximum(max_c, 1.0)
-
-    # Gray pants pixels: low saturation, not background, not shadows
-    is_pants = (sat < 0.25) & (lum > 40) & (lum < 230)
-
-    lum_norm = lum / 255.0
+def recolor_with_mask(img, jacket_rgb: np.ndarray, pants_mask: np.ndarray):
+    """Recolor pixels inside pants_mask to jacket color, preserving luminance."""
+    arr = np.array(img).astype(float)
+    r, g, b = arr[:,:,0], arr[:,:,1], arr[:,:,2]
+    lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0
     jR, jG, jB = jacket_rgb
-    lower[:,:,0] = np.where(is_pants, np.clip(lum_norm * jR, 0, 255), r)
-    lower[:,:,1] = np.where(is_pants, np.clip(lum_norm * jG, 0, 255), g)
-    lower[:,:,2] = np.where(is_pants, np.clip(lum_norm * jB, 0, 255), b)
-
-    arr[waist_y:] = lower
+    arr[:,:,0] = np.where(pants_mask, np.clip(lum * jR, 0, 255), r)
+    arr[:,:,1] = np.where(pants_mask, np.clip(lum * jG, 0, 255), g)
+    arr[:,:,2] = np.where(pants_mask, np.clip(lum * jB, 0, 255), b)
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
 
 
@@ -101,7 +88,6 @@ def main():
     parser.add_argument("--one", action="store_true", help="Run only the first garment")
     args = parser.parse_args()
 
-    from PIL import Image
     person_path = get_person_path()
     temp_person = SCRIPTS_DIR / "temp_model_rgb.jpg"
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -151,9 +137,29 @@ def main():
             )[0]
             print(" jacket ok", end="", flush=True)
 
-            # PIL recolor — gray pants → jacket color (no second model pass)
+            # Get FitDiT pants mask and recolor gray → jacket color
+            if "Lower-body" not in cached_masks:
+                pre_mask_l, _ = fitdit.generate_mask(
+                    str(person_path), "Lower-body", 0, 0, 0, 0,
+                )
+                cached_masks["Lower-body"] = pre_mask_l
+            pre_mask_l = cached_masks["Lower-body"]
+
+            # Alpha channel of layers[0] is the pants region mask (0-255)
+            mask_raw = pre_mask_l["layers"][0][:,:,3]
+            mask_img = Image.fromarray(mask_raw, mode="L")
+            if mask_img.size != vto_upper.size:
+                mask_img = mask_img.resize(vto_upper.size, Image.NEAREST)
+            pants_mask = np.array(mask_img) > 128
+
             jacket_rgb = get_jacket_rgb(img_path)
-            final = recolor_pants(vto_upper, jacket_rgb)
+            final = recolor_with_mask(vto_upper, jacket_rgb, pants_mask)
+
+            # Resize back to original model image size
+            orig_size = Image.open(person_path).size
+            if final.size != orig_size:
+                final = final.resize(orig_size, Image.LANCZOS)
+
             print(" pants recolor ok", flush=True)
 
             final.save(out_path, quality=92)
