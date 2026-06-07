@@ -29,7 +29,7 @@ sys.modules.setdefault("gradio", mock_gr)
 
 os.chdir(str(FITDIT_DIR))
 
-from gradio_sd3 import FitDiTGenerator
+from gradio_sd3 import FitDiTGenerator, resize_image
 
 SCRIPTS_DIR = Path(__file__).parent
 SAMPLES_DIR = SCRIPTS_DIR / "vto_samples"
@@ -53,27 +53,28 @@ def get_jacket_rgb(jacket_path: Path) -> np.ndarray:
     return non_bg.mean(axis=0) if len(non_bg) else np.array([50.0, 50.0, 60.0])
 
 
-def recolor_with_mask(img, jacket_rgb: np.ndarray, fitdit_mask: np.ndarray):
-    """Recolor pants pixels to jacket color.
+def get_exact_pants_mask(fitdit_gen, img: Image, target_size: tuple) -> np.ndarray:
+    """Run FitDiT's ATR parsing model to get pixel-exact pants segmentation.
 
-    fitdit_mask is FitDiT's rectangular lower-body region. We refine it by
-    excluding bright background pixels and warm skin-tone pixels so only
-    the actual garment fabric gets recolored.
+    ATR class indices: 5 = skirt, 6 = pants (lower-body garments).
     """
+    img_det = resize_image(img)
+    model_parse, _ = fitdit_gen.parsing_model(img_det)
+    parse_arr = np.array(model_parse)
+    mask = np.isin(parse_arr, [5, 6]).astype(np.uint8) * 255
+    mask_img = Image.fromarray(mask, mode="L").resize(target_size, Image.NEAREST)
+    return np.array(mask_img) > 128
+
+
+def recolor_with_mask(img: Image, jacket_rgb: np.ndarray, mask: np.ndarray) -> Image:
+    """Recolor pixels in mask to jacket color, preserving per-pixel luminance."""
     arr = np.array(img).astype(float)
     r, g, b = arr[:,:,0], arr[:,:,1], arr[:,:,2]
-    lum = (r + g + b) / 3.0
-
-    not_bg   = lum < 235                        # exclude white/near-white background
-    not_skin = ~((r - b > 25) & (r > g + 5))   # exclude warm reddish skin tones
-
-    pants_mask = fitdit_mask & not_bg & not_skin
-
-    lum_norm = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0
+    lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0
     jR, jG, jB = jacket_rgb
-    arr[:,:,0] = np.where(pants_mask, np.clip(lum_norm * jR, 0, 255), r)
-    arr[:,:,1] = np.where(pants_mask, np.clip(lum_norm * jG, 0, 255), g)
-    arr[:,:,2] = np.where(pants_mask, np.clip(lum_norm * jB, 0, 255), b)
+    arr[:,:,0] = np.where(mask, np.clip(lum * jR, 0, 255), r)
+    arr[:,:,1] = np.where(mask, np.clip(lum * jG, 0, 255), g)
+    arr[:,:,2] = np.where(mask, np.clip(lum * jB, 0, 255), b)
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
 
 
@@ -149,21 +150,8 @@ def main():
             )[0]
             print(" jacket ok", end="", flush=True)
 
-            # Get FitDiT pants mask and recolor gray → jacket color
-            if "Lower-body" not in cached_masks:
-                pre_mask_l, _ = fitdit.generate_mask(
-                    str(person_path), "Lower-body", 0, 0, 0, 0,
-                )
-                cached_masks["Lower-body"] = pre_mask_l
-            pre_mask_l = cached_masks["Lower-body"]
-
-            # Alpha channel of layers[0] is the pants region mask (0-255)
-            mask_raw = pre_mask_l["layers"][0][:,:,3]
-            mask_img = Image.fromarray(mask_raw, mode="L")
-            if mask_img.size != vto_upper.size:
-                mask_img = mask_img.resize(vto_upper.size, Image.NEAREST)
-            pants_mask = np.array(mask_img) > 128
-
+            # Pixel-exact pants mask from FitDiT's ATR parsing model
+            pants_mask = get_exact_pants_mask(fitdit, vto_upper, vto_upper.size)
             jacket_rgb = get_jacket_rgb(img_path)
             final = recolor_with_mask(vto_upper, jacket_rgb, pants_mask)
 
