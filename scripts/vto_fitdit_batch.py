@@ -74,7 +74,14 @@ def main():
     parser.add_argument("--one", action="store_true", help="Run only the first garment")
     args = parser.parse_args()
 
+    from PIL import Image
     person_path = get_person_path()
+    # FitDiT requires RGB JPG — convert if model image is PNG/RGBA
+    temp_person = OUTPUT_DIR.parent / "temp_model_rgb.jpg"
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    Image.open(person_path).convert("RGB").save(str(temp_person), quality=95)
+    person_path = temp_person
+
     samples = collect_samples()
     if not samples:
         print(f"[ERROR] No images found in {SAMPLES_DIR}")
