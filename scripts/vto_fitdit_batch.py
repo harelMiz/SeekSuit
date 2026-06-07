@@ -83,11 +83,26 @@ def create_lower_mask(w: int, h: int, waist_frac: float = 0.40):
     return mask
 
 
+def _fix_inpaint_dir():
+    # The runwayml repo ships fp16 weights under non-standard names.
+    # Symlink them to the names diffusers expects.
+    for subdir, src_name, dst_name in [
+        ("unet", "diffusion_pytorch_model.fp16.safetensors", "diffusion_pytorch_model.safetensors"),
+        ("unet", "diffusion_pytorch_model.fp16.bin",         "diffusion_pytorch_model.bin"),
+    ]:
+        src = INPAINT_DIR / subdir / src_name
+        dst = INPAINT_DIR / subdir / dst_name
+        if src.exists() and not dst.exists():
+            dst.symlink_to(src_name)
+
+
 def load_inpaint_pipe():
     import torch
     from diffusers import StableDiffusionInpaintPipeline
     src = str(INPAINT_DIR) if INPAINT_DIR.exists() else "runwayml/stable-diffusion-inpainting"
     print(f"  source: {src}")
+    if INPAINT_DIR.exists():
+        _fix_inpaint_dir()
     pipe = StableDiffusionInpaintPipeline.from_pretrained(
         src,
         torch_dtype=torch.float16,
