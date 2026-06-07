@@ -122,7 +122,7 @@ def main():
                 vton_img=str(person_path),
                 garm_img=str(img_path),
                 pre_mask=pre_mask,
-                pose_image=np.array(pose_image) if hasattr(pose_image, '__array__') else pose_image,
+                pose_image=np.array(pose_image),
                 n_steps=STEPS,
                 image_scale=SCALE,
                 seed=SEED,
