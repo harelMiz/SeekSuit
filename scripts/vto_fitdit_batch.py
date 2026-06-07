@@ -92,6 +92,7 @@ def load_inpaint_pipe():
         src,
         torch_dtype=torch.float16,
         safety_checker=None,
+        feature_extractor=None,
         requires_safety_checker=False,
     )
     pipe.enable_model_cpu_offload()
