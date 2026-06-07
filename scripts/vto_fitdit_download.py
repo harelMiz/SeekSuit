@@ -41,11 +41,21 @@ def download_inpainting():
     if INPAINT_DIR.exists():
         print("SD inpainting already downloaded, skipping.")
         return
-    print("Downloading runwayml/stable-diffusion-inpainting (~4 GB)...")
+    # Skip .bin for unet/vae (safetensors exist for those), skip flax/tf/safety_checker
+    # to keep total download ~4 GB instead of ~11 GB.
+    print("Downloading runwayml/stable-diffusion-inpainting (~4 GB, safetensors only)...")
     snapshot_download(
         repo_id="runwayml/stable-diffusion-inpainting",
         local_dir=str(INPAINT_DIR),
         local_dir_use_symlinks=False,
+        ignore_patterns=[
+            "unet/diffusion_pytorch_model.bin",
+            "vae/diffusion_pytorch_model.bin",
+            "*.msgpack",
+            "flax_*",
+            "safety_checker/*",
+            "feature_extractor/*",
+        ],
     )
     print("SD inpainting done.\n")
 
