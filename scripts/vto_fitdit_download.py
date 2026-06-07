@@ -1,11 +1,8 @@
 """
-Downloads FitDiT model weights from HuggingFace.
+Downloads FitDiT model weights and the SD inpainting model from HuggingFace.
 Run this once on RunPod before running vto_fitdit_batch.py.
 
-NOTE: Delete /workspace/OOTDiffusion first to free ~13 GB of disk space:
-  rm -rf /workspace/OOTDiffusion
-
-Total download: ~10 GB
+Total download: ~14 GB  (FitDiT ~10 GB + SD inpainting ~4 GB)
 
 Usage:
   cd /workspace/SeekSuit
@@ -15,10 +12,11 @@ Usage:
 from pathlib import Path
 from huggingface_hub import snapshot_download
 
-FITDIT_DIR = Path("/workspace/FitDiT")
+FITDIT_DIR  = Path("/workspace/FitDiT")
+INPAINT_DIR = Path("/workspace/sd-inpainting")
 
 
-def main():
+def download_fitdit():
     if FITDIT_DIR.exists():
         print("FitDiT directory already exists, skipping clone.")
     else:
@@ -36,7 +34,25 @@ def main():
         local_dir=str(FITDIT_DIR),
         local_dir_use_symlinks=False,
     )
-    print("Done.\n")
+    print("FitDiT done.\n")
+
+
+def download_inpainting():
+    if INPAINT_DIR.exists():
+        print("SD inpainting already downloaded, skipping.")
+        return
+    print("Downloading runwayml/stable-diffusion-inpainting (~4 GB)...")
+    snapshot_download(
+        repo_id="runwayml/stable-diffusion-inpainting",
+        local_dir=str(INPAINT_DIR),
+        local_dir_use_symlinks=False,
+    )
+    print("SD inpainting done.\n")
+
+
+def main():
+    download_fitdit()
+    download_inpainting()
     print("All downloads complete.")
     print("Next: python scripts/vto_fitdit_batch.py --one")
 
