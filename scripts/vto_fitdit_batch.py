@@ -83,33 +83,29 @@ def create_lower_mask(w: int, h: int, waist_frac: float = 0.40):
     return mask
 
 
-def _fix_inpaint_dir():
-    # The runwayml repo ships fp16 weights under non-standard names.
-    # Symlink them to the names diffusers expects.
-    for subdir, src_name, dst_name in [
-        ("unet", "diffusion_pytorch_model.fp16.safetensors", "diffusion_pytorch_model.safetensors"),
-        ("unet", "diffusion_pytorch_model.fp16.bin",         "diffusion_pytorch_model.bin"),
-    ]:
-        src = INPAINT_DIR / subdir / src_name
-        dst = INPAINT_DIR / subdir / dst_name
-        if src.exists() and not dst.exists():
-            dst.symlink_to(src_name)
-
-
 def load_inpaint_pipe():
     import torch
     from diffusers import StableDiffusionInpaintPipeline
-    src = str(INPAINT_DIR) if INPAINT_DIR.exists() else "runwayml/stable-diffusion-inpainting"
-    print(f"  source: {src}")
-    if INPAINT_DIR.exists():
-        _fix_inpaint_dir()
-    pipe = StableDiffusionInpaintPipeline.from_pretrained(
-        src,
-        torch_dtype=torch.float16,
-        safety_checker=None,
-        feature_extractor=None,
-        requires_safety_checker=False,
-    )
+
+    ckpt = INPAINT_DIR / "sd-v1-5-inpainting.ckpt"
+    if ckpt.exists():
+        print(f"  source (ckpt): {ckpt}")
+        pipe = StableDiffusionInpaintPipeline.from_single_file(
+            str(ckpt),
+            torch_dtype=torch.float16,
+            safety_checker=None,
+            requires_safety_checker=False,
+        )
+    else:
+        src = str(INPAINT_DIR) if INPAINT_DIR.exists() else "runwayml/stable-diffusion-inpainting"
+        print(f"  source (dir): {src}")
+        pipe = StableDiffusionInpaintPipeline.from_pretrained(
+            src,
+            torch_dtype=torch.float16,
+            safety_checker=None,
+            feature_extractor=None,
+            requires_safety_checker=False,
+        )
     pipe.enable_model_cpu_offload()
     return pipe
 
@@ -119,15 +115,16 @@ def inpaint_pants(pipe, vto_img, color: str):
     W, H = vto_img.size
     iw, ih = 512, 768
     small = vto_img.resize((iw, ih))
-    mask  = create_lower_mask(iw, ih, waist_frac=0.40)
+    mask  = create_lower_mask(iw, ih, waist_frac=0.38)
 
     prompt = (
-        f"professional fashion photography, male model wearing formal {color} "
-        f"suit trousers, matching jacket, pressed fabric, studio lighting"
+        f"full body fashion photo, male model wearing {color} suit trousers, "
+        f"matching {color} blazer jacket, formal business attire, "
+        f"tailored suit pants, straight leg, pressed crease, studio white background"
     )
     neg = (
-        "shorts, jeans, casual pants, bad anatomy, deformed legs, "
-        "blurry, low quality, mismatched color"
+        "shorts, jeans, casual pants, bare legs, skirt, dress, "
+        "bad anatomy, deformed, blurry, low quality, different color pants"
     )
     gen = torch.Generator(device=DEVICE).manual_seed(SEED)
     out = pipe(
@@ -137,8 +134,8 @@ def inpaint_pants(pipe, vto_img, color: str):
         mask_image=mask,
         height=ih,
         width=iw,
-        num_inference_steps=30,
-        guidance_scale=7.5,
+        num_inference_steps=40,
+        guidance_scale=12.0,
         generator=gen,
         strength=1.0,
     ).images[0]
@@ -219,6 +216,9 @@ def main():
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
+
+            # Save FitDiT-only result for comparison
+            vto.save(out_dir / f"{img_path.stem}_fitdit.jpg", quality=92)
 
             color = get_garment_color(img_path)
             print(f"[{color}] pants... ", end="", flush=True)
