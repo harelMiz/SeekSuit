@@ -53,28 +53,37 @@ def get_jacket_rgb(jacket_path: Path) -> np.ndarray:
     return non_bg.mean(axis=0) if len(non_bg) else np.array([50.0, 50.0, 60.0])
 
 
-def get_exact_pants_mask(fitdit_gen, img: Image, target_size: tuple) -> np.ndarray:
-    """Run FitDiT's ATR parsing model to get pixel-exact pants segmentation.
+def get_pants_alpha(fitdit_gen, img: Image, target_size: tuple) -> np.ndarray:
+    """Return a soft alpha mask (0.0-1.0) for the pants region.
 
-    ATR class indices: 5 = skirt, 6 = pants (lower-body garments).
+    Runs FitDiT's ATR parsing model (classes 5=skirt, 6=pants), then applies
+    Gaussian blur to feather the edges so the recolor blends smoothly.
     """
+    from PIL import ImageFilter
     img_det = resize_image(img)
     model_parse, _ = fitdit_gen.parsing_model(img_det)
     parse_arr = np.array(model_parse)
-    mask = np.isin(parse_arr, [5, 6]).astype(np.uint8) * 255
-    mask_img = Image.fromarray(mask, mode="L").resize(target_size, Image.NEAREST)
-    return np.array(mask_img) > 128
+    hard_mask = np.isin(parse_arr, [5, 6]).astype(np.uint8) * 255
+    mask_img = (
+        Image.fromarray(hard_mask, mode="L")
+        .resize(target_size, Image.BILINEAR)
+        .filter(ImageFilter.GaussianBlur(radius=4))
+    )
+    return np.array(mask_img).astype(float) / 255.0
 
 
-def recolor_with_mask(img: Image, jacket_rgb: np.ndarray, mask: np.ndarray) -> Image:
-    """Recolor pixels in mask to jacket color, preserving per-pixel luminance."""
+def recolor_with_alpha(img: Image, jacket_rgb: np.ndarray, alpha: np.ndarray) -> Image:
+    """Blend recolored pants into the image using a soft alpha mask."""
     arr = np.array(img).astype(float)
     r, g, b = arr[:,:,0], arr[:,:,1], arr[:,:,2]
     lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0
     jR, jG, jB = jacket_rgb
-    arr[:,:,0] = np.where(mask, np.clip(lum * jR, 0, 255), r)
-    arr[:,:,1] = np.where(mask, np.clip(lum * jG, 0, 255), g)
-    arr[:,:,2] = np.where(mask, np.clip(lum * jB, 0, 255), b)
+    recolored_r = np.clip(lum * jR, 0, 255)
+    recolored_g = np.clip(lum * jG, 0, 255)
+    recolored_b = np.clip(lum * jB, 0, 255)
+    arr[:,:,0] = alpha * recolored_r + (1 - alpha) * r
+    arr[:,:,1] = alpha * recolored_g + (1 - alpha) * g
+    arr[:,:,2] = alpha * recolored_b + (1 - alpha) * b
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
 
 
@@ -150,10 +159,10 @@ def main():
             )[0]
             print(" jacket ok", end="", flush=True)
 
-            # Pixel-exact pants mask from FitDiT's ATR parsing model
-            pants_mask = get_exact_pants_mask(fitdit, vto_upper, vto_upper.size)
-            jacket_rgb = get_jacket_rgb(img_path)
-            final = recolor_with_mask(vto_upper, jacket_rgb, pants_mask)
+            # Soft pants mask from FitDiT's ATR parsing model + Gaussian blur
+            pants_alpha = get_pants_alpha(fitdit, vto_upper, vto_upper.size)
+            jacket_rgb  = get_jacket_rgb(img_path)
+            final = recolor_with_alpha(vto_upper, jacket_rgb, pants_alpha)
 
             # Resize back to original model image size
             orig_size = Image.open(person_path).size
