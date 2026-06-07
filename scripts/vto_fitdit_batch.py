@@ -133,7 +133,9 @@ def main():
             print("ok")
             ok += 1
         except Exception as e:
+            import traceback
             print(f"FAIL  {e}")
+            traceback.print_exc()
             err += 1
 
     print(f"\nDone — {ok} ok, {err} failed")
