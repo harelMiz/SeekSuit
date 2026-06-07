@@ -45,27 +45,37 @@ RESOLUTION = "768x1024"
 UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
-def get_avg_rgb(img_path: Path) -> np.ndarray:
+def get_jacket_rgb(jacket_path: Path) -> np.ndarray:
     from PIL import Image
-    arr = np.array(Image.open(img_path).convert("RGB"))
+    arr = np.array(Image.open(jacket_path).convert("RGB"))
     non_bg = arr[arr.mean(axis=2) < 210]
     return non_bg.mean(axis=0) if len(non_bg) else np.array([50.0, 50.0, 60.0])
 
 
-def find_matching_pants(jacket_path: Path) -> Path | None:
-    pants_dir = SAMPLES_DIR / "PANTS"
-    if not pants_dir.exists():
-        return None
-    pants_list = sorted(pants_dir.glob("*.jpg"))
-    if not pants_list:
-        return None
-    jacket_rgb = get_avg_rgb(jacket_path)
-    best, best_d = None, float("inf")
-    for p in pants_list:
-        d = float(np.sum((get_avg_rgb(p) - jacket_rgb) ** 2))
-        if d < best_d:
-            best_d, best = d, p
-    return best
+def recolor_pants(vto_img, jacket_rgb: np.ndarray, waist_frac: float = 0.40):
+    """Recolor gray pants in the lower body to match the jacket color."""
+    from PIL import Image
+    arr = np.array(vto_img).astype(float)
+    waist_y = int(arr.shape[0] * waist_frac)
+    lower = arr[waist_y:]
+
+    r, g, b = lower[:,:,0], lower[:,:,1], lower[:,:,2]
+    lum = r * 0.299 + g * 0.587 + b * 0.114
+    max_c = np.maximum(np.maximum(r, g), b)
+    min_c = np.minimum(np.minimum(r, g), b)
+    sat = (max_c - min_c) / np.maximum(max_c, 1.0)
+
+    # Gray pants pixels: low saturation, not background, not shadows
+    is_pants = (sat < 0.25) & (lum > 40) & (lum < 230)
+
+    lum_norm = lum / 255.0
+    jR, jG, jB = jacket_rgb
+    lower[:,:,0] = np.where(is_pants, np.clip(lum_norm * jR, 0, 255), r)
+    lower[:,:,1] = np.where(is_pants, np.clip(lum_norm * jG, 0, 255), g)
+    lower[:,:,2] = np.where(is_pants, np.clip(lum_norm * jB, 0, 255), b)
+
+    arr[waist_y:] = lower
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
 
 
 def get_person_path() -> Path:
@@ -97,8 +107,6 @@ def main():
     OUTPUT_DIR.mkdir(exist_ok=True)
     Image.open(person_path).convert("RGB").save(str(temp_person), quality=95)
     person_path = temp_person
-    temp_vto = SCRIPTS_DIR / "temp_vto.jpg"
-
     samples = collect_samples()
     if not samples:
         print(f"[ERROR] No images in {SAMPLES_DIR}")
@@ -122,7 +130,7 @@ def main():
 
         print(f"  [{ptype}] {img_path.stem} ...", end="", flush=True)
         try:
-            # Pass 1: upper body
+            # FitDiT upper-body — puts jacket/vest on model, gray pants preserved
             if "Upper-body" not in cached_masks:
                 pre_mask, pose_img = fitdit.generate_mask(
                     str(person_path), "Upper-body", 0, 0, 0, 0,
@@ -143,36 +151,10 @@ def main():
             )[0]
             print(" jacket ok", end="", flush=True)
 
-            # Save upper-only for comparison
-            vto_upper.save(out_dir / f"{img_path.stem}_jacket.jpg", quality=92)
-
-            # Pass 2: lower body with closest-color pants
-            pants_img = find_matching_pants(img_path)
-            if pants_img:
-                vto_upper.convert("RGB").save(str(temp_vto), quality=95)
-
-                if "Lower-body" not in cached_masks:
-                    pre_mask_l, pose_img_l = fitdit.generate_mask(
-                        str(person_path), "Lower-body", 0, 0, 0, 0,
-                    )
-                    cached_masks["Lower-body"] = (pre_mask_l, np.array(pose_img_l))
-                pre_mask_l, pose_arr_l = cached_masks["Lower-body"]
-
-                final = fitdit.process(
-                    vton_img=str(temp_vto),
-                    garm_img=str(pants_img),
-                    pre_mask=pre_mask_l,
-                    pose_image=pose_arr_l,
-                    n_steps=STEPS,
-                    image_scale=SCALE,
-                    seed=SEED,
-                    num_images_per_prompt=1,
-                    resolution=RESOLUTION,
-                )[0]
-                print(f" + pants({pants_img.stem}) ok", flush=True)
-            else:
-                final = vto_upper
-                print(" [no pants found]", flush=True)
+            # PIL recolor — gray pants → jacket color (no second model pass)
+            jacket_rgb = get_jacket_rgb(img_path)
+            final = recolor_pants(vto_upper, jacket_rgb)
+            print(" pants recolor ok", flush=True)
 
             final.save(out_path, quality=92)
             ok += 1
@@ -182,10 +164,8 @@ def main():
             traceback.print_exc()
             err += 1
 
-    # Clean up temp files
-    for t in [temp_person, temp_vto]:
-        if t.exists():
-            t.unlink(missing_ok=True)
+    if temp_person.exists():
+        temp_person.unlink(missing_ok=True)
 
     print(f"\nDone — {ok} ok, {err} failed")
     print(f"Results: {OUTPUT_DIR.resolve()}")
