@@ -49,8 +49,7 @@ def download_inpainting():
         local_dir=str(INPAINT_DIR),
         local_dir_use_symlinks=False,
         ignore_patterns=[
-            "unet/diffusion_pytorch_model.bin",
-            "vae/diffusion_pytorch_model.bin",
+            "unet/diffusion_pytorch_model.bin",  # 3.4 GB — safetensors exists for unet
             "*.msgpack",
             "flax_*",
             "safety_checker/*",
