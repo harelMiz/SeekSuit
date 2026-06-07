@@ -53,15 +53,27 @@ def get_jacket_rgb(jacket_path: Path) -> np.ndarray:
     return non_bg.mean(axis=0) if len(non_bg) else np.array([50.0, 50.0, 60.0])
 
 
-def recolor_with_mask(img, jacket_rgb: np.ndarray, pants_mask: np.ndarray):
-    """Recolor pixels inside pants_mask to jacket color, preserving luminance."""
+def recolor_with_mask(img, jacket_rgb: np.ndarray, fitdit_mask: np.ndarray):
+    """Recolor pants pixels to jacket color.
+
+    fitdit_mask is FitDiT's rectangular lower-body region. We refine it by
+    excluding bright background pixels and warm skin-tone pixels so only
+    the actual garment fabric gets recolored.
+    """
     arr = np.array(img).astype(float)
     r, g, b = arr[:,:,0], arr[:,:,1], arr[:,:,2]
-    lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0
+    lum = (r + g + b) / 3.0
+
+    not_bg   = lum < 235                        # exclude white/near-white background
+    not_skin = ~((r - b > 25) & (r > g + 5))   # exclude warm reddish skin tones
+
+    pants_mask = fitdit_mask & not_bg & not_skin
+
+    lum_norm = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0
     jR, jG, jB = jacket_rgb
-    arr[:,:,0] = np.where(pants_mask, np.clip(lum * jR, 0, 255), r)
-    arr[:,:,1] = np.where(pants_mask, np.clip(lum * jG, 0, 255), g)
-    arr[:,:,2] = np.where(pants_mask, np.clip(lum * jB, 0, 255), b)
+    arr[:,:,0] = np.where(pants_mask, np.clip(lum_norm * jR, 0, 255), r)
+    arr[:,:,1] = np.where(pants_mask, np.clip(lum_norm * jG, 0, 255), g)
+    arr[:,:,2] = np.where(pants_mask, np.clip(lum_norm * jB, 0, 255), b)
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
 
 
