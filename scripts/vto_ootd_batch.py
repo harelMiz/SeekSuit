@@ -12,6 +12,7 @@ Usage:
 """
 
 import sys
+import os
 import argparse
 from pathlib import Path
 
@@ -149,6 +150,9 @@ def main():
 
     upper_types = [p for p in ["JACKETS", "VESTS"] if any(t == p for t, _ in samples)]
     lower_types = [p for p in ["PANTS"]            if any(t == p for t, _ in samples)]
+
+    # OOTDiffusion uses relative paths (../checkpoints/ootd) resolved from cwd
+    os.chdir(str(OOTD_DIR / "ootd"))
 
     if upper_types:
         print("\nLoading OOTDiffusionHD (upper body)...")
