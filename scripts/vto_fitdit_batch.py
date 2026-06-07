@@ -45,9 +45,9 @@ SEED       = 42
 RESOLUTION = "768x1024"
 
 CLOTH_CATEGORY = {
-    "JACKETS": "upper_body",
-    "VESTS":   "upper_body",
-    "PANTS":   "lower_body",
+    "JACKETS": "Upper-body",
+    "VESTS":   "Upper-body",
+    "PANTS":   "Lower-body",
 }
 
 
