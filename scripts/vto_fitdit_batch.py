@@ -69,31 +69,45 @@ def _parse_person(parsing, person_img: Image.Image) -> np.ndarray:
     return np.array(parse_out)
 
 
+def _arm_bool(parse_arr: np.ndarray) -> np.ndarray:
+    """
+    Boolean mask of the arm/sleeve region.
+    Long-sleeve shirts are usually classified as upper-clothes (class 4) rather
+    than arm (14/15), so we include class 4 pixels in the outer 25% of columns
+    where sleeves actually appear.
+    """
+    PH, PW = parse_arr.shape
+    arm = np.isin(parse_arr, _ARM_CLASSES)
+    outer = int(PW * 0.25)
+    upper = (parse_arr == 4)
+    arm[:, :outer] |= upper[:, :outer]
+    arm[:, -outer:] |= upper[:, -outer:]
+    return arm
+
+
 def _build_arm_mask(parse_arr: np.ndarray) -> Image.Image:
-    """L-mode mask of the arm/sleeve region (ATR classes 14+15)."""
-    arm_pixels = np.isin(parse_arr, _ARM_CLASSES).astype(np.uint8) * 255
-    mask = Image.fromarray(arm_pixels, mode="L")
-    return mask.filter(ImageFilter.GaussianBlur(radius=3))
+    """L-mode mask of the arm/sleeve region for vest post-processing."""
+    pixels = _arm_bool(parse_arr).astype(np.uint8) * 255
+    return Image.fromarray(pixels, mode="L").filter(ImageFilter.GaussianBlur(radius=3))
 
 
 def _build_sleeve_trim_mask(parse_arr: np.ndarray) -> Image.Image:
     """
     L-mode mask of pixels BELOW the wrist in each arm column.
-    Used to restore the original wrist/hand area on jacket results so
+    Restores the original wrist/hand area on jacket results so
     over-long generated sleeves are hidden and the shirt cuff shows.
     """
     PH, PW = parse_arr.shape
-    arm_bool = np.isin(parse_arr, _ARM_CLASSES)
+    arm = _arm_bool(parse_arr)
     trim = np.zeros((PH, PW), dtype=np.uint8)
     for c in range(PW):
-        rows = np.where(arm_bool[:, c])[0]
+        rows = np.where(arm[:, c])[0]
         if len(rows) == 0:
             continue
         bottom = int(rows.max())
         if bottom + 1 < PH:
             trim[bottom + 1:, c] = 255
-    mask = Image.fromarray(trim, mode="L")
-    return mask.filter(ImageFilter.GaussianBlur(radius=4))
+    return Image.fromarray(trim, mode="L").filter(ImageFilter.GaussianBlur(radius=4))
 
 
 def _composite_original(
