@@ -69,8 +69,9 @@ def _extract_vest_with_sam2(fitdit_result: Image.Image, original: Image.Image) -
     Segment just the vest from the FitDiT result using SAM2, then composite
     the vest pixels onto the original model image.
 
-    Uses a foreground point in the upper-chest area (center width, ~28% down)
-    where the vest is most visually dominant.
+    Two foreground points on the left/right vest panels at ~40% height,
+    plus one background point at the V-neck shirt area, so SAM2 selects
+    the vest body and not the shirt showing through the neckline.
     """
     import torch
 
@@ -79,19 +80,23 @@ def _extract_vest_with_sam2(fitdit_result: Image.Image, original: Image.Image) -
 
     predictor = _get_sam2_predictor()
 
-    # Point in the chest area where the vest body is prominent
-    point = np.array([[w // 2, int(h * 0.28)]])
-    label = np.array([1])  # 1 = foreground
+    # Foreground: left panel, right panel of vest (both at ~40% down)
+    # Background: center V-neck area where shirt shows through (~25% down)
+    points = np.array([
+        [int(w * 0.28), int(h * 0.40)],   # left vest panel
+        [int(w * 0.72), int(h * 0.40)],   # right vest panel
+        [int(w * 0.50), int(h * 0.25)],   # shirt at V-neck (background)
+    ])
+    labels = np.array([1, 1, 0])  # 1=foreground, 0=background
 
     with torch.inference_mode():
         predictor.set_image(np.array(fitdit_result.convert("RGB")))
         masks, scores, _ = predictor.predict(
-            point_coords=point,
-            point_labels=label,
+            point_coords=points,
+            point_labels=labels,
             multimask_output=True,
         )
 
-    # multimask_output gives 3 candidates; pick the one with highest score
     best = masks[int(np.argmax(scores))].astype(np.uint8) * 255
     vest_mask = Image.fromarray(best, "L")
     vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
