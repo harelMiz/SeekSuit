@@ -88,10 +88,10 @@ def _extract_vest_with_sam2(
     predictor = _get_sam2_predictor()
 
     # Two foreground points on the left/right vest panels at ~40% height.
-    # No background point — let SAM2 decide what's background.
+    # Model occupies roughly the center 35-65% of image width.
     points = np.array([
-        [int(w * 0.25), int(h * 0.40)],   # left vest panel
-        [int(w * 0.75), int(h * 0.40)],   # right vest panel
+        [int(w * 0.38), int(h * 0.40)],   # left vest panel
+        [int(w * 0.62), int(h * 0.40)],   # right vest panel
     ])
     labels = np.array([1, 1])
 
@@ -106,6 +106,12 @@ def _extract_vest_with_sam2(
     mask_arr = masks[0].astype(np.uint8) * 255
     coverage = mask_arr.mean()
     print(f"[SAM2] mask coverage: {coverage:.1f}/255")
+
+    # If coverage > 50% SAM2 likely selected the background — invert
+    if coverage > 127:
+        mask_arr = 255 - mask_arr
+        coverage = mask_arr.mean()
+        print(f"[SAM2] Inverted (was background). New coverage: {coverage:.1f}/255")
 
     if debug_dir:
         Image.fromarray(mask_arr, "L").save(
