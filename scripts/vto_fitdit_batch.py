@@ -64,43 +64,60 @@ def _get_sam2_predictor():
     return _sam2_predictor
 
 
-def _extract_vest_with_sam2(fitdit_result: Image.Image, original: Image.Image) -> Image.Image:
+def _extract_vest_with_sam2(
+    fitdit_result: Image.Image,
+    original: Image.Image,
+    debug_dir: Path | None = None,
+    stem: str = "vest",
+) -> Image.Image:
     """
     Segment just the vest from the FitDiT result using SAM2, then composite
     the vest pixels onto the original model image.
 
-    Two foreground points on the left/right vest panels at ~40% height,
-    plus one background point at the V-neck shirt area, so SAM2 selects
-    the vest body and not the shirt showing through the neckline.
+    Saves debug images (raw FitDiT result + SAM2 mask) when debug_dir is set.
+    Falls back to the plain FitDiT result if SAM2 returns an empty mask.
     """
     import torch
 
     w, h = fitdit_result.size
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
 
+    if debug_dir:
+        fitdit_result.save(str(debug_dir / f"{stem}_debug_fitdit_raw.jpg"), quality=92)
+
     predictor = _get_sam2_predictor()
 
-    # Foreground: left panel, right panel of vest (both at ~40% down)
-    # Background: center V-neck area where shirt shows through (~25% down)
+    # Two foreground points on the left/right vest panels at ~40% height.
+    # No background point — let SAM2 decide what's background.
     points = np.array([
-        [int(w * 0.28), int(h * 0.40)],   # left vest panel
-        [int(w * 0.72), int(h * 0.40)],   # right vest panel
-        [int(w * 0.50), int(h * 0.25)],   # shirt at V-neck (background)
+        [int(w * 0.25), int(h * 0.40)],   # left vest panel
+        [int(w * 0.75), int(h * 0.40)],   # right vest panel
     ])
-    labels = np.array([1, 1, 0])  # 1=foreground, 0=background
+    labels = np.array([1, 1])
 
     with torch.inference_mode():
         predictor.set_image(np.array(fitdit_result.convert("RGB")))
         masks, scores, _ = predictor.predict(
             point_coords=points,
             point_labels=labels,
-            multimask_output=True,
+            multimask_output=False,
         )
 
-    best = masks[int(np.argmax(scores))].astype(np.uint8) * 255
-    vest_mask = Image.fromarray(best, "L")
-    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
+    mask_arr = masks[0].astype(np.uint8) * 255
+    coverage = mask_arr.mean()
+    print(f"[SAM2] mask coverage: {coverage:.1f}/255")
 
+    if debug_dir:
+        Image.fromarray(mask_arr, "L").save(
+            str(debug_dir / f"{stem}_debug_sam2_mask.jpg")
+        )
+
+    if coverage < 5:
+        print("[SAM2] Empty mask — returning plain FitDiT result")
+        return fitdit_result
+
+    vest_mask = Image.fromarray(mask_arr, "L")
+    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
     return Image.composite(fitdit_result, orig, vest_mask)
 
 
@@ -181,7 +198,7 @@ def main():
             )[0]
 
             if ptype == "VESTS":
-                result = _extract_vest_with_sam2(result, person_pil)
+                result = _extract_vest_with_sam2(result, person_pil, debug_dir=out_dir, stem=img_path.stem)
 
             result.save(out_path, quality=92)
             print("ok")
