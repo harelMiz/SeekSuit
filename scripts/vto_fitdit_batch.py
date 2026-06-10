@@ -43,7 +43,7 @@ MODEL_IMAGE = SCRIPTS_DIR.parent / "Management" / "Architecture" / "model.png"
 MODEL_ROOT = str(FITDIT_DIR)
 DEVICE     = "cuda:0"
 STEPS      = 20
-SCALE      = 2.0
+SCALE      = 1.5
 SEED       = 42
 RESOLUTION = "768x1024"
 
