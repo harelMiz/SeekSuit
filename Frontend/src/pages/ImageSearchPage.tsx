@@ -386,6 +386,7 @@ export default function ImageSearchPage() {
                         key={result.id}
                         product={toProduct(result)}
                         matchPercentage={Math.round(result.similarity * 100)}
+                        source="SEARCH_RESULT"
                       />
                     ))}
                   </div>

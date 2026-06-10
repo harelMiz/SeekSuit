@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { ArrowLeft, Pencil, Trash2, ImageOff, Sparkles } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import Layout from "../components/layout/Layout";
 import ProductCard from "../components/ui/ProductCard";
 import { getProduct, deleteProduct } from "../services/product.service";
+import { recordProductView } from "../services/insights.service";
 import api from "../services/api";
 import type { Product, ProductImage, ProductType, ProductStatus } from "../types/product";
 import { bestImageUrl, mainImage } from "../types/product";
@@ -49,6 +50,7 @@ function toProduct(r: SearchResult): Product {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLang();
   const { session } = useAuth();
   const isAdmin = session !== null;
@@ -72,6 +74,14 @@ export default function ProductDetailPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Record product view — skipped for admins
+  useEffect(() => {
+    if (!product?.id || isAdmin) return;
+    const state = location.state as { source?: string; searchQuery?: string } | null;
+    const source = (state?.source as "BROWSE" | "SEARCH_RESULT" | "SIMILAR") ?? "BROWSE";
+    recordProductView(product.id, source, state?.searchQuery).catch(() => {});
+  }, [product?.id]);
 
   useEffect(() => {
     if (!product?.id) return;

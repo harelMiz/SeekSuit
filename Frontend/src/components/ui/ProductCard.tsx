@@ -6,15 +6,18 @@ import { mainImage, bestImageUrl } from "../../types/product";
 
 interface ProductCardProps {
   product: Product;
-  matchPercentage?: number; // shown in AI search results (Step 7)
+  matchPercentage?: number;
+  source?: "BROWSE" | "SEARCH_RESULT" | "SIMILAR";
+  searchQuery?: string;
 }
 
-export default function ProductCard({ product, matchPercentage }: ProductCardProps) {
+export default function ProductCard({ product, matchPercentage, source = "BROWSE", searchQuery }: ProductCardProps) {
   const { t } = useLang();
 
   return (
     <Link
       to={`/products/${product.id}`}
+      state={{ source, searchQuery }}
       className="group block"
     >
       {/* Image container */}

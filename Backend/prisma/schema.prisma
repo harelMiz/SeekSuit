@@ -48,6 +48,7 @@ model Product {
   status      ProductStatus @default(IN_STOCK)
   attributes  Json?
   images      ProductImage[]
+  views       ProductView[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 }
@@ -88,4 +89,37 @@ enum JobStatus {
   PROCESSING
   DONE
   FAILED
+}
+
+enum QueryType {
+  TEXT
+  IMAGE
+  DETECT
+}
+
+enum ViewSource {
+  BROWSE
+  SEARCH_RESULT
+  SIMILAR
+}
+
+// Records every fashion-relevant search (written only after TEXT_ABSOLUTE_FLOOR passes).
+// ?skipLog=true on the request skips the write (for dev/admin testing).
+model SearchLog {
+  id            String    @id @default(uuid())
+  query         String?
+  queryType     QueryType
+  resultCount   Int
+  detectedColor String?
+  createdAt     DateTime  @default(now())
+}
+
+// Records product page views from public users (skipped when admin is logged in).
+model ProductView {
+  id          String     @id @default(uuid())
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source      ViewSource
+  searchQuery String?
+  createdAt   DateTime   @default(now())
 }

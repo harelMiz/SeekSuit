@@ -1,6 +1,44 @@
 import { Request, Response } from 'express';
 import * as aiService from '../services/ai.service';
 import prisma from '../lib/prisma';
+import { createClient } from '@supabase/supabase-js';
+
+let _supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase() {
+  if (!_supabase) _supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  return _supabase;
+}
+
+// Skip logging if request has a valid admin JWT — prevents admin actions from polluting analytics.
+// Runs fire-and-forget; response is already sent before this resolves.
+async function logSearchAsync(req: Request, data: {
+  query?: string | null;
+  queryType: 'TEXT' | 'IMAGE' | 'DETECT';
+  resultCount: number;
+  detectedColor?: string | null;
+}): Promise<void> {
+  const auth = req.headers.authorization;
+  if (auth?.startsWith('Bearer ')) {
+    const { data: { user } } = await getSupabase().auth.getUser(auth.slice(7));
+    const meta = user?.app_metadata ?? {};
+    if (meta.role === 'admin' || meta.is_admin === true) return;
+  }
+  await prisma.searchLog.create({ data: {
+    query: data.query ?? null,
+    queryType: data.queryType,
+    resultCount: data.resultCount,
+    detectedColor: data.detectedColor ?? null,
+  }});
+}
+
+function logSearch(req: Request, data: {
+  query?: string | null;
+  queryType: 'TEXT' | 'IMAGE' | 'DETECT';
+  resultCount: number;
+  detectedColor?: string | null;
+}): void {
+  logSearchAsync(req, data).catch(() => {});
+}
 
 const DEFAULT_LIMIT = 8;
 const COLOR_BOOST = 0.20;
@@ -196,6 +234,7 @@ export const detectItems = async (req: Request, res: Response) => {
 
   try {
     const result = await aiService.detectItems(file.buffer, file.originalname || 'query.jpg');
+    logSearch(req, { queryType: 'DETECT', resultCount: result.items.length });
     res.json(result);
   } catch (err: any) {
     res.status(502).json({ error: `Detection failed: ${err.message}` });
@@ -358,6 +397,7 @@ export const searchByText = async (req: Request, res: Response) => {
     if (patternFiltered.length > 0) results = patternFiltered;
   }
 
+  logSearch(req, { query: query.trim(), queryType: 'TEXT', resultCount: results.length, detectedColor: detectedColor });
   res.json({ results });
 };
 
@@ -485,5 +525,6 @@ export const searchByImage = async (req: Request, res: Response) => {
     if (colorFiltered.length >= 1) results = colorFiltered;
   }
 
+  logSearch(req, { queryType: 'IMAGE', resultCount: results.length, detectedColor: dominantColor });
   res.json({ results, dominantColor });
 };

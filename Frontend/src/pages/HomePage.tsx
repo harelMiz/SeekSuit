@@ -467,6 +467,8 @@ export default function HomePage() {
                               100
                             )
                       }
+                      source="SEARCH_RESULT"
+                      searchQuery={searchMode === "text" ? textQuery : undefined}
                     />
                   ))}
                 </div>
