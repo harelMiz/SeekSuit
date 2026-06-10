@@ -1,13 +1,6 @@
 """
 FitDiT batch VTO — puts JACKETS and VESTS on the model (upper-body only).
 
-The model image should already have pants in the desired color.
-Generate one model image per pants color and run this script with each.
-
-For VESTS: the inpainting mask is narrowed to torso-only (outer 25% of
-columns zeroed out) so FitDiT never touches the arm area and the original
-shirt sleeves are preserved automatically.
-
 Setup (run once):
   python scripts/vto_fitdit_download.py
 
@@ -19,14 +12,13 @@ Usage:
 """
 
 import sys
-import copy
 import types
 import argparse
 import os
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 FITDIT_DIR = Path("/workspace/FitDiT")
 sys.path.insert(0, str(FITDIT_DIR))
@@ -51,66 +43,6 @@ SEED       = 42
 RESOLUTION = "768x1024"
 
 UPPER_TYPES = {"JACKETS", "VESTS"}
-
-
-_VEST_COLOR_TOLERANCE = 55   # max Euclidean distance in RGB to match vest color
-
-
-def _vest_dominant_color(garment_img: Image.Image) -> np.ndarray:
-    """Return the mean RGB color of the vest, excluding near-white background."""
-    arr = np.array(garment_img.convert("RGB"))
-    not_bg = ~((arr[:, :, 0] > 220) & (arr[:, :, 1] > 220) & (arr[:, :, 2] > 220))
-    pixels = arr[not_bg]
-    return pixels.mean(axis=0) if len(pixels) > 0 else np.array([100, 100, 100])
-
-
-def _paste_vest_onto_original(
-    fitdit_result: Image.Image,
-    original: Image.Image,
-    garment_img: Image.Image,
-    fitdit,
-) -> Image.Image:
-    """
-    Extract only the vest from the FitDiT result and paste it onto the original.
-
-    Uses the garment image's dominant color to identify vest pixels in the result,
-    then constrains the mask with pants/arm boundaries from ATR parsing.
-    """
-    w, h = fitdit_result.size
-    orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
-
-    parsing = getattr(fitdit, "parsing_model", None)
-    if parsing is None:
-        from preprocess.humanparsing.run_parsing import Parsing
-        parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
-
-    # Arms from FitDiT result → exclude from vest mask
-    parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
-    arm_bool = np.isin(np.array(parse_result), [14, 15])
-    arm_mask = np.array(
-        Image.fromarray(arm_bool.astype(np.uint8) * 255, mode="L")
-        .filter(ImageFilter.MaxFilter(size=11))
-        .resize((w, h), Image.BILINEAR)
-    ) > 128
-
-    # Pants top from original → clamp vest mask above this row
-    parse_orig, _ = parsing(original.convert("RGB").resize((384, 512)))
-    pants_rows = np.where((np.array(parse_orig) == 6).any(axis=1))[0]
-    pants_top_y = int(pants_rows.min() * h / 512) if len(pants_rows) > 0 else h
-
-    # Vest color from garment image → find matching pixels in FitDiT result
-    vest_color = _vest_dominant_color(garment_img)
-    result_arr = np.array(fitdit_result).astype(float)
-    dist = np.sqrt(((result_arr - vest_color) ** 2).mean(axis=2))
-    vest_bool = (dist < _VEST_COLOR_TOLERANCE) & ~arm_mask
-    vest_bool[pants_top_y:, :] = False
-
-    vest_mask = Image.fromarray(vest_bool.astype(np.uint8) * 255, mode="L")
-    vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=11))  # fill holes
-    vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=5))   # remove noise
-    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=2))
-
-    return Image.composite(fitdit_result, orig, vest_mask)
 
 
 def get_person_path() -> Path:
@@ -156,8 +88,6 @@ def main():
     print("Loading FitDiT...")
     fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
 
-    person_pil = Image.open(person_path).convert("RGB")
-
     print(f"\n{len(samples)} garment(s)...\n")
 
     cached_mask = None
@@ -188,10 +118,6 @@ def main():
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
-
-            if ptype == "VESTS":
-                garment_img = Image.open(img_path).convert("RGB")
-                result = _paste_vest_onto_original(result, person_pil, garment_img, fitdit)
 
             result.save(out_path, quality=92)
             print("ok")
