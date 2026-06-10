@@ -121,7 +121,7 @@ def _extract_vest_with_sam2(
         return fitdit_result
 
     vest_mask = Image.fromarray(mask_arr, "L")
-    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=4))
+    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
     return Image.composite(fitdit_result, orig, vest_mask)
 
 
