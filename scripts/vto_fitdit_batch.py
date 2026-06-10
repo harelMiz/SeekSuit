@@ -64,9 +64,49 @@ def _get_sam2_predictor():
     return _sam2_predictor
 
 
+def _sam2_points_from_atr(fitdit_result: Image.Image, fitdit, w: int, h: int):
+    """
+    Use ATR parsing (class 4 = upper clothes) on the FitDiT result to find
+    the vest region, then return dynamic SAM2 foreground points.
+    Returns two (x, y) points: left-panel centroid and right-panel centroid.
+    Falls back to fixed percentages if ATR finds nothing.
+    """
+    parsing = getattr(fitdit, "parsing_model", None)
+    if parsing is None:
+        from preprocess.humanparsing.run_parsing import Parsing
+        parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
+
+    parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
+    upper = np.array(parse_result) == 4  # class 4 = upper clothes
+
+    ys, xs = np.where(upper)
+    if len(xs) < 10:
+        print("[ATR] No upper-body pixels found, using fixed fallback points")
+        return (int(w * 0.38), int(h * 0.40)), (int(w * 0.62), int(h * 0.40))
+
+    mid = upper.shape[1] // 2
+    left_mask  = xs < mid
+    right_mask = xs >= mid
+
+    scale_x, scale_y = w / 384, h / 512
+
+    if left_mask.any() and right_mask.any():
+        lx = int(xs[left_mask].mean()  * scale_x)
+        ly = int(ys[left_mask].mean()  * scale_y)
+        rx = int(xs[right_mask].mean() * scale_x)
+        ry = int(ys[right_mask].mean() * scale_y)
+    else:
+        lx, ly = int(w * 0.38), int(h * 0.40)
+        rx, ry = int(w * 0.62), int(h * 0.40)
+
+    print(f"[ATR] Vest points: L=({lx},{ly})  R=({rx},{ry})")
+    return (lx, ly), (rx, ry)
+
+
 def _extract_vest_with_sam2(
     fitdit_result: Image.Image,
     original: Image.Image,
+    fitdit,
     debug_dir: Path | None = None,
     stem: str = "vest",
 ) -> Image.Image:
@@ -74,8 +114,8 @@ def _extract_vest_with_sam2(
     Segment just the vest from the FitDiT result using SAM2, then composite
     the vest pixels onto the original model image.
 
-    Saves debug images (raw FitDiT result + SAM2 mask) when debug_dir is set.
-    Falls back to the plain FitDiT result if SAM2 returns an empty mask.
+    SAM2 foreground points are derived dynamically from ATR parsing so they
+    always land on the vest regardless of model pose.
     """
     import torch
 
@@ -87,12 +127,8 @@ def _extract_vest_with_sam2(
 
     predictor = _get_sam2_predictor()
 
-    # Two foreground points on the left/right vest panels at ~40% height.
-    # Model occupies roughly the center 35-65% of image width.
-    points = np.array([
-        [int(w * 0.38), int(h * 0.40)],   # left vest panel
-        [int(w * 0.62), int(h * 0.40)],   # right vest panel
-    ])
+    (lx, ly), (rx, ry) = _sam2_points_from_atr(fitdit_result, fitdit, w, h)
+    points = np.array([[lx, ly], [rx, ry]])
     labels = np.array([1, 1])
 
     with torch.inference_mode():
@@ -206,7 +242,7 @@ def main():
             )[0]
 
             if ptype == "VESTS":
-                result = _extract_vest_with_sam2(result, person_pil, debug_dir=debug_dir, stem=img_path.stem)
+                result = _extract_vest_with_sam2(result, person_pil, fitdit, debug_dir=debug_dir, stem=img_path.stem)
 
             result.save(out_path, quality=92)
             print("ok")
