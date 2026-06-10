@@ -100,12 +100,10 @@ def _extract_vest_with_sam2(
         masks, scores, _ = predictor.predict(
             point_coords=points,
             point_labels=labels,
-            multimask_output=True,
+            multimask_output=False,
         )
 
-    # masks[0]=smallest, masks[1]=medium, masks[2]=largest
-    # Use largest to capture the full vest including shoulder straps
-    mask_arr = masks[2].astype(np.uint8) * 255
+    mask_arr = masks[0].astype(np.uint8) * 255
     coverage = mask_arr.mean()
     print(f"[SAM2] mask coverage: {coverage:.1f}/255")
 
