@@ -88,7 +88,11 @@ def _arm_bool(parse_arr: np.ndarray) -> np.ndarray:
 def _build_arm_mask(parse_arr: np.ndarray) -> Image.Image:
     """L-mode mask of the arm/sleeve region for vest post-processing."""
     pixels = _arm_bool(parse_arr).astype(np.uint8) * 255
-    return Image.fromarray(pixels, mode="L").filter(ImageFilter.GaussianBlur(radius=3))
+    mask = Image.fromarray(pixels, mode="L")
+    # Dilate to fill the arm region solidly, then blur only the edges
+    mask = mask.filter(ImageFilter.MaxFilter(size=11))
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=3))
+    return mask
 
 
 def _build_sleeve_trim_mask(parse_arr: np.ndarray) -> Image.Image:
