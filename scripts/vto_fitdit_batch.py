@@ -53,34 +53,50 @@ RESOLUTION = "768x1024"
 UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
-_VEST_DIFF_THRESHOLD = 30  # pixel difference below this = shirt/unchanged area
-
-
 def _paste_vest_onto_original(
     fitdit_result: Image.Image,
     original: Image.Image,
+    fitdit,
 ) -> Image.Image:
     """
-    Detect the vest region by pixel difference: the vest is where the FitDiT
-    result differs most from the original (colored vest vs white shirt).
-    Only those changed pixels are composited onto the original, preserving
-    the shirt and arms everywhere else.
+    Take the vest VTO result and composite only the vest body onto the original.
+
+    Steps:
+      1. Parse the FitDiT result to find arms (class 14/15) → restore from original.
+      2. Within the non-arm area, use pixel diff to isolate the vest from the
+         FitDiT-generated shirt (vest = large diff vs original white shirt).
     """
     w, h = fitdit_result.size
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
+    result_arr = np.array(fitdit_result)
+    orig_arr   = np.array(orig)
 
-    diff = np.abs(
-        np.array(fitdit_result).astype(np.int16) -
-        np.array(orig).astype(np.int16)
-    ).mean(axis=2)
+    # --- Step 1: arm mask from FitDiT result ---
+    parsing = getattr(fitdit, "parsing_model", None)
+    if parsing is None:
+        from preprocess.humanparsing.run_parsing import Parsing
+        parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
 
-    vest_raw = (diff > _VEST_DIFF_THRESHOLD).astype(np.uint8) * 255
-    mask = Image.fromarray(vest_raw, mode="L")
-    mask = mask.filter(ImageFilter.MaxFilter(size=7))   # fill small holes
-    mask = mask.filter(ImageFilter.MinFilter(size=5))   # clean up noise
-    mask = mask.filter(ImageFilter.GaussianBlur(radius=1))  # soft edge only
+    parse_out, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
+    arm_bool = np.isin(np.array(parse_out), [14, 15])
+    arm_mask  = np.array(
+        Image.fromarray(arm_bool.astype(np.uint8) * 255, mode="L")
+        .filter(ImageFilter.MaxFilter(size=11))
+        .resize((w, h), Image.BILINEAR)
+    ) > 128  # True = arm pixels → keep original
 
-    return Image.composite(fitdit_result, orig, mask)
+    # --- Step 2: vest mask by pixel diff (vest color vs white shirt) ---
+    diff = np.abs(result_arr.astype(np.int16) - orig_arr.astype(np.int16)).mean(axis=2)
+    vest_bool = (diff > 60) & ~arm_mask  # high diff + not arm
+
+    vest_raw = vest_bool.astype(np.uint8) * 255
+    vest_mask = Image.fromarray(vest_raw, mode="L")
+    vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=9))   # fill holes
+    vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=5))   # remove noise
+    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
+
+    # Apply: where vest_mask=255 use FitDiT result, else use original
+    return Image.composite(fitdit_result, orig, vest_mask)
 
 
 def get_person_path() -> Path:
@@ -160,7 +176,7 @@ def main():
             )[0]
 
             if ptype == "VESTS":
-                result = _paste_vest_onto_original(result, person_pil)
+                result = _paste_vest_onto_original(result, person_pil, fitdit)
 
             result.save(out_path, quality=92)
             print("ok")
