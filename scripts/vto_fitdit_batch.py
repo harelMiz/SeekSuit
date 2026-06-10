@@ -72,13 +72,13 @@ def _parse_person(parsing, person_img: Image.Image) -> np.ndarray:
 def _arm_bool(parse_arr: np.ndarray) -> np.ndarray:
     """
     Boolean mask of the arm/sleeve region.
-    Long-sleeve shirts are usually classified as upper-clothes (class 4) rather
-    than arm (14/15), so we include class 4 pixels in the outer 25% of columns
-    where sleeves actually appear.
+    Long-sleeve shirt sleeves are classified as upper-clothes (class 4).
+    We include class 4 + arm (14/15) in the outer 40% of columns where
+    sleeves appear, covering the full arm from shoulder to wrist.
     """
     PH, PW = parse_arr.shape
     arm = np.isin(parse_arr, _ARM_CLASSES)
-    outer = int(PW * 0.25)
+    outer = int(PW * 0.40)
     upper = (parse_arr == 4)
     arm[:, :outer] |= upper[:, :outer]
     arm[:, -outer:] |= upper[:, -outer:]
@@ -89,8 +89,8 @@ def _build_arm_mask(parse_arr: np.ndarray) -> Image.Image:
     """L-mode mask of the arm/sleeve region for vest post-processing."""
     pixels = _arm_bool(parse_arr).astype(np.uint8) * 255
     mask = Image.fromarray(pixels, mode="L")
-    # Dilate to fill the arm region solidly, then blur only the edges
-    mask = mask.filter(ImageFilter.MaxFilter(size=11))
+    # Dilate to fill arm region solidly, then blur only the edges
+    mask = mask.filter(ImageFilter.MaxFilter(size=19))
     mask = mask.filter(ImageFilter.GaussianBlur(radius=3))
     return mask
 
