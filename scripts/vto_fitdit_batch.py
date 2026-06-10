@@ -64,11 +64,11 @@ def _get_sam2_predictor():
     return _sam2_predictor
 
 
-def _sam2_points_from_atr(fitdit_result: Image.Image, fitdit, w: int, h: int):
+def _atr_upper_mask(fitdit_result: Image.Image, fitdit, w: int, h: int):
     """
-    Use ATR parsing (class 4 = upper clothes) on the FitDiT result to find
-    the vest region, then return dynamic SAM2 foreground points.
-    Returns two (x, y) points: left-panel centroid and right-panel centroid.
+    Run ATR parsing on the FitDiT result and return:
+      - points: ((lx,ly), (rx,ry)) — left/right centroids of class-4 region
+      - upper_bool: (h, w) boolean array of class-4 pixels at full image size
     Falls back to fixed percentages if ATR finds nothing.
     """
     parsing = getattr(fitdit, "parsing_model", None)
@@ -79,28 +79,33 @@ def _sam2_points_from_atr(fitdit_result: Image.Image, fitdit, w: int, h: int):
     parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
     upper = np.array(parse_result) == 4  # class 4 = upper clothes
 
+    # Scale ATR mask to full image size
+    upper_full = np.array(
+        Image.fromarray(upper.astype(np.uint8) * 255, "L")
+        .resize((w, h), Image.BILINEAR)
+    ) > 128
+
     ys, xs = np.where(upper)
     if len(xs) < 10:
         print("[ATR] No upper-body pixels found, using fixed fallback points")
-        return (int(w * 0.38), int(h * 0.40)), (int(w * 0.62), int(h * 0.40))
+        return (int(w * 0.38), int(h * 0.40)), (int(w * 0.62), int(h * 0.40)), upper_full
 
     mid = upper.shape[1] // 2
-    left_mask  = xs < mid
-    right_mask = xs >= mid
-
+    left_m  = xs < mid
+    right_m = xs >= mid
     scale_x, scale_y = w / 384, h / 512
 
-    if left_mask.any() and right_mask.any():
-        lx = int(xs[left_mask].mean()  * scale_x)
-        ly = int(ys[left_mask].mean()  * scale_y)
-        rx = int(xs[right_mask].mean() * scale_x)
-        ry = int(ys[right_mask].mean() * scale_y)
+    if left_m.any() and right_m.any():
+        lx = int(xs[left_m].mean()  * scale_x)
+        ly = int(ys[left_m].mean()  * scale_y)
+        rx = int(xs[right_m].mean() * scale_x)
+        ry = int(ys[right_m].mean() * scale_y)
     else:
         lx, ly = int(w * 0.38), int(h * 0.40)
         rx, ry = int(w * 0.62), int(h * 0.40)
 
     print(f"[ATR] Vest points: L=({lx},{ly})  R=({rx},{ry})")
-    return (lx, ly), (rx, ry)
+    return (lx, ly), (rx, ry), upper_full
 
 
 def _extract_vest_with_sam2(
@@ -127,7 +132,7 @@ def _extract_vest_with_sam2(
 
     predictor = _get_sam2_predictor()
 
-    (lx, ly), (rx, ry) = _sam2_points_from_atr(fitdit_result, fitdit, w, h)
+    (lx, ly), (rx, ry), atr_upper = _atr_upper_mask(fitdit_result, fitdit, w, h)
     points = np.array([[lx, ly], [rx, ry]])
     labels = np.array([1, 1])
 
@@ -156,6 +161,18 @@ def _extract_vest_with_sam2(
         print("[SAM2] Empty mask — returning plain FitDiT result")
         return fitdit_result
 
+    # Extend mask upward into shoulder area using ATR class-4 region.
+    # SAM2 handles the vest body accurately; ATR fills the shoulder straps
+    # that SAM2 misses (everything above the topmost SAM2 row).
+    sam2_bool = mask_arr > 128
+    top_rows = np.where(sam2_bool.any(axis=1))[0]
+    if len(top_rows) > 0:
+        top_row = top_rows.min()
+        shoulder_ext = atr_upper.copy()
+        shoulder_ext[top_row:, :] = False        # only extend above SAM2 boundary
+        sam2_bool = sam2_bool | shoulder_ext
+
+    mask_arr = sam2_bool.astype(np.uint8) * 255
     vest_mask = Image.fromarray(mask_arr, "L")
     vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=15))  # fill holes
     vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=13))  # restore outer edge
