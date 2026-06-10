@@ -171,6 +171,26 @@ def _extract_vest_with_sam2(
     return Image.composite(fitdit_result, orig, vest_mask)
 
 
+def _composite_with_fitdit_mask(
+    fitdit_result: Image.Image,
+    original: Image.Image,
+    pre_mask: dict,
+) -> Image.Image:
+    """
+    Paste only the garment area from the FitDiT result onto the original,
+    using FitDiT's own inpainting mask. Everything outside the mask keeps
+    the original image quality.
+    """
+    w, h = fitdit_result.size
+    orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
+
+    mask_arr = pre_mask["layers"][0][:, :, 3]   # alpha: 255 = garment region
+    garment_mask = Image.fromarray(mask_arr).resize((w, h), Image.BILINEAR)
+    garment_mask = garment_mask.filter(ImageFilter.GaussianBlur(radius=2))
+
+    return Image.composite(fitdit_result, orig, garment_mask)
+
+
 def get_person_path() -> Path:
     for p in [MODEL_IMAGE, MODEL_IMAGE.with_suffix(".jpg")]:
         if p.exists():
@@ -249,8 +269,10 @@ def main():
                 resolution=RESOLUTION,
             )[0]
 
-            if ptype in ("VESTS", "JACKETS"):
+            if ptype == "VESTS":
                 result = _extract_vest_with_sam2(result, person_pil, fitdit, ptype=ptype, debug_dir=debug_dir, stem=img_path.stem)
+            elif ptype == "JACKETS":
+                result = _composite_with_fitdit_mask(result, person_pil, pre_mask)
 
             result.save(out_path, quality=92)
             print("ok")
