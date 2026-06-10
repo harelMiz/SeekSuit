@@ -1,12 +1,10 @@
 """
 FitDiT batch VTO — puts JACKETS and VESTS on the model (upper-body only).
 
-Both types: SAM2 segments just the garment from the FitDiT result (dynamic ATR
-points), then composites onto the original model image so the face, shirt,
-background and pants stay at full original resolution and quality.
-
-VESTS:   MaxFilter+MinFilter applied to fill holes in the vest body.
-JACKETS: No hole-filling (preserves lapel/collar opening).
+JACKETS: FitDiT result composited onto original using FitDiT's own pre_mask,
+         preserving original resolution for face/background/pants.
+VESTS:   SAM2 segments just the vest from the FitDiT result (dynamic ATR points),
+         then composites onto original to preserve the original shirt and arms.
 
 Setup (run once):
   python scripts/vto_fitdit_download.py
@@ -55,7 +53,24 @@ UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
 # ---------------------------------------------------------------------------
-# SAM2 with dynamic ATR points — shared by JACKETS and VESTS
+# JACKETS — composite via FitDiT pre_mask (preserves original resolution)
+# ---------------------------------------------------------------------------
+
+def _composite_jacket(
+    fitdit_result: Image.Image,
+    original: Image.Image,
+    pre_mask: dict,
+) -> Image.Image:
+    orig = original.convert("RGB")
+    ow, oh = orig.size
+    fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
+    mask_arr = pre_mask["layers"][0][:, :, 3]   # 255 = garment region
+    garment_mask = Image.fromarray(mask_arr, "L").filter(ImageFilter.GaussianBlur(radius=3))
+    return Image.composite(fitdit_full, orig, garment_mask)
+
+
+# ---------------------------------------------------------------------------
+# VESTS — SAM2 with dynamic ATR points
 # ---------------------------------------------------------------------------
 
 _sam2_predictor = None
@@ -240,7 +255,9 @@ def main():
                 resolution=RESOLUTION,
             )[0]
 
-            if ptype in ("JACKETS", "VESTS"):
+            if ptype == "JACKETS":
+                result = _composite_jacket(result, person_pil, pre_mask)
+            elif ptype == "VESTS":
                 result = _composite_with_sam2(result, person_pil, fitdit, ptype, debug_dir=debug_dir, stem=img_path.stem)
 
             result.save(out_path, quality=92)
