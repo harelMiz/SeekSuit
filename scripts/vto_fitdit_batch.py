@@ -63,7 +63,12 @@ def _composite_with_fitdit_mask(
     w, h = fitdit_result.size
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
 
-    mask_arr = pre_mask["layers"][0][:, :, 3]   # alpha: 255 = garment region
+    layer = pre_mask["layers"][0]
+    print(f"[mask debug] type={type(layer)}, shape={getattr(layer, 'shape', None)}, mode={getattr(layer, 'mode', None)}")
+
+    mask_arr = layer[:, :, 3]   # alpha: 255 = garment region
+    print(f"[mask debug] mask_arr shape={mask_arr.shape}, min={mask_arr.min()}, max={mask_arr.max()}, mean={mask_arr.mean():.1f}")
+
     garment_mask = Image.fromarray(mask_arr).resize((w, h), Image.BILINEAR)
     garment_mask = garment_mask.filter(ImageFilter.GaussianBlur(radius=2))
 
