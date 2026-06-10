@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Upload, Settings, HelpCircle, LogOut, Bell, Search } from "lucide-react";
+import { LayoutDashboard, Package, Upload, Settings, HelpCircle, LogOut, Bell, Search, Sun, Moon } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 
@@ -22,6 +22,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
 
+  const [isDark, setIsDark] = useState(() =>
+    localStorage.getItem("seeksuit_admin_theme") !== "light"
+  );
+
+  function toggleTheme() {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem("seeksuit_admin_theme", next ? "dark" : "light");
+  }
+
   async function handleLogout() {
     await signOut();
     navigate("/admin/login");
@@ -31,7 +41,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return exact ? location.pathname === to : location.pathname.startsWith(to);
   }
 
-  // Derive page title from path
   const pageTitle = (() => {
     if (location.pathname === "/admin") return t("admin.dashboard");
     if (location.pathname.startsWith("/admin/inventory")) return t("admin.inventory");
@@ -89,7 +98,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Link>
           ))}
 
-          {/* Logout button */}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 transition-colors mt-3"
@@ -100,10 +108,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* ── Main area ── */}
-      <div className="ml-64 flex-1 min-h-screen flex flex-col">
-        {/* Sticky top bar */}
-        <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-40 px-12 py-5 border-b border-outline-variant flex items-center justify-between">
+      {/* ── Main area (dark/light theme via CSS variable overrides) ── */}
+      <div className={`ml-64 flex-1 min-h-screen flex flex-col ${isDark ? "admin-dark" : ""}`}>
+        {/* Sticky top bar — uses surface variables so it adapts to theme */}
+        <header className="bg-surface sticky top-0 z-40 px-12 py-4 border-b-2 border-outline-variant flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="w-1 h-7 rounded-full bg-gradient-to-b from-tertiary-fixed to-tertiary-fixed-dim" />
             <h2 className="font-headline text-3xl font-bold text-on-surface tracking-tight">
@@ -122,14 +130,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               />
             </div>
 
+            {/* Dark/light toggle */}
+            <button
+              onClick={toggleTheme}
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface hover:border-on-surface/40 transition-colors"
+            >
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
             {/* Bell */}
-            <button className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-primary transition-colors">
+            <button className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface transition-colors">
               <Bell size={16} />
             </button>
 
             {/* Account avatar */}
-            <div className="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center">
-              <span className="text-xs font-bold text-on-primary">A</span>
+            <div className="w-9 h-9 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center">
+              <span className="text-xs font-bold text-on-surface">A</span>
             </div>
           </div>
         </header>

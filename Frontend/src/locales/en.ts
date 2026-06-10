@@ -161,6 +161,20 @@ export const en: Record<string, string> = {
   "search.showMore": "Show more results",
   "search.backToPicker": "Back to item selection",
 
+  // Insights / AI Agent
+  "insights.title": "AI Insights",
+  "insights.loading": "Analyzing store data...",
+  "insights.error": "Could not load insights",
+  "insights.retry": "Retry",
+  "insights.searchesToday": "Searches Today",
+  "insights.missingImages": "Missing Images",
+  "insights.chatTitle": "Ask the Agent",
+  "insights.chatPlaceholder": "Ask about inventory, trends...",
+  "insights.chatSend": "Send",
+  "insights.chatLoading": "Thinking...",
+  "insights.chatOpen": "Ask AI Agent",
+  "insights.chatClose": "Close",
+
   // Common
   "common.loading": "Loading...",
   "common.error": "An error occurred, please try again",

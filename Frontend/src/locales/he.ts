@@ -161,6 +161,20 @@ export const he: Record<string, string> = {
   "admin.loginError": "אימייל או סיסמה שגויים. אנא נסה שנית.",
   "admin.logout": "התנתקות",
 
+  // Insights / AI Agent
+  "insights.title": "תובנות AI",
+  "insights.loading": "מנתח נתוני חנות...",
+  "insights.error": "לא ניתן לטעון תובנות",
+  "insights.retry": "נסה שנית",
+  "insights.searchesToday": "חיפושים היום",
+  "insights.missingImages": "תמונות חסרות",
+  "insights.chatTitle": "שאל את הסוכן",
+  "insights.chatPlaceholder": "שאל על מלאי, מגמות...",
+  "insights.chatSend": "שלח",
+  "insights.chatLoading": "חושב...",
+  "insights.chatOpen": "שאל סוכן AI",
+  "insights.chatClose": "סגור",
+
   // Common
   "common.loading": "טוען...",
   "common.error": "אירעה שגיאה, נסה שנית",

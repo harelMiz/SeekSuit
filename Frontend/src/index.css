@@ -94,6 +94,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── Admin dark theme ─── */
+/* Applied to the admin main area — overrides all CSS-variable-based Tailwind classes.
+   Sidebar is bg-neutral-900 (#171717); surface is slightly lighter for separation. */
+.admin-dark {
+  --color-surface: #151717;
+  --color-surface-container-lowest: #0d0f0f;
+  --color-surface-container-low: #1c1f1f;
+  --color-surface-container: #222525;
+  --color-surface-container-high: #292c2c;
+  --color-surface-container-highest: #303333;
+  --color-surface-variant: #1c1f1f;
+  --color-on-surface: #e8e6e5;
+  --color-on-surface-variant: #c8caca;
+  --color-primary: #e8e6e5;
+  --color-on-primary: #151717;
+  --color-primary-container: #222525;
+  --color-outline: #606464;
+  --color-outline-variant: #313535;
+  --color-secondary: #9a9c9c;
+  --color-error: #f47167;
+  --color-on-tertiary-container: #c8993e;
+}
+
+/* Dark scrollbar in admin area */
+.admin-dark ::-webkit-scrollbar-track { background: #151717; }
+.admin-dark ::-webkit-scrollbar-thumb { background: #363a3a; }
+.admin-dark { scrollbar-color: #363a3a #151717; }
+
 /* ─── Headline font helper ─── */
 .font-headline {
   font-family: var(--font-headline);

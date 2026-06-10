@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUpDown, X, Sparkles, Loader2 } from "lucide-react";
 import axios from "axios";
 import { useLang } from "../../context/LanguageContext";
@@ -19,6 +19,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export default function AdminInventoryPage() {
   const { t } = useLang();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -29,6 +30,7 @@ export default function AdminInventoryPage() {
   const [filterType, setFilterType] = useState<ProductType | "">("");
   const [filterColor, setFilterColor] = useState("");
   const [filterStatus, setFilterStatus] = useState<ProductStatus | "">("");
+  const [filterMissingImages, setFilterMissingImages] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<"type" | "color" | "status" | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -36,6 +38,13 @@ export default function AdminInventoryPage() {
   const jobStatusesRef = useRef<Record<string, JobStatus>>({});
   // Image lightbox: stores all images of the product + current index
   const [preview, setPreview] = useState<{ urls: string[]; name: string; idx: number } | null>(null);
+
+  // Read URL param on mount — ?filter=missing-images activates the missing images filter
+  useEffect(() => {
+    if (searchParams.get("filter") === "missing-images") {
+      setFilterMissingImages(true);
+    }
+  }, []);
 
   function loadProducts() {
     setLoading(true);
@@ -194,6 +203,7 @@ export default function AdminInventoryPage() {
     if (filterType && p.type !== filterType) return false;
     if (filterColor && p.color.toLowerCase() !== filterColor.toLowerCase()) return false;
     if (filterStatus && p.status !== filterStatus) return false;
+    if (filterMissingImages && !p.images.some((img) => img.rawUrl && !img.processedUrl)) return false;
     return true;
   });
   const sorted = [...filtered].sort((a, b) => {
@@ -205,7 +215,7 @@ export default function AdminInventoryPage() {
     }
     return sortDir === "asc" ? cmp : -cmp;
   });
-  const activeFilters = [filterType, filterColor, filterStatus].filter(Boolean).length;
+  const activeFilters = [filterType, filterColor, filterStatus, filterMissingImages || ""].filter(Boolean).length;
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -393,10 +403,23 @@ export default function AdminInventoryPage() {
               )}
             </div>
 
+            {/* Missing images toggle */}
+            <button
+              onClick={() => { setFilterMissingImages((v) => !v); setPage(1); }}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                filterMissingImages
+                  ? "bg-error/15 text-error"
+                  : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
+              }`}
+            >
+              <ImageOff size={11} />
+              Missing images
+            </button>
+
             {/* Clear active filters */}
             {activeFilters > 0 && (
               <button
-                onClick={() => { setFilterType(""); setFilterColor(""); setFilterStatus(""); setPage(1); }}
+                onClick={() => { setFilterType(""); setFilterColor(""); setFilterStatus(""); setFilterMissingImages(false); setSearchParams({}); setPage(1); }}
                 className="flex items-center gap-1 text-xs font-semibold text-error hover:opacity-70 transition-opacity ml-1 px-2 py-1.5 rounded-lg"
               >
                 <X size={11} />

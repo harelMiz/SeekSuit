@@ -113,3 +113,9 @@ export async function processAllImages(productId: string): Promise<void> {
 export async function processImage(imageId: string): Promise<void> {
   await axios.post(`${API_BASE}/api/jobs/image/${imageId}`);
 }
+
+// Queue AI background removal for every image that still lacks a processedUrl
+export async function processAllUnprocessed(): Promise<{ queued: number }> {
+  const { data } = await axios.post<{ queued: number }>(`${API_BASE}/api/jobs/process-all`);
+  return data;
+}
