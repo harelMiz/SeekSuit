@@ -161,15 +161,18 @@ def _extract_vest_with_sam2(
         print("[SAM2] Empty mask — returning plain FitDiT result")
         return fitdit_result
 
-    # Extend mask upward into shoulder area using ATR class-4 region.
-    # SAM2 handles the vest body accurately; ATR fills the shoulder straps
-    # that SAM2 misses (everything above the topmost SAM2 row).
+    # Extend mask upward into shoulder area using ATR class-4 region,
+    # but only on the left/right sides — exclude center to avoid pulling
+    # in the shirt collar / V-neck area.
     sam2_bool = mask_arr > 128
     top_rows = np.where(sam2_bool.any(axis=1))[0]
     if len(top_rows) > 0:
         top_row = top_rows.min()
         shoulder_ext = atr_upper.copy()
-        shoulder_ext[top_row:, :] = False        # only extend above SAM2 boundary
+        shoulder_ext[top_row:, :] = False        # only above SAM2 boundary
+        cx = w // 2
+        margin = int(w * 0.20)
+        shoulder_ext[:, cx - margin : cx + margin] = False   # exclude center
         sam2_bool = sam2_bool | shoulder_ext
 
     mask_arr = sam2_bool.astype(np.uint8) * 255
