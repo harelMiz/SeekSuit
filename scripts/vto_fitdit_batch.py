@@ -83,7 +83,7 @@ def _extract_vest_with_sam2(
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
 
     if debug_dir:
-        fitdit_result.save(str(debug_dir / f"{stem}_debug_fitdit_raw.jpg"), quality=92)
+        fitdit_result.save(str(debug_dir / f"{stem}_raw.jpg"), quality=92)
 
     predictor = _get_sam2_predictor()
 
@@ -116,9 +116,7 @@ def _extract_vest_with_sam2(
         print(f"[SAM2] Inverted (was background). New coverage: {coverage:.1f}/255")
 
     if debug_dir:
-        Image.fromarray(mask_arr, "L").save(
-            str(debug_dir / f"{stem}_debug_sam2_mask.jpg")
-        )
+        Image.fromarray(mask_arr, "L").save(str(debug_dir / f"{stem}_mask.jpg"))
 
     if coverage < 5:
         print("[SAM2] Empty mask — returning plain FitDiT result")
@@ -180,9 +178,11 @@ def main():
     ok = err = 0
 
     for ptype, img_path in samples:
-        out_dir = OUTPUT_DIR / ptype
-        out_dir.mkdir(exist_ok=True)
-        out_path = out_dir / f"{img_path.stem}_vto.jpg"
+        vto_dir   = OUTPUT_DIR / ptype / "vto"
+        debug_dir = OUTPUT_DIR / ptype / "debug"
+        vto_dir.mkdir(parents=True, exist_ok=True)
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        out_path = vto_dir / f"{img_path.stem}_vto.jpg"
 
         print(f"  [{ptype}] {img_path.stem} ... ", end="", flush=True)
         try:
@@ -206,7 +206,7 @@ def main():
             )[0]
 
             if ptype == "VESTS":
-                result = _extract_vest_with_sam2(result, person_pil, debug_dir=out_dir, stem=img_path.stem)
+                result = _extract_vest_with_sam2(result, person_pil, debug_dir=debug_dir, stem=img_path.stem)
 
             result.save(out_path, quality=92)
             print("ok")
