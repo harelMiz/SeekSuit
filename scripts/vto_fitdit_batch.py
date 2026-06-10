@@ -121,6 +121,8 @@ def _extract_vest_with_sam2(
         return fitdit_result
 
     vest_mask = Image.fromarray(mask_arr, "L")
+    vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=15))  # fill holes
+    vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=13))  # restore outer edge
     vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
     return Image.composite(fitdit_result, orig, vest_mask)
 
