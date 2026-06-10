@@ -54,26 +54,26 @@ def _composite_with_fitdit_mask(
     fitdit_result: Image.Image,
     original: Image.Image,
     pre_mask: dict,
+    debug_dir: Path | None = None,
+    stem: str = "garment",
 ) -> Image.Image:
-    """
-    Composite only the garment area onto the original at full resolution.
-
-    The original stays at its native resolution. The FitDiT result is upscaled
-    to match, then the pre_mask selects which pixels come from FitDiT vs original.
-    This preserves the original quality for face, background, pants, etc.
-    """
     orig = original.convert("RGB")
     ow, oh = orig.size
 
-    # Upscale FitDiT result to original resolution
     fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
 
-    # pre_mask alpha: 255 = garment region (already at original resolution)
     mask_arr = pre_mask["layers"][0][:, :, 3]
     garment_mask = Image.fromarray(mask_arr, "L")
     garment_mask = garment_mask.filter(ImageFilter.GaussianBlur(radius=3))
 
-    return Image.composite(fitdit_full, orig, garment_mask)
+    composite = Image.composite(fitdit_full, orig, garment_mask)
+
+    if debug_dir:
+        garment_mask.save(str(debug_dir / f"{stem}_premask.jpg"))
+        diff = np.abs(np.array(composite).astype(int) - np.array(fitdit_full).astype(int))
+        print(f"[composite] size={composite.size}  mean diff from FitDiT: {diff.mean():.2f}")
+
+    return composite
 
 
 def get_person_path() -> Path:
@@ -155,7 +155,7 @@ def main():
             )[0]
 
             if ptype in ("JACKETS", "VESTS"):
-                result = _composite_with_fitdit_mask(result, person_pil, pre_mask)
+                result = _composite_with_fitdit_mask(result, person_pil, pre_mask, debug_dir=debug_dir, stem=img_path.stem)
 
             result.save(out_path, quality=92)
             print("ok")
