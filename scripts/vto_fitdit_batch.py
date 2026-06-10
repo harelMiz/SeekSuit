@@ -166,6 +166,20 @@ def _extract_vest_with_sam2(
     vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=15))  # fill holes
     vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=13))  # restore outer edge
     vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
+
+    # Fade the top of the mask so the shoulder seam blends smoothly.
+    mask_np = np.array(vest_mask).astype(float)
+    rows_with_mask = np.where(mask_np.max(axis=1) > 10)[0]
+    if len(rows_with_mask) > 0:
+        top_row = rows_with_mask.min()
+        fade_rows = max(1, int(h * 0.06))   # fade over 6% of image height
+        for i in range(fade_rows):
+            row = top_row + i
+            if row >= h:
+                break
+            mask_np[row, :] *= i / fade_rows
+        vest_mask = Image.fromarray(mask_np.clip(0, 255).astype(np.uint8), "L")
+
     return Image.composite(fitdit_result, orig, vest_mask)
 
 
