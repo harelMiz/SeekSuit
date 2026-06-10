@@ -1,8 +1,13 @@
 """
 FitDiT batch VTO — puts JACKETS and VESTS on the model (upper-body only).
 
+For VESTS: after FitDiT generates the result, SAM2 segments just the vest
+(using a point prompt in the chest area), and the vest is composited onto
+the original model image so the original shirt and arms are preserved.
+
 Setup (run once):
   python scripts/vto_fitdit_download.py
+  pip install sam2
 
 Usage:
   cd /workspace/SeekSuit
@@ -18,7 +23,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 FITDIT_DIR = Path("/workspace/FitDiT")
 sys.path.insert(0, str(FITDIT_DIR))
@@ -43,6 +48,55 @@ SEED       = 42
 RESOLUTION = "768x1024"
 
 UPPER_TYPES = {"JACKETS", "VESTS"}
+
+_sam2_predictor = None
+
+
+def _get_sam2_predictor():
+    global _sam2_predictor
+    if _sam2_predictor is None:
+        import torch
+        from sam2.sam2_image_predictor import SAM2ImagePredictor
+        print("[SAM2] Loading model (first use — downloads ~300 MB)...")
+        _sam2_predictor = SAM2ImagePredictor.from_pretrained("facebook/sam2.1-hiera-large")
+        _sam2_predictor.model.eval()
+        print("[SAM2] Ready.")
+    return _sam2_predictor
+
+
+def _extract_vest_with_sam2(fitdit_result: Image.Image, original: Image.Image) -> Image.Image:
+    """
+    Segment just the vest from the FitDiT result using SAM2, then composite
+    the vest pixels onto the original model image.
+
+    Uses a foreground point in the upper-chest area (center width, ~28% down)
+    where the vest is most visually dominant.
+    """
+    import torch
+
+    w, h = fitdit_result.size
+    orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
+
+    predictor = _get_sam2_predictor()
+
+    # Point in the chest area where the vest body is prominent
+    point = np.array([[w // 2, int(h * 0.28)]])
+    label = np.array([1])  # 1 = foreground
+
+    with torch.inference_mode():
+        predictor.set_image(np.array(fitdit_result.convert("RGB")))
+        masks, scores, _ = predictor.predict(
+            point_coords=point,
+            point_labels=label,
+            multimask_output=True,
+        )
+
+    # multimask_output gives 3 candidates; pick the one with highest score
+    best = masks[int(np.argmax(scores))].astype(np.uint8) * 255
+    vest_mask = Image.fromarray(best, "L")
+    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
+
+    return Image.composite(fitdit_result, orig, vest_mask)
 
 
 def get_person_path() -> Path:
@@ -88,6 +142,8 @@ def main():
     print("Loading FitDiT...")
     fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
 
+    person_pil = Image.open(person_path).convert("RGB")
+
     print(f"\n{len(samples)} garment(s)...\n")
 
     cached_mask = None
@@ -118,6 +174,9 @@ def main():
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
+
+            if ptype == "VESTS":
+                result = _extract_vest_with_sam2(result, person_pil)
 
             result.save(out_path, quality=92)
             print("ok")
