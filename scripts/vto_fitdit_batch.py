@@ -143,6 +143,7 @@ def collect_samples() -> list:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--one", action="store_true", help="Run only the first garment")
+    parser.add_argument("--type", choices=["JACKETS", "VESTS"], help="Run only this garment type")
     args = parser.parse_args()
 
     person_path = get_person_path()
@@ -157,6 +158,8 @@ def main():
     if not samples:
         print(f"[ERROR] No images in {SAMPLES_DIR}")
         sys.exit(1)
+    if args.type:
+        samples = [(t, p) for t, p in samples if t == args.type]
     if args.one:
         samples = samples[:1]
         print("Quick test — 1 garment.\n")
@@ -169,10 +172,14 @@ def main():
     parsing   = _load_parsing(fitdit)
     parse_arr = _parse_person(parsing, person_pil)
     print(f"  Parse classes found: {np.unique(parse_arr).tolist()}")
-    print(f"  Arm pixels (cls 14+15): {np.isin(parse_arr, _ARM_CLASSES).sum()}")
+    print(f"  Raw arm pixels (cls 14+15): {np.isin(parse_arr, _ARM_CLASSES).sum()}")
     arm_mask    = _build_arm_mask(parse_arr)
     sleeve_trim = _build_sleeve_trim_mask(parse_arr)
-    print("Masks ready.\n")
+    print(f"  arm_mask nonzero (>10): {(np.array(arm_mask) > 10).sum()}")
+    print(f"  sleeve_trim nonzero (>10): {(np.array(sleeve_trim) > 10).sum()}")
+    arm_mask.save(str(OUTPUT_DIR / "debug_arm_mask.png"))
+    sleeve_trim.save(str(OUTPUT_DIR / "debug_sleeve_trim.png"))
+    print("Masks ready. (saved debug PNGs to vto_results_fitdit/)\n")
 
     print(f"{len(samples)} garment(s)...\n")
 
