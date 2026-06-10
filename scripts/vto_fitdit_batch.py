@@ -53,30 +53,33 @@ RESOLUTION = "768x1024"
 UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
+_VEST_DIFF_THRESHOLD = 30  # pixel difference below this = shirt/unchanged area
+
+
 def _paste_vest_onto_original(
     fitdit_result: Image.Image,
     original: Image.Image,
-    fitdit,
 ) -> Image.Image:
     """
-    Parse the FitDiT result to find the vest region (ATR class 4),
-    then paste only those pixels onto the original model image.
-    The original shirt and arms are preserved everywhere else.
+    Detect the vest region by pixel difference: the vest is where the FitDiT
+    result differs most from the original (colored vest vs white shirt).
+    Only those changed pixels are composited onto the original, preserving
+    the shirt and arms everywhere else.
     """
-    parsing = getattr(fitdit, "parsing_model", None)
-    if parsing is None:
-        from preprocess.humanparsing.run_parsing import Parsing
-        parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
-
-    parse_out, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
-    vest_pixels = (np.array(parse_out) == 4).astype(np.uint8) * 255
-    mask = Image.fromarray(vest_pixels, mode="L")
-    mask = mask.filter(ImageFilter.GaussianBlur(radius=2))
-
     w, h = fitdit_result.size
-    mask = mask.resize((w, h), Image.BILINEAR)
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
-    # Where mask=255: vest pixels from FitDiT result; where mask=0: original
+
+    diff = np.abs(
+        np.array(fitdit_result).astype(np.int16) -
+        np.array(orig).astype(np.int16)
+    ).mean(axis=2)
+
+    vest_raw = (diff > _VEST_DIFF_THRESHOLD).astype(np.uint8) * 255
+    mask = Image.fromarray(vest_raw, mode="L")
+    mask = mask.filter(ImageFilter.MaxFilter(size=7))   # fill small holes
+    mask = mask.filter(ImageFilter.MinFilter(size=5))   # clean up noise
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=1))  # soft edge only
+
     return Image.composite(fitdit_result, orig, mask)
 
 
@@ -157,7 +160,7 @@ def main():
             )[0]
 
             if ptype == "VESTS":
-                result = _paste_vest_onto_original(result, person_pil, fitdit)
+                result = _paste_vest_onto_original(result, person_pil)
 
             result.save(out_path, quality=92)
             print("ok")
