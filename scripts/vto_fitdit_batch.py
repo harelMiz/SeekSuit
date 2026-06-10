@@ -53,59 +53,63 @@ RESOLUTION = "768x1024"
 UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
+_VEST_COLOR_TOLERANCE = 55   # max Euclidean distance in RGB to match vest color
+
+
+def _vest_dominant_color(garment_img: Image.Image) -> np.ndarray:
+    """Return the mean RGB color of the vest, excluding near-white background."""
+    arr = np.array(garment_img.convert("RGB"))
+    not_bg = ~((arr[:, :, 0] > 220) & (arr[:, :, 1] > 220) & (arr[:, :, 2] > 220))
+    pixels = arr[not_bg]
+    return pixels.mean(axis=0) if len(pixels) > 0 else np.array([100, 100, 100])
+
+
 def _paste_vest_onto_original(
     fitdit_result: Image.Image,
     original: Image.Image,
+    garment_img: Image.Image,
     fitdit,
 ) -> Image.Image:
     """
-    Take the vest VTO result and composite only the vest body onto the original.
+    Extract only the vest from the FitDiT result and paste it onto the original.
 
-    Steps:
-      1. Parse the FitDiT result to find arms (class 14/15) → restore from original.
-      2. Within the non-arm area, use pixel diff to isolate the vest from the
-         FitDiT-generated shirt (vest = large diff vs original white shirt).
+    Uses the garment image's dominant color to identify vest pixels in the result,
+    then constrains the mask with pants/arm boundaries from ATR parsing.
     """
     w, h = fitdit_result.size
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
-    result_arr = np.array(fitdit_result)
-    orig_arr   = np.array(orig)
 
-    # --- Step 1: parse both images for arm + pants boundaries ---
     parsing = getattr(fitdit, "parsing_model", None)
     if parsing is None:
         from preprocess.humanparsing.run_parsing import Parsing
         parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
 
-    # Parse FitDiT result → arm mask (restore from original)
+    # Arms from FitDiT result → exclude from vest mask
     parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
     arm_bool = np.isin(np.array(parse_result), [14, 15])
-    arm_mask  = np.array(
+    arm_mask = np.array(
         Image.fromarray(arm_bool.astype(np.uint8) * 255, mode="L")
         .filter(ImageFilter.MaxFilter(size=11))
         .resize((w, h), Image.BILINEAR)
     ) > 128
 
-    # Parse original → find where pants start, block vest mask below that row
+    # Pants top from original → clamp vest mask above this row
     parse_orig, _ = parsing(original.convert("RGB").resize((384, 512)))
-    pants_bool = (np.array(parse_orig) == 6)
-    pants_rows = np.where(pants_bool.any(axis=1))[0]
-    pants_top_y = h  # default: no limit
-    if len(pants_rows) > 0:
-        pants_top_y = int(pants_rows.min() * h / 512)
+    pants_rows = np.where((np.array(parse_orig) == 6).any(axis=1))[0]
+    pants_top_y = int(pants_rows.min() * h / 512) if len(pants_rows) > 0 else h
 
-    # --- Step 2: vest mask by pixel diff (vest color vs white shirt) ---
-    diff = np.abs(result_arr.astype(np.int16) - orig_arr.astype(np.int16)).mean(axis=2)
-    vest_bool = (diff > 60) & ~arm_mask
-    vest_bool[pants_top_y:, :] = False  # never cross into pants area
+    # Vest color from garment image → find matching pixels in FitDiT result
+    vest_color = _vest_dominant_color(garment_img)
+    result_arr = np.array(fitdit_result).astype(float)
+    dist = np.sqrt(((result_arr - vest_color) ** 2).mean(axis=2))
+    vest_bool = (dist < _VEST_COLOR_TOLERANCE) & ~arm_mask
+    vest_bool[pants_top_y:, :] = False
 
-    vest_raw = vest_bool.astype(np.uint8) * 255
-    vest_mask = Image.fromarray(vest_raw, mode="L")
-    vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=9))   # fill holes
+    vest_mask = Image.fromarray(vest_bool.astype(np.uint8) * 255, mode="L")
+    vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=11))  # fill holes
     vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=5))   # remove noise
-    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
+    vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=2))
 
-    # Apply: where vest_mask=255 use FitDiT result, else use original
     return Image.composite(fitdit_result, orig, vest_mask)
 
 
@@ -186,7 +190,8 @@ def main():
             )[0]
 
             if ptype == "VESTS":
-                result = _paste_vest_onto_original(result, person_pil, fitdit)
+                garment_img = Image.open(img_path).convert("RGB")
+                result = _paste_vest_onto_original(result, person_pil, garment_img, fitdit)
 
             result.save(out_path, quality=92)
             print("ok")
