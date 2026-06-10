@@ -4,6 +4,11 @@ FitDiT batch VTO — puts JACKETS and VESTS on the model (upper-body only).
 The model image should already have pants in the desired color.
 Generate one model image per pants color and run this script with each.
 
+Post-processing:
+  VESTS   — original arm/sleeve pixels composited back (preserves shirt sleeves).
+  JACKETS — sleeve pixels below the original wrist boundary restored from original
+            so over-long generated sleeves are hidden and the shirt cuff shows.
+
 Setup (run once):
   python scripts/vto_fitdit_download.py
 
@@ -20,7 +25,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 FITDIT_DIR = Path("/workspace/FitDiT")
 sys.path.insert(0, str(FITDIT_DIR))
@@ -45,6 +50,82 @@ SEED       = 42
 RESOLUTION = "768x1024"
 
 UPPER_TYPES = {"JACKETS", "VESTS"}
+
+# ATR parsing class indices for arms
+_ARM_CLASSES = [14, 15]  # 14=left-arm, 15=right-arm
+
+
+def _build_arm_mask(person_img: Image.Image, fitdit) -> Image.Image | None:
+    """
+    Return an L-mode mask of the arm/sleeve region using FitDiT's parsing model.
+    Returns None if the parsing model is not accessible on the generator.
+    """
+    parsing = getattr(fitdit, "parsing_model", None)
+    if parsing is None:
+        print("[WARN] fitdit.parsing_model not found — vest arm restore skipped")
+        return None
+
+    parse_out, _ = parsing(person_img.convert("RGB").resize((384, 512)))
+    parse_arr = np.array(parse_out)
+    arm_pixels = np.isin(parse_arr, _ARM_CLASSES).astype(np.uint8) * 255
+    mask = Image.fromarray(arm_pixels, mode="L")
+    # Soft edge so the composite blends naturally at sleeve borders
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=3))
+    return mask
+
+
+def _restore_arms(
+    result: Image.Image,
+    original: Image.Image,
+    arm_mask_small: Image.Image,
+) -> Image.Image:
+    """Paste the original arm pixels back onto a VTO result image."""
+    w, h = result.size
+    mask = arm_mask_small.resize((w, h), Image.BILINEAR)
+    orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
+    # composite(A, B, mask): where mask=255 use A, where mask=0 use B
+    return Image.composite(orig, result, mask)
+
+
+def _build_sleeve_trim_mask(person_img: Image.Image, fitdit) -> Image.Image | None:
+    """
+    Build a mask for pixels BELOW the wrist in each arm column.
+    Used to restore the original wrist/hand area on jacket results,
+    hiding over-long generated sleeves and letting the shirt cuff show.
+    """
+    parsing = getattr(fitdit, "parsing_model", None)
+    if parsing is None:
+        return None
+
+    PW, PH = 384, 512
+    parse_out, _ = parsing(person_img.convert("RGB").resize((PW, PH)))
+    arm_bool = np.isin(np.array(parse_out), _ARM_CLASSES)  # (512, 384) bool
+
+    # For each column, find the lowest arm row; everything below is "below wrist"
+    trim = np.zeros((PH, PW), dtype=np.uint8)
+    for c in range(PW):
+        rows = np.where(arm_bool[:, c])[0]
+        if len(rows) == 0:
+            continue
+        bottom = int(rows.max())
+        if bottom + 1 < PH:
+            trim[bottom + 1:, c] = 255
+
+    mask = Image.fromarray(trim, mode="L")
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=4))
+    return mask
+
+
+def _trim_sleeves(
+    result: Image.Image,
+    original: Image.Image,
+    trim_mask_small: Image.Image,
+) -> Image.Image:
+    """Replace below-wrist pixels in the jacket result with original pixels."""
+    w, h = result.size
+    mask = trim_mask_small.resize((w, h), Image.BILINEAR)
+    orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
+    return Image.composite(orig, result, mask)
 
 
 def get_person_path() -> Path:
@@ -73,7 +154,9 @@ def main():
     person_path = get_person_path()
     temp_person = SCRIPTS_DIR / "temp_model_rgb.jpg"
     OUTPUT_DIR.mkdir(exist_ok=True)
-    Image.open(person_path).convert("RGB").save(str(temp_person), quality=95)
+
+    person_pil = Image.open(person_path).convert("RGB")
+    person_pil.save(str(temp_person), quality=95)
     person_path = temp_person
 
     samples = collect_samples()
@@ -87,7 +170,13 @@ def main():
     print("Loading FitDiT...")
     fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
 
-    print(f"\n{len(samples)} garment(s)...\n")
+    # Build masks once — reused for all garments
+    print("Computing arm masks...")
+    arm_mask      = _build_arm_mask(person_pil, fitdit)       # for vests
+    sleeve_trim   = _build_sleeve_trim_mask(person_pil, fitdit)  # for jackets
+    print("Masks ready.\n")
+
+    print(f"{len(samples)} garment(s)...\n")
 
     cached_mask = None
     ok = err = 0
@@ -117,6 +206,14 @@ def main():
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
+
+            # Post-processing per garment type
+            if ptype == "VESTS" and arm_mask is not None:
+                # Restore original shirt sleeves underneath the vest
+                result = _restore_arms(result, person_pil, arm_mask)
+            elif ptype == "JACKETS" and sleeve_trim is not None:
+                # Hide over-long sleeve below original wrist position
+                result = _trim_sleeves(result, person_pil, sleeve_trim)
 
             result.save(out_path, quality=92)
             print("ok")
