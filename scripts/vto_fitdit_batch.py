@@ -55,10 +55,13 @@ UPPER_TYPES = {"JACKETS", "VESTS"}
 _ARM_CLASSES = [14, 15]  # 14=left-arm, 15=right-arm
 
 
-def _load_parsing():
-    """Load FitDiT's human parsing model directly (GPU 0)."""
+def _load_parsing(fitdit):
+    """Reuse FitDiT's parsing model, or create a new instance if needed."""
+    p = getattr(fitdit, "parsing_model", None)
+    if p is not None:
+        return p
     from preprocess.humanparsing.run_parsing import Parsing
-    return Parsing(0)
+    return Parsing(model_root=MODEL_ROOT, device="cpu")
 
 
 def _parse_person(parsing, person_img: Image.Image) -> np.ndarray:
@@ -149,8 +152,10 @@ def main():
 
     # Build masks once — reused for all garments
     print("Loading parsing model and computing arm masks...")
-    parsing   = _load_parsing()
+    parsing   = _load_parsing(fitdit)
     parse_arr = _parse_person(parsing, person_pil)
+    print(f"  Parse classes found: {np.unique(parse_arr).tolist()}")
+    print(f"  Arm pixels (cls 14+15): {np.isin(parse_arr, _ARM_CLASSES).sum()}")
     arm_mask    = _build_arm_mask(parse_arr)
     sleeve_trim = _build_sleeve_trim_mask(parse_arr)
     print("Masks ready.\n")
