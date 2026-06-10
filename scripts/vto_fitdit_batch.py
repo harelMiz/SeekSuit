@@ -56,23 +56,24 @@ def _composite_with_fitdit_mask(
     pre_mask: dict,
 ) -> Image.Image:
     """
-    Paste only the garment area from the FitDiT result onto the original,
-    using FitDiT's own inpainting mask. Everything outside the mask keeps
-    the original image quality.
+    Composite only the garment area onto the original at full resolution.
+
+    The original stays at its native resolution. The FitDiT result is upscaled
+    to match, then the pre_mask selects which pixels come from FitDiT vs original.
+    This preserves the original quality for face, background, pants, etc.
     """
-    w, h = fitdit_result.size
-    orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
+    orig = original.convert("RGB")
+    ow, oh = orig.size
 
-    layer = pre_mask["layers"][0]
-    print(f"[mask debug] type={type(layer)}, shape={getattr(layer, 'shape', None)}, mode={getattr(layer, 'mode', None)}")
+    # Upscale FitDiT result to original resolution
+    fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
 
-    mask_arr = layer[:, :, 3]   # alpha: 255 = garment region
-    print(f"[mask debug] mask_arr shape={mask_arr.shape}, min={mask_arr.min()}, max={mask_arr.max()}, mean={mask_arr.mean():.1f}")
+    # pre_mask alpha: 255 = garment region (already at original resolution)
+    mask_arr = pre_mask["layers"][0][:, :, 3]
+    garment_mask = Image.fromarray(mask_arr, "L")
+    garment_mask = garment_mask.filter(ImageFilter.GaussianBlur(radius=3))
 
-    garment_mask = Image.fromarray(mask_arr).resize((w, h), Image.BILINEAR)
-    garment_mask = garment_mask.filter(ImageFilter.GaussianBlur(radius=2))
-
-    return Image.composite(fitdit_result, orig, garment_mask)
+    return Image.composite(fitdit_full, orig, garment_mask)
 
 
 def get_person_path() -> Path:
