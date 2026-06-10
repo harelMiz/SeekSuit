@@ -148,7 +148,7 @@ def main():
                 resolution=RESOLUTION,
             )[0]
 
-            if ptype == "JACKETS":
+            if ptype in ("JACKETS", "VESTS"):
                 result = _composite_with_fitdit_mask(result, person_pil, pre_mask)
 
             result.save(out_path, quality=92)
