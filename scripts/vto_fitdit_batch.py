@@ -26,7 +26,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 FITDIT_DIR = Path("/workspace/FitDiT")
 sys.path.insert(0, str(FITDIT_DIR))
@@ -52,25 +52,32 @@ RESOLUTION = "768x1024"
 
 UPPER_TYPES = {"JACKETS", "VESTS"}
 
-# Fraction of image width on each side to exclude from the vest inpainting mask.
-# Keeps FitDiT from touching the sleeve area when processing vests.
-VEST_ARM_MARGIN = 0.25
 
+def _paste_vest_onto_original(
+    fitdit_result: Image.Image,
+    original: Image.Image,
+    fitdit,
+) -> Image.Image:
+    """
+    Parse the FitDiT result to find the vest region (ATR class 4),
+    then paste only those pixels onto the original model image.
+    The original shirt and arms are preserved everywhere else.
+    """
+    parsing = getattr(fitdit, "parsing_model", None)
+    if parsing is None:
+        from preprocess.humanparsing.run_parsing import Parsing
+        parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
 
-def _narrow_mask_for_vest(pre_mask: dict) -> dict:
-    """
-    Return a copy of pre_mask with the outer arm columns zeroed out.
-    FitDiT will only inpaint the vest body (torso) and leave shirt sleeves alone.
-    """
-    nm = copy.deepcopy(pre_mask)
-    layer = nm["layers"][0]
-    layer = np.array(layer).copy()
-    PH, PW = layer.shape[:2]
-    outer = int(PW * VEST_ARM_MARGIN)
-    layer[:, :outer, 3] = 0
-    layer[:, PW - outer:, 3] = 0
-    nm["layers"][0] = layer
-    return nm
+    parse_out, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
+    vest_pixels = (np.array(parse_out) == 4).astype(np.uint8) * 255
+    mask = Image.fromarray(vest_pixels, mode="L")
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=2))
+
+    w, h = fitdit_result.size
+    mask = mask.resize((w, h), Image.BILINEAR)
+    orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
+    # Where mask=255: vest pixels from FitDiT result; where mask=0: original
+    return Image.composite(fitdit_result, orig, mask)
 
 
 def get_person_path() -> Path:
@@ -116,10 +123,11 @@ def main():
     print("Loading FitDiT...")
     fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
 
+    person_pil = Image.open(person_path).convert("RGB")
+
     print(f"\n{len(samples)} garment(s)...\n")
 
     cached_mask = None
-    vest_mask   = None
     ok = err = 0
 
     for ptype, img_path in samples:
@@ -134,14 +142,12 @@ def main():
                     str(person_path), "Upper-body", 0, 0, 0, 0,
                 )
                 cached_mask = (pre_mask, np.array(pose_img))
-                vest_mask   = _narrow_mask_for_vest(pre_mask)
             pre_mask, pose_arr = cached_mask
 
-            use_mask = vest_mask if ptype == "VESTS" else pre_mask
             result = fitdit.process(
                 vton_img=str(person_path),
                 garm_img=str(img_path),
-                pre_mask=use_mask,
+                pre_mask=pre_mask,
                 pose_image=pose_arr,
                 n_steps=STEPS,
                 image_scale=SCALE,
@@ -149,6 +155,9 @@ def main():
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
+
+            if ptype == "VESTS":
+                result = _paste_vest_onto_original(result, person_pil, fitdit)
 
             result.save(out_path, quality=92)
             print("ok")
