@@ -247,7 +247,7 @@ def main():
                 resolution=RESOLUTION,
             )[0]
 
-            if ptype == "VESTS":
+            if ptype in ("VESTS", "JACKETS"):
                 result = _extract_vest_with_sam2(result, person_pil, fitdit, debug_dir=debug_dir, stem=img_path.stem)
 
             result.save(out_path, quality=92)
