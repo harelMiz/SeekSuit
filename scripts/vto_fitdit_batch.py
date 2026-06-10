@@ -112,6 +112,7 @@ def _extract_vest_with_sam2(
     fitdit_result: Image.Image,
     original: Image.Image,
     fitdit,
+    ptype: str = "VESTS",
     debug_dir: Path | None = None,
     stem: str = "vest",
 ) -> Image.Image:
@@ -163,8 +164,9 @@ def _extract_vest_with_sam2(
 
     mask_arr = (mask_arr > 0).astype(np.uint8) * 255
     vest_mask = Image.fromarray(mask_arr, "L")
-    vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=15))  # fill holes
-    vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=13))  # restore outer edge
+    if ptype == "VESTS":
+        vest_mask = vest_mask.filter(ImageFilter.MaxFilter(size=15))  # fill vest body holes
+        vest_mask = vest_mask.filter(ImageFilter.MinFilter(size=13))  # restore outer edge
     vest_mask = vest_mask.filter(ImageFilter.GaussianBlur(radius=1))
     return Image.composite(fitdit_result, orig, vest_mask)
 
@@ -248,7 +250,7 @@ def main():
             )[0]
 
             if ptype in ("VESTS", "JACKETS"):
-                result = _extract_vest_with_sam2(result, person_pil, fitdit, debug_dir=debug_dir, stem=img_path.stem)
+                result = _extract_vest_with_sam2(result, person_pil, fitdit, ptype=ptype, debug_dir=debug_dir, stem=img_path.stem)
 
             result.save(out_path, quality=92)
             print("ok")
