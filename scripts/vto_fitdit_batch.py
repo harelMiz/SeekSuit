@@ -71,23 +71,33 @@ def _paste_vest_onto_original(
     result_arr = np.array(fitdit_result)
     orig_arr   = np.array(orig)
 
-    # --- Step 1: arm mask from FitDiT result ---
+    # --- Step 1: parse both images for arm + pants boundaries ---
     parsing = getattr(fitdit, "parsing_model", None)
     if parsing is None:
         from preprocess.humanparsing.run_parsing import Parsing
         parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
 
-    parse_out, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
-    arm_bool = np.isin(np.array(parse_out), [14, 15])
+    # Parse FitDiT result → arm mask (restore from original)
+    parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
+    arm_bool = np.isin(np.array(parse_result), [14, 15])
     arm_mask  = np.array(
         Image.fromarray(arm_bool.astype(np.uint8) * 255, mode="L")
         .filter(ImageFilter.MaxFilter(size=11))
         .resize((w, h), Image.BILINEAR)
-    ) > 128  # True = arm pixels → keep original
+    ) > 128
+
+    # Parse original → find where pants start, block vest mask below that row
+    parse_orig, _ = parsing(original.convert("RGB").resize((384, 512)))
+    pants_bool = (np.array(parse_orig) == 6)
+    pants_rows = np.where(pants_bool.any(axis=1))[0]
+    pants_top_y = h  # default: no limit
+    if len(pants_rows) > 0:
+        pants_top_y = int(pants_rows.min() * h / 512)
 
     # --- Step 2: vest mask by pixel diff (vest color vs white shirt) ---
     diff = np.abs(result_arr.astype(np.int16) - orig_arr.astype(np.int16)).mean(axis=2)
-    vest_bool = (diff > 60) & ~arm_mask  # high diff + not arm
+    vest_bool = (diff > 60) & ~arm_mask
+    vest_bool[pants_top_y:, :] = False  # never cross into pants area
 
     vest_raw = vest_bool.astype(np.uint8) * 255
     vest_mask = Image.fromarray(vest_raw, mode="L")
