@@ -87,13 +87,14 @@ def _extract_vest_with_sam2(
 
     predictor = _get_sam2_predictor()
 
-    # Two foreground points on the left/right vest panels at ~40% height.
-    # Model occupies roughly the center 35-65% of image width.
+    # Four foreground points covering both shoulder straps and mid-chest panels.
     points = np.array([
-        [int(w * 0.38), int(h * 0.40)],   # left vest panel
-        [int(w * 0.62), int(h * 0.40)],   # right vest panel
+        [int(w * 0.38), int(h * 0.22)],   # left shoulder strap
+        [int(w * 0.62), int(h * 0.22)],   # right shoulder strap
+        [int(w * 0.38), int(h * 0.45)],   # left mid-chest panel
+        [int(w * 0.62), int(h * 0.45)],   # right mid-chest panel
     ])
-    labels = np.array([1, 1])
+    labels = np.array([1, 1, 1, 1])
 
     with torch.inference_mode():
         predictor.set_image(np.array(fitdit_result.convert("RGB")))
