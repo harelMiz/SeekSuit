@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
         {/* Logo — italic serif */}
         <div className="text-center mb-10">
           <div className="font-headline italic text-3xl text-on-surface mb-1">
-            The Atelier
+            {t("admin.loginBrand")}
           </div>
           <div className="text-xs text-secondary tracking-wide">{t("admin.portal")}</div>
         </div>
@@ -130,7 +130,7 @@ export default function AdminLoginPage() {
             to="/"
             className="text-xs text-secondary hover:text-primary transition-colors"
           >
-            ← Back to website
+            {t("admin.backToWebsite")}
           </Link>
         </div>
 

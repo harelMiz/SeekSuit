@@ -38,6 +38,7 @@
   /* Typography */
   --font-headline: "Noto Serif", Georgia, serif;
   --font-body: "Manrope", system-ui, sans-serif;
+  --font-body-he: "Heebo", system-ui, sans-serif;
 }
 
 /* ─── Global Base ─── */
@@ -59,6 +60,11 @@ body {
   /* Light scrollbar */
   scrollbar-width: thin;
   scrollbar-color: #c4c7c7 #fcf9f8;
+}
+
+/* Hebrew font override */
+:root:lang(he) body {
+  font-family: var(--font-body-he);
 }
 
 /* Scrollbar for Webkit */

@@ -32,11 +32,10 @@ export default function ContactPage() {
           {/* Left: heading */}
           <div>
             <p className="text-xs font-bold tracking-[0.25em] uppercase text-on-tertiary-container mb-4">
-              Reach Out
+              {t("contact.tagline")}
             </p>
             <h1 className="font-headline text-5xl md:text-6xl font-black text-on-surface leading-[1.05]">
-              Get in{" "}
-              <em className="not-italic">Touch</em>
+              {t("contact.heroTitle")}
             </h1>
             <p className="text-base text-secondary leading-relaxed mt-4 max-w-sm">
               {t("contact.subtitle")}
@@ -49,7 +48,7 @@ export default function ContactPage() {
             {/* Floating gold card overlay */}
             <div className="absolute -bottom-4 -start-4 gold-shimmer rounded-xl px-5 py-4 shadow-lg">
               <p className="text-[10px] font-bold tracking-widest uppercase text-on-tertiary-fixed mb-0.5">
-                Atelier
+                {t("contact.atelierTag")}
               </p>
               <p className="text-sm font-semibold text-on-tertiary-fixed">
                 03-688-7788
@@ -70,9 +69,9 @@ export default function ContactPage() {
                   <MapPin size={15} className="text-on-tertiary-container" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">Address</p>
+                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">{t("contact.addressLabel")}</p>
                   <p className="text-sm font-medium text-on-surface leading-snug">
-                    העליייה 11<br />תל אביב-יפו
+                    {t("about.addressLine1")}<br />{t("about.addressLine2")}
                   </p>
                 </div>
               </div>
@@ -83,7 +82,7 @@ export default function ContactPage() {
                   <Phone size={15} className="text-on-tertiary-container" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">Phone</p>
+                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">{t("contact.phoneLabel")}</p>
                   <a
                     href="tel:036887788"
                     className="text-sm font-medium text-on-surface hover:text-on-tertiary-container transition-colors"
@@ -99,7 +98,7 @@ export default function ContactPage() {
                   <Mail size={15} className="text-on-tertiary-container" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">Email</p>
+                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">{t("contact.emailLabel")}</p>
                   <a
                     href="mailto:danieljenudi@gmail.com"
                     className="text-sm font-medium text-on-surface hover:text-on-tertiary-container transition-colors break-all"
@@ -115,9 +114,9 @@ export default function ContactPage() {
                   <Clock size={15} className="text-on-tertiary-container" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">Hours</p>
-                  <p className="text-sm font-medium text-on-surface">Sun–Thu 10:00–19:00</p>
-                  <p className="text-sm text-secondary">Fri 10:00–14:30</p>
+                  <p className="text-[10px] text-secondary uppercase tracking-widest mb-1">{t("contact.hoursLabel")}</p>
+                  <p className="text-sm font-medium text-on-surface">{t("contact.hoursSummary")}</p>
+                  <p className="text-sm text-secondary">{t("contact.hoursFri")}</p>
                 </div>
               </div>
             </div>

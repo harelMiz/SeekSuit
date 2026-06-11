@@ -9,7 +9,7 @@ import {
   processAllImages,
   deleteProductImage,
 } from "../../services/product.service";
-import { COLOR_OPTIONS, colorLabel } from "../../lib/colorMap";
+import { COLOR_OPTIONS, colorDisplay } from "../../lib/colorMap";
 import type { ProductImage, ProductType, ProductStatus, CreateProductInput } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -34,7 +34,7 @@ const INITIAL_FORM: CreateProductInput = {
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export default function AdminUploadsPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // All unassigned images in the grid
@@ -66,7 +66,8 @@ export default function AdminUploadsPage() {
   const colorRef = useRef<HTMLDivElement>(null);
 
   const filteredColors = COLOR_OPTIONS.filter((key) =>
-    colorLabel(key).includes(colorSearch) || key.toLowerCase().includes(colorSearch.toLowerCase())
+    colorDisplay(key, lang).toLowerCase().includes(colorSearch.toLowerCase()) ||
+    key.toLowerCase().includes(colorSearch.toLowerCase())
   );
 
   // Close color dropdown when clicking outside the combobox
@@ -392,7 +393,7 @@ export default function AdminUploadsPage() {
               onClick={selected.size === imageStates.length ? clearSelection : selectAll}
               className="text-xs text-on-tertiary-container font-semibold hover:opacity-70 transition-opacity"
             >
-              {selected.size === imageStates.length ? "Deselect all" : "Select all"}
+              {selected.size === imageStates.length ? t("admin.deselectAll") : t("admin.selectAll")}
             </button>
           </div>
 
@@ -612,8 +613,8 @@ export default function AdminUploadsPage() {
                   <input
                     type="text"
                     required
-                    placeholder="חפש צבע..."
-                    value={colorSearch || colorLabel(form.color)}
+                    placeholder={t("admin.colorSearchPlaceholder")}
+                    value={colorSearch || colorDisplay(form.color, lang)}
                     onFocus={() => { setColorSearch(""); setColorDropdownOpen(true); }}
                     onChange={(e) => { setColorSearch(e.target.value); setColorDropdownOpen(true); }}
                     className={inputClass}
@@ -631,7 +632,7 @@ export default function AdminUploadsPage() {
                           }}
                           className={`px-3 py-2 cursor-pointer hover:bg-surface-container text-on-surface ${form.color === key ? "font-semibold text-primary" : ""}`}
                         >
-                          {colorLabel(key)}
+                          {colorDisplay(key, lang)}
                         </li>
                       ))}
                     </ul>
@@ -663,10 +664,10 @@ export default function AdminUploadsPage() {
                 >
                   {saving ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 size={14} className="animate-spin" /> Saving...
+                      <Loader2 size={14} className="animate-spin" /> {t("admin.saving")}
                     </span>
                   ) : (
-                    "Create Product"
+                    t("admin.createProduct")
                   )}
                 </button>
                 <button

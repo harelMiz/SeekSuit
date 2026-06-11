@@ -55,7 +55,7 @@ export default function ShopPage() {
               {t("shop.title")}
             </h1>
             <p className="text-on-surface-variant mt-2 text-base">
-              Discover our curated menswear collection
+              {t("shop.subtitle")}
             </p>
           </div>
 

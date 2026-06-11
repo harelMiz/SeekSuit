@@ -308,14 +308,14 @@ export default function HomePage() {
 
         <div className="relative z-10 max-w-7xl mx-auto w-full px-6 md:px-12 pt-24 pb-16">
           <p className="text-xs font-bold tracking-[0.3em] uppercase text-tertiary-fixed mb-6">
-            Premium Menswear
+            {t("home.tagline")}
           </p>
 
           <h1 className="font-headline text-5xl md:text-7xl font-black leading-[1.05] text-white max-w-2xl mb-10">
             {t("home.headline")}
             <br />
             <em className="font-light text-4xl md:text-6xl text-white/80">
-              The Bespoke Edge.
+              {t("home.taglineSub")}
             </em>
           </h1>
 
@@ -499,20 +499,20 @@ export default function HomePage() {
                   <div className="absolute inset-0 bg-gradient-to-br from-zinc-600 to-zinc-800" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 p-8">
-                    <p className="text-xs font-bold tracking-[0.2em] uppercase text-tertiary-fixed mb-2">Collection</p>
-                    <h2 className="font-headline text-3xl font-bold text-white">קולקציית החורף</h2>
+                    <p className="text-xs font-bold tracking-[0.2em] uppercase text-tertiary-fixed mb-2">{t("home.bento.collectionTag")}</p>
+                    <h2 className="font-headline text-3xl font-bold text-white">{t("home.bento.collectionTitle")}</h2>
                   </div>
                 </div>
                 <div className="col-span-12 md:col-span-4 rounded-2xl bg-surface-container-highest p-8 flex flex-col justify-center">
-                  <p className="text-xs font-bold tracking-widest uppercase text-on-tertiary-container mb-3">Craftsmanship</p>
-                  <h3 className="font-headline text-2xl font-bold text-on-surface leading-snug">Bespoke Tailoring</h3>
-                  <p className="text-sm text-secondary mt-3 leading-relaxed">Every suit is measured, cut, and finished to your exact form.</p>
+                  <p className="text-xs font-bold tracking-widest uppercase text-on-tertiary-container mb-3">{t("home.bento.craftTag")}</p>
+                  <h3 className="font-headline text-2xl font-bold text-on-surface leading-snug">{t("home.bento.craftTitle")}</h3>
+                  <p className="text-sm text-secondary mt-3 leading-relaxed">{t("home.bento.craftBody")}</p>
                 </div>
                 <div className="col-span-12 md:col-span-4 rounded-2xl overflow-hidden bg-surface-container-high relative">
                   <div className="absolute inset-0 bg-gradient-to-br from-zinc-400 to-zinc-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   <div className="absolute bottom-4 left-5">
-                    <p className="text-xs text-white/80 font-medium tracking-wide">Accessories</p>
+                    <p className="text-xs text-white/80 font-medium tracking-wide">{t("home.bento.accessories")}</p>
                   </div>
                 </div>
               </div>
@@ -523,12 +523,12 @@ export default function HomePage() {
             <div className="max-w-7xl mx-auto px-6 md:px-12">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                 <div>
-                  <p className="text-xs font-bold tracking-[0.2em] uppercase text-on-tertiary-container mb-4">חוויה</p>
-                  <h2 className="font-headline text-4xl font-bold text-on-surface leading-tight mb-6">החוויה של ג&#39;נודי</h2>
+                  <p className="text-xs font-bold tracking-[0.2em] uppercase text-on-tertiary-container mb-4">{t("home.experience.tag")}</p>
+                  <h2 className="font-headline text-4xl font-bold text-on-surface leading-tight mb-6">{t("home.experience.title")}</h2>
                   <p className="text-base text-secondary leading-relaxed mb-8">{t("about.description")}</p>
                   <div className="flex flex-wrap gap-3">
-                    <span className="bg-surface-container-highest text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full border border-outline-variant">100% Wool Super 150s</span>
-                    <span className="bg-surface-container-highest text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full border border-outline-variant">Custom Measurements</span>
+                    <span className="bg-surface-container-highest text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full border border-outline-variant">{t("home.experience.badge1")}</span>
+                    <span className="bg-surface-container-highest text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full border border-outline-variant">{t("home.experience.badge2")}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

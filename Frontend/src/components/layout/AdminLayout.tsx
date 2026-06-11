@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, Upload, Settings, HelpCircle, LogOut, Bell, Search, Sun, Moon } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
+import type { Language } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 
 const NAV_ITEMS = [
@@ -11,13 +12,14 @@ const NAV_ITEMS = [
 ];
 
 const BOTTOM_ITEMS = [
-  { to: "#", label: "Settings", icon: Settings },
-  { to: "#", label: "Support", icon: HelpCircle },
+  { to: "#", labelKey: "admin.settings", icon: Settings },
+  { to: "#", labelKey: "admin.support", icon: HelpCircle },
 ];
 
 // Admin layout: dark sidebar + main content area with sticky top bar
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { t } = useLang();
+  const { t, lang, setLang } = useLang();
+  const otherLang: Language = lang === "he" ? "en" : "he";
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -56,10 +58,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <div>
           <Link to="/admin" className="block px-8 py-7 border-b border-neutral-800">
             <div className="font-headline italic text-xl text-white">
-              The Atelier
+              {t("admin.loginBrand")}
             </div>
             <div className="text-[10px] tracking-widest uppercase text-neutral-500 mt-0.5">
-              Admin Console
+              {t("admin.console")}
             </div>
           </Link>
 
@@ -87,14 +89,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Bottom: settings + logout */}
         <div className="p-4 border-t border-neutral-800 space-y-1">
-          {BOTTOM_ITEMS.map(({ to, label, icon: Icon }) => (
+          {BOTTOM_ITEMS.map(({ to, labelKey, icon: Icon }) => (
             <Link
-              key={label}
+              key={labelKey}
               to={to}
               className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-neutral-400 hover:text-white hover:bg-neutral-800/30 transition-colors"
             >
               <Icon size={15} />
-              {label}
+              {t(labelKey)}
             </Link>
           ))}
 
@@ -125,10 +127,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <Search size={14} className="text-secondary" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder={t("admin.searchPlaceholder")}
                 className="bg-transparent text-sm text-on-surface placeholder-secondary outline-none w-40"
               />
             </div>
+
+            {/* Language toggle */}
+            <button
+              onClick={() => setLang(otherLang)}
+              className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-xs font-bold text-secondary hover:text-on-surface hover:border-on-surface/40 transition-colors"
+            >
+              {otherLang === "en" ? "EN" : "עב"}
+            </button>
 
             {/* Dark/light toggle */}
             <button

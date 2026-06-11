@@ -121,6 +121,17 @@ export function colorLabel(key: string | null | undefined): string {
   return COLOR_LABELS[key] ?? key;
 }
 
+function keyToEnglishLabel(key: string): string {
+  return key.split("_").map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(" ");
+}
+
+// Returns a bilingual display label: Hebrew for "he", formatted English for "en".
+export function colorDisplay(key: string | null | undefined, lang: "he" | "en"): string {
+  if (!key) return "";
+  if (lang === "en") return keyToEnglishLabel(key);
+  return COLOR_LABELS[key] ?? key;
+}
+
 // Base colors used by the AI embedder for color detection and search boosting.
 export const BASE_COLORS = [
   "BLACK", "WHITE", "BROWN", "RED", "GRAY", "SKY_BLUE", "YELLOW",

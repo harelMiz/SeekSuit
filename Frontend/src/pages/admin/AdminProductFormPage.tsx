@@ -11,7 +11,7 @@ import {
   deleteProductImage,
   setMainImage,
 } from "../../services/product.service";
-import { COLOR_OPTIONS, colorLabel } from "../../lib/colorMap";
+import { COLOR_OPTIONS, colorDisplay } from "../../lib/colorMap";
 import type { ProductType, ProductStatus, ProductImage } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -19,6 +19,7 @@ const MAX_IMAGES = 5;
 
 interface FormState {
   name: string;
+  nameEn: string;
   sku: string;
   type: ProductType;
   color: string;
@@ -27,6 +28,7 @@ interface FormState {
 
 const INITIAL_FORM: FormState = {
   name: "",
+  nameEn: "",
   sku: "",
   type: "JACKET",
   color: "",
@@ -43,7 +45,7 @@ interface PendingImage {
 export default function AdminProductFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const isEdit = Boolean(id);
 
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
@@ -56,7 +58,8 @@ export default function AdminProductFormPage() {
   const colorRef = useRef<HTMLDivElement>(null);
 
   const filteredColors = COLOR_OPTIONS.filter((key) =>
-    colorLabel(key).includes(colorSearch) || key.toLowerCase().includes(colorSearch.toLowerCase())
+    colorDisplay(key, lang).toLowerCase().includes(colorSearch.toLowerCase()) ||
+    key.toLowerCase().includes(colorSearch.toLowerCase())
   );
 
   // Images already saved in the DB (edit mode)
@@ -82,7 +85,14 @@ export default function AdminProductFormPage() {
     if (!id) return;
     getProduct(id)
       .then((p) => {
-        setForm({ name: p.name, sku: p.sku, type: p.type, color: p.color, status: p.status });
+        setForm({
+          name: p.name,
+          nameEn: (p.attributes?.nameEn as string) ?? "",
+          sku: p.sku,
+          type: p.type,
+          color: p.color,
+          status: p.status,
+        });
         setSavedImages(p.images.sort((a, b) => a.order - b.order));
       })
       .catch(() => setError(t("common.error")))
@@ -159,10 +169,13 @@ export default function AdminProductFormPage() {
     try {
       let productId = id;
 
+      const { nameEn, ...baseForm } = form;
+      const payload = { ...baseForm, attributes: nameEn ? { nameEn } : undefined };
+
       if (isEdit && productId) {
-        await updateProduct(productId, form);
+        await updateProduct(productId, payload);
       } else {
-        const product = await createProduct(form);
+        const product = await createProduct(payload);
         productId = product.id;
       }
 
@@ -205,7 +218,7 @@ export default function AdminProductFormPage() {
     <AdminLayout>
       <div className="max-w-xl">
         <p className="text-xs font-bold tracking-widest uppercase text-secondary mb-2">
-          {isEdit ? "Edit" : "New"} Product
+          {isEdit ? t("admin.editProductTitle") : t("admin.newProductTitle")}
         </p>
         <h1 className="font-headline text-3xl font-bold text-on-surface mb-10">
           {isEdit ? t("admin.editProduct") : t("admin.addProduct")}
@@ -222,6 +235,20 @@ export default function AdminProductFormPage() {
               required
               value={form.name}
               onChange={(e) => handleChange("name", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          {/* English Name */}
+          <div>
+            <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
+              {t("admin.productNameEn")}
+            </label>
+            <input
+              type="text"
+              value={form.nameEn}
+              onChange={(e) => handleChange("nameEn", e.target.value)}
+              placeholder={t("admin.productNameEnPlaceholder")}
               className={inputClass}
             />
           </div>
@@ -267,8 +294,8 @@ export default function AdminProductFormPage() {
               <input
                 type="text"
                 required
-                placeholder="חפש צבע..."
-                value={colorSearch || colorLabel(form.color)}
+                placeholder={t("admin.colorSearchPlaceholder")}
+                value={colorSearch || colorDisplay(form.color, lang)}
                 onFocus={() => { setColorSearch(""); setColorDropdownOpen(true); }}
                 onChange={(e) => { setColorSearch(e.target.value); setColorDropdownOpen(true); }}
                 className={inputClass}
@@ -286,7 +313,7 @@ export default function AdminProductFormPage() {
                       }}
                       className={`px-3 py-2 cursor-pointer hover:bg-surface-container text-on-surface ${form.color === key ? "font-semibold text-primary" : ""}`}
                     >
-                      {colorLabel(key)}
+                      {colorDisplay(key, lang)}
                     </li>
                   ))}
                 </ul>
@@ -371,7 +398,7 @@ export default function AdminProductFormPage() {
                             type="button"
                             onClick={() => setSavedMain(img.id)}
                             className="p-1.5 rounded-lg bg-amber-400/90 text-amber-900 hover:bg-amber-400 transition-colors"
-                            title="Set as main"
+                            title={t("admin.setAsMain")}
                           >
                             <Star size={13} />
                           </button>
@@ -380,7 +407,7 @@ export default function AdminProductFormPage() {
                           type="button"
                           onClick={() => removeSaved(img.id)}
                           className="p-1.5 rounded-lg bg-white/20 text-white hover:bg-red-500/80 transition-colors"
-                          title="Remove"
+                          title={t("admin.removeImage")}
                         >
                           <X size={13} />
                         </button>
@@ -402,13 +429,13 @@ export default function AdminProductFormPage() {
                     {img.isMain && (
                       <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-400/90 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                         <Star size={9} fill="currentColor" />
-                        Main
+                        {t("admin.mainImage")}
                       </div>
                     )}
 
                     {/* "Not uploaded" label */}
                     <div className="absolute bottom-0 inset-x-0 bg-black/40 text-white text-[10px] text-center py-1">
-                      Pending upload
+                      {t("admin.pendingUpload")}
                     </div>
 
                     {/* Hover controls */}

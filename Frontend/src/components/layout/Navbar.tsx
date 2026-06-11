@@ -26,7 +26,7 @@ export default function Navbar() {
             SEEKSUIT
           </span>
           <span className="text-[10px] text-on-surface-variant tracking-wide">
-            אופנת ג&#39;נודי
+            {t("nav.brandSubtitle")}
           </span>
         </Link>
 

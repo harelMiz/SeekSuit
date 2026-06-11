@@ -3,6 +3,7 @@ import { ImageOff, Star } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import type { Product } from "../../types/product";
 import { mainImage, bestImageUrl } from "../../types/product";
+import { colorDisplay } from "../../lib/colorMap";
 
 interface ProductCardProps {
   product: Product;
@@ -12,7 +13,10 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, matchPercentage, source = "BROWSE", searchQuery }: ProductCardProps) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const displayName = lang === "en" && product.attributes?.nameEn
+    ? String(product.attributes.nameEn)
+    : product.name;
 
   return (
     <Link
@@ -71,11 +75,11 @@ export default function ProductCard({ product, matchPercentage, source = "BROWSE
 
           {/* Product name */}
           <h3 className="font-headline text-lg font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug line-clamp-2">
-            {product.name}
+            {displayName}
           </h3>
 
           {/* Color */}
-          <p className="text-sm text-on-surface-variant font-light mt-0.5">{product.color}</p>
+          <p className="text-sm text-on-surface-variant font-light mt-0.5">{colorDisplay(product.color, lang)}</p>
         </div>
       </article>
     </Link>

@@ -10,6 +10,7 @@ import { recordProductView } from "../services/insights.service";
 import api from "../services/api";
 import type { Product, ProductImage, ProductType, ProductStatus } from "../types/product";
 import { bestImageUrl, mainImage } from "../types/product";
+import { colorDisplay } from "../lib/colorMap";
 
 interface SearchResult {
   id: string;
@@ -51,7 +52,7 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { session } = useAuth();
   const isAdmin = session !== null;
   const [product, setProduct] = useState<Product | null>(null);
@@ -215,7 +216,7 @@ export default function ProductDetailPage() {
               {/* Attributes row */}
               <div className="flex items-stretch gap-0 mb-8 border border-outline-variant rounded-xl overflow-hidden">
                 {[
-                  { label: t("product.color"), value: product.color },
+                  { label: t("product.color"), value: colorDisplay(product.color, lang) },
                   { label: t("product.sku"), value: product.sku },
                   {
                     label: t("product.status"),
@@ -229,7 +230,7 @@ export default function ProductDetailPage() {
                           }`}
                         />
                         {product.status === "IN_STOCK"
-                          ? "Ready to Ship"
+                          ? t("product.readyToShip")
                           : t("status.out_of_stock")}
                       </span>
                     ),
