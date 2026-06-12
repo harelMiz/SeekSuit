@@ -48,6 +48,28 @@
   box-sizing: border-box;
 }
 
+/* Default arrow cursor — in @layer base so Tailwind utilities (cursor-pointer) still win */
+@layer base {
+  * {
+    cursor: default;
+  }
+  a, button, [role="button"], label, select,
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
+  a *, button *, [role="button"] *, label *, select * {
+    cursor: inherit;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  textarea {
+    cursor: text;
+  }
+}
+
 html {
   scroll-behavior: smooth;
 }

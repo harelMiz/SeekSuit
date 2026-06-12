@@ -63,8 +63,9 @@ export async function getImageCoverage() {
     },
   });
 
-  const withImages = products.filter(p => p.images.some(img => img.processedUrl));
-  const withoutImages = products.filter(p => !p.images.some(img => img.processedUrl));
+  const withImages = products.filter(p => p.images.every(img => img.processedUrl));
+  // products with at least one image that still lacks a processedUrl
+  const withoutImages = products.filter(p => p.images.some(img => !img.processedUrl));
 
   // Total ProductImage rows (assigned to products) that still lack a processedUrl
   const totalMissingProcessedImages = await prisma.productImage.count({

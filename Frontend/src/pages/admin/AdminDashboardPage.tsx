@@ -47,7 +47,7 @@ function Sparkline() {
 }
 
 export default function AdminDashboardPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [products, setProducts]           = useState<Product[]>([]);
   const [topProducts, setTopProducts]     = useState<TopProduct[]>([]);
   const [topProductsLoaded, setTopProductsLoaded] = useState(false);
@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
               <div className="h-1.5 rounded-full bg-outline-variant overflow-hidden mb-2">
                 <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${inStockPct}%`, background: "#e9c176" }} />
               </div>
-              <p className="text-xs text-secondary text-center">{t("admin.catalogueOfStock")} {inStockPct}%</p>
+              <p className="text-xs text-secondary text-center">{inStockPct}% {t("admin.catalogueOfStock")}</p>
             </div>
           </div>
 
@@ -190,9 +190,6 @@ export default function AdminDashboardPage() {
               </p>
             </div>
             <div className="h-16 mt-5 -mx-2"><Sparkline /></div>
-            <div className="flex items-center gap-1.5 mt-3 text-xs text-on-tertiary-container">
-              <TrendingUp size={12} /><span>{t("admin.collectionGrowing")}</span><ArrowRight size={11} />
-            </div>
           </div>
 
           {/* [visual LEFT] col-3: Searches + Upload Queue + Missing Images */}
@@ -331,11 +328,11 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-2">
                 <button onClick={() => setCarouselOffset(o => Math.max(0, o - 1))} disabled={!canPrev}
                   className="w-7 h-7 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface transition-colors disabled:opacity-30 cursor-pointer">
-                  <ChevronLeft size={13} />
+                  {lang === "he" ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
                 </button>
                 <button onClick={() => setCarouselOffset(o => Math.min(Math.max(0, carouselItems.length - CAROUSEL_VISIBLE), o + 1))} disabled={!canNext}
                   className="w-7 h-7 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface transition-colors disabled:opacity-30 cursor-pointer">
-                  <ChevronRight size={13} />
+                  {lang === "he" ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
                 </button>
                 <Link to="/admin/inventory" className="text-xs text-secondary hover:text-primary transition-colors ml-1">{t("admin.viewAll")} →</Link>
               </div>

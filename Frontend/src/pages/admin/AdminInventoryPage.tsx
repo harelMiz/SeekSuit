@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUpDown, X, Sparkles, Loader2 } from "lucide-react";
 import axios from "axios";
 import { useLang } from "../../context/LanguageContext";
@@ -20,6 +20,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export default function AdminInventoryPage() {
   const { t, lang } = useLang();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,8 +171,10 @@ export default function AdminInventoryPage() {
     [products]
   );
   const availableColors = useMemo(
-    () => [...new Set(products.map((p) => p.color).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")),
-    [products]
+    () => [...new Set(products.map((p) => p.color).filter(Boolean))].sort((a, b) =>
+      colorDisplay(a, lang).localeCompare(colorDisplay(b, lang), lang === "he" ? "he" : "en")
+    ),
+    [products, lang]
   );
 
   function toggleSort(field: SortField) {
@@ -228,13 +231,13 @@ export default function AdminInventoryPage() {
           <div className="flex items-center gap-3 mb-3">
             <span className="block w-14 h-[1.5px] bg-gradient-to-r from-tertiary-fixed to-tertiary-fixed-dim" />
             <p className="text-xs font-bold tracking-[0.22em] uppercase text-on-tertiary-container">
-              Stock Overview
+              {t("admin.stockOverview")}
             </p>
           </div>
           <h1 className="font-headline font-bold text-on-surface leading-[1.05]">
-            <span className="text-5xl">Product</span>
+            <span className="text-5xl">{t("admin.inventoryTitle1")}</span>
             <br />
-            <span className="text-6xl italic text-on-tertiary-container">Catalogue</span>
+            <span className="text-6xl italic text-on-tertiary-container">{t("admin.inventoryTitle2")}</span>
           </h1>
           <div className="mt-4 w-20 h-[2px] bg-gradient-to-r from-tertiary-fixed-dim to-tertiary-fixed" />
         </div>
@@ -316,10 +319,10 @@ export default function AdminInventoryPage() {
                 <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "type" ? "rotate-180" : ""}`} />
               </button>
               {openDropdown === "type" && (
-                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]">
+                <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]`}>
                   <button
                     onClick={() => { setFilterType(""); setOpenDropdown(null); setPage(1); }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterType ? "text-on-surface font-semibold" : "text-secondary"}`}
+                    className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterType ? "text-on-surface font-semibold" : "text-secondary"}`}
                   >
                     {t("shop.allTypes")}
                   </button>
@@ -327,7 +330,7 @@ export default function AdminInventoryPage() {
                     <button
                       key={type}
                       onClick={() => { setFilterType(type); setOpenDropdown(null); setPage(1); }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterType === type ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                      className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterType === type ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
                     >
                       {t(`type.${type}`)}
                     </button>
@@ -350,10 +353,10 @@ export default function AdminInventoryPage() {
                 <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "color" ? "rotate-180" : ""}`} />
               </button>
               {openDropdown === "color" && (
-                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[120px] max-h-56 overflow-y-auto">
+                <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[120px] max-h-56 overflow-y-auto`}>
                   <button
                     onClick={() => { setFilterColor(""); setOpenDropdown(null); setPage(1); }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterColor ? "text-on-surface font-semibold" : "text-secondary"}`}
+                    className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterColor ? "text-on-surface font-semibold" : "text-secondary"}`}
                   >
                     {t("shop.allColors")}
                   </button>
@@ -361,7 +364,7 @@ export default function AdminInventoryPage() {
                     <button
                       key={color}
                       onClick={() => { setFilterColor(color); setOpenDropdown(null); setPage(1); }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterColor === color ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                      className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterColor === color ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
                     >
                       {colorDisplay(color, lang)}
                     </button>
@@ -384,10 +387,10 @@ export default function AdminInventoryPage() {
                 <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "status" ? "rotate-180" : ""}`} />
               </button>
               {openDropdown === "status" && (
-                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]">
+                <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]`}>
                   <button
                     onClick={() => { setFilterStatus(""); setOpenDropdown(null); setPage(1); }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterStatus ? "text-on-surface font-semibold" : "text-secondary"}`}
+                    className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterStatus ? "text-on-surface font-semibold" : "text-secondary"}`}
                   >
                     {t("shop.allStatuses")}
                   </button>
@@ -395,7 +398,7 @@ export default function AdminInventoryPage() {
                     <button
                       key={s}
                       onClick={() => { setFilterStatus(s); setOpenDropdown(null); setPage(1); }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterStatus === s ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                      className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterStatus === s ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
                     >
                       {t(`status.${s.toLowerCase()}`)}
                     </button>
@@ -454,10 +457,11 @@ export default function AdminInventoryPage() {
               {paginated.map((product) => (
                 <tr
                   key={product.id}
-                  className="group border-b border-outline-variant/50 hover:bg-surface-container-high/30 transition-colors"
+                  onClick={() => navigate(`/products/${product.id}`)}
+                  className="group border-b border-outline-variant/50 hover:bg-surface-container-high/30 transition-colors cursor-pointer"
                 >
                   {/* Thumbnail — click opens lightbox with all images */}
-                  <td className="px-5 py-5">
+                  <td className="px-5 py-5" onClick={(e) => e.stopPropagation()}>
                     {(() => {
                       const images = product.images.slice().sort((a, b) => a.order - b.order);
                       const img = mainImage(product);
@@ -508,21 +512,17 @@ export default function AdminInventoryPage() {
                     {colorDisplay(product.color, lang)}
                   </td>
 
-                  {/* Status badge */}
+                  {/* Status */}
                   <td className="px-4 py-5">
-                    <span
-                      className={`inline-flex items-center text-base font-semibold px-3 py-1.5 rounded-full ${
-                        product.status === "IN_STOCK"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-neutral-100 text-neutral-500"
-                      }`}
-                    >
+                    <span className={`text-base font-semibold ${
+                      product.status === "IN_STOCK" ? "text-emerald-500" : "text-red-500"
+                    }`}>
                       {t(`status.${product.status.toLowerCase()}`)}
                     </span>
                   </td>
 
                   {/* Actions — fade in on row hover */}
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* AI Process button — hidden once processed */}
                       {(() => {
