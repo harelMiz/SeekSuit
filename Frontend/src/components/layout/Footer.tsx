@@ -30,9 +30,7 @@ export default function Footer() {
 
         {/* Column 1: Brand */}
         <div>
-          <div className="text-xl font-black tracking-widest text-primary mb-1">
-            SEEKSUIT
-          </div>
+          <img src="/logo.svg" alt="Jenudi Fashion" className="h-8 w-auto mb-1" />
           <div className="text-xs text-on-surface-variant mb-4">{t("nav.brandSubtitle")}</div>
           <p className="text-sm text-secondary leading-relaxed">
             {t("about.description")}

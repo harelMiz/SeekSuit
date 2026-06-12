@@ -20,7 +20,7 @@ export const he: Record<string, string> = {
   "home.bento.accessories": "אביזרים",
   "home.experience.tag": "חוויה",
   "home.experience.title": "החוויה של ג'נודי",
-  "home.experience.badge1": "100% צמר Super 150s",
+  "home.experience.badge1": "בדים יוקרתיים",
   "home.experience.badge2": "מידות אישיות",
   "home.searchPlaceholder": 'תאר את החליפה שאתה מחפש (לדוגמה: "חליפה כחולה לחתונת קיץ")...',
   "home.imageSearch": "חיפוש לפי תמונה",
@@ -88,6 +88,9 @@ export const he: Record<string, string> = {
   "search.searchAll": "חפש את כולם",
   "search.showMore": "הצג עוד תוצאות",
   "search.backToPicker": "חזור לבחירת פריט",
+  "search.newSearch": "חיפוש חדש",
+  "home.premiumBadge": "לבוש גברים יוקרתי",
+  "home.bentoSectionTitle": "הקולקציה",
 
   // About
   "about.title": "אודות אופנת ג'נודי",
@@ -233,7 +236,8 @@ export const he: Record<string, string> = {
   "insights.chatClose": "סגור",
 
   // Product detail
-  "product.readyToShip": "מוכן למשלוח",
+  "product.readyToShip": "זמין במלאי",
+  "product.visitStore": "צור קשר",
 
   // Footer
   "footer.company": "חברה",

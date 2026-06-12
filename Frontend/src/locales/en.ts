@@ -20,7 +20,7 @@ export const en: Record<string, string> = {
   "home.bento.accessories": "Accessories",
   "home.experience.tag": "Experience",
   "home.experience.title": "The Jenudi Experience",
-  "home.experience.badge1": "100% Wool Super 150s",
+  "home.experience.badge1": "Premium Fabrics",
   "home.experience.badge2": "Custom Measurements",
   "home.searchPlaceholder": 'Describe the suit you\'re looking for (e.g. "linen beige suit for summer wedding")...',
   "home.imageSearch": "Search by image",
@@ -217,6 +217,9 @@ export const en: Record<string, string> = {
   "search.searchAll": "Search all items",
   "search.showMore": "Show more results",
   "search.backToPicker": "Back to item selection",
+  "search.newSearch": "New Search",
+  "home.premiumBadge": "PREMIUM MENSWEAR",
+  "home.bentoSectionTitle": "The Collection",
 
   // Insights / AI Agent
   "insights.title": "AI Insights",
@@ -233,7 +236,8 @@ export const en: Record<string, string> = {
   "insights.chatClose": "Close",
 
   // Product detail
-  "product.readyToShip": "Ready to Ship",
+  "product.readyToShip": "In Stock",
+  "product.visitStore": "Contact Us",
 
   // Footer
   "footer.company": "Company",

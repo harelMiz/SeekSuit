@@ -34,7 +34,14 @@ export default function AboutPage() {
           </div>
 
           {/* Image placeholder */}
-          <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-zinc-300 to-zinc-400 overflow-hidden" />
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-800">
+            <img
+              src="/placeholders/about-owner.png"
+              alt="Jenudi Fashion atelier"
+              className="w-full h-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          </div>
         </section>
 
         {/* ── Bento Grid ── */}

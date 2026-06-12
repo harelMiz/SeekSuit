@@ -69,7 +69,6 @@ export default function HomePage() {
   const [searchMode, setSearchMode] = useState<"text" | "image" | null>(null);
   const [detectedItems, setDetectedItems] = useState<DetectedItem[] | null>(null);
   const [showPicker, setShowPicker] = useState(false);
-  // Pending file waiting for picker selection
   const pendingFileRef = useRef<File | null>(null);
 
   // Restore state when navigating back from a product page
@@ -116,8 +115,6 @@ export default function HomePage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  // Execute image similarity search with a specific file (full image or crop).
-  // Pass productType to restrict results to that type (used when user picks a specific item).
   const runImageSearch = useCallback(async (file: File, previewUrl: string, productType?: string) => {
     setResults(null);
     setVisibleCount(INITIAL_VISIBLE);
@@ -165,7 +162,6 @@ export default function HomePage() {
       setLoading(true);
       setLoadingMsg(t("search.detecting"));
 
-      // Try multi-item detection first
       const form = new FormData();
       form.append("file", file);
       try {
@@ -193,7 +189,6 @@ export default function HomePage() {
   }, [t, runImageSearch]);
 
   // Run a separate search per detected item crop and merge results by product ID.
-  // Used when the user picks "search all items" from the item picker.
   const runMultiSearch = async (items: DetectedItem[], previewUrl: string) => {
     setResults(null);
     setVisibleCount(INITIAL_VISIBLE);
@@ -301,128 +296,138 @@ export default function HomePage() {
 
   return (
     <Layout>
-      {/* ── Hero ── */}
-      <section className="relative min-h-screen flex flex-col justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-950" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_80%_at_30%_50%,_rgba(253,220,160,0.08),_transparent)]" />
+      {/* ── HERO — full-width editorial dark, text overlaid ── */}
+      {/* When real photo is ready: add <img className="absolute inset-0 w-full h-full object-cover object-top" src="..." alt="..." /> inside the section */}
+      <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-zinc-950">
+        {/* Hero background image — replace gradient once real photo arrives */}
+        <img
+          src="/placeholders/hero-bg.png"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-top"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+        {/* Dark overlay to maintain text readability over photo */}
+        <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+        {/* Warm amber glow on start side (where text lives) */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_70%_at_75%_45%,_rgba(220,185,120,0.12),_transparent)]" />
+        {/* Subtle overlay to darken bottom for scroll indicator */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-zinc-950/60 to-transparent pointer-events-none" />
 
         <div className="relative z-10 max-w-7xl mx-auto w-full px-6 md:px-12 pt-24 pb-16">
-          <p className="text-xs font-bold tracking-[0.3em] uppercase text-tertiary-fixed mb-6">
-            {t("home.tagline")}
-          </p>
+          <div className="max-w-2xl">
+            <p className="text-[9px] font-bold tracking-[0.45em] uppercase text-[#e9c176]/60 mb-10">
+              {t("home.premiumBadge")}
+            </p>
 
-          <h1 className="font-headline text-5xl md:text-7xl font-black leading-[1.05] text-white max-w-2xl mb-10">
-            {t("home.headline")}
-            <br />
-            <em className="font-light text-4xl md:text-6xl text-white/80">
+            <h1 className="font-headline text-5xl md:text-6xl xl:text-7xl font-black leading-[1.05] text-[#e9c176] mb-4">
+              {t("home.headline")}
+            </h1>
+            <p className="font-headline text-xl md:text-2xl font-light italic text-white/50 mb-8">
               {t("home.taglineSub")}
-            </em>
-          </h1>
+            </p>
 
-          {/* ── Search widget ── */}
-          <div className="w-full max-w-3xl mx-auto">
+            {/* Gold rule */}
+            <div className="w-10 h-[1.5px] bg-[#e9c176] mb-10" />
 
-            {/* Text search */}
-            <form onSubmit={handleTextSearch}>
-              <div className="flex items-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden focus-within:border-white/40 transition-colors">
-                <input
-                  type="text"
-                  value={textQuery}
-                  onChange={(e) => setTextQuery(e.target.value)}
-                  placeholder={t("home.searchPlaceholder")}
-                  disabled={loading}
-                  className="flex-1 bg-transparent px-5 py-4 text-sm text-white placeholder-white/50 outline-none disabled:opacity-50"
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !textQuery.trim()}
-                  className="gold-shimmer px-5 py-4 text-on-tertiary-fixed font-semibold text-sm flex items-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-40"
-                >
-                  {loading && searchMode === "text" ? (
-                    <span className="w-4 h-4 border-2 border-on-tertiary-fixed/30 border-t-on-tertiary-fixed rounded-full animate-spin" />
-                  ) : (
-                    <Search size={16} />
-                  )}
-                </button>
+            {/* ── Search widget ── */}
+            <div className="w-full max-w-xl">
+              <form onSubmit={handleTextSearch}>
+                <div className="flex items-center bg-white/8 backdrop-blur-sm border border-white/15 rounded-xl overflow-hidden focus-within:border-[#e9c176]/50 transition-colors">
+                  <input
+                    type="text"
+                    value={textQuery}
+                    onChange={(e) => setTextQuery(e.target.value)}
+                    placeholder={t("home.searchPlaceholder")}
+                    disabled={loading}
+                    className="flex-1 bg-transparent px-5 py-4 text-sm text-white placeholder-white/35 outline-none disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || !textQuery.trim()}
+                    className="gold-shimmer px-5 py-4 text-on-tertiary-fixed font-semibold text-sm flex items-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-40 cursor-pointer"
+                  >
+                    {loading && searchMode === "text" ? (
+                      <span className="w-4 h-4 border-2 border-on-tertiary-fixed/30 border-t-on-tertiary-fixed rounded-full animate-spin" />
+                    ) : (
+                      <Search size={16} />
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="h-px flex-1 bg-white/12" />
+                <span className="text-xs text-white/35 font-medium">{t("home.orImageSearch")}</span>
+                <div className="h-px flex-1 bg-white/12" />
               </div>
-            </form>
 
-            {/* OR divider */}
-            <div className="flex items-center gap-3 my-4">
-              <div className="h-px flex-1 bg-white/20" />
-              <span className="text-xs text-white/40 font-medium">{t("home.orImageSearch")}</span>
-              <div className="h-px flex-1 bg-white/20" />
+              {!previewDataUrl ? (
+                <div
+                  onClick={() => !loading && fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={onDrop}
+                  className={`border border-dashed rounded-xl p-8 min-h-40 flex flex-col items-center justify-center gap-3 transition-all ${
+                    isDragging
+                      ? "border-[#e9c176]/50 bg-white/8 cursor-copy"
+                      : loading
+                      ? "border-white/10 opacity-40 cursor-not-allowed"
+                      : "border-white/20 hover:border-[#e9c176]/40 hover:bg-white/5 cursor-pointer"
+                  }`}
+                >
+                  <Camera size={28} className="text-white/35" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-white/65">{t("home.imageDropTitle")}</p>
+                    <p className="text-xs text-white/30 mt-1">{t("home.imageDropSub")}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative rounded-xl overflow-hidden border border-white/15 bg-black/20">
+                  {loading ? (
+                    <div className="min-h-40 flex flex-col items-center justify-center gap-3 py-8">
+                      <span className="w-6 h-6 border-2 border-white/20 border-t-[#e9c176] rounded-full animate-spin" />
+                      <span className="text-sm text-white/45">{loadingMsg || t("search.searching")}</span>
+                    </div>
+                  ) : (
+                    <img src={previewDataUrl} alt="Query" className="w-full max-h-64 object-contain" />
+                  )}
+                  {!loading && (
+                    <button
+                      onClick={clearSearch}
+                      className="absolute top-3 end-3 bg-black/60 backdrop-blur-sm rounded-full p-2 text-white/60 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {detectedItems && showPicker && !loading && (
+                <div className="mt-4">
+                  <ItemPickerModal items={detectedItems} onSelect={handlePickerSelect} />
+                </div>
+              )}
+
+              {error && !loading && (
+                <p className="mt-3 text-xs text-red-400 text-center">{error}</p>
+              )}
             </div>
 
-            {/* Image upload area */}
-            {!previewDataUrl ? (
-              <div
-                onClick={() => !loading && fileInputRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={onDrop}
-                className={`border-2 border-dashed rounded-xl p-10 min-h-52 flex flex-col items-center justify-center gap-4 transition-all ${
-                  isDragging
-                    ? "border-tertiary-fixed/60 bg-white/10 cursor-copy"
-                    : loading
-                    ? "border-white/15 opacity-40 cursor-not-allowed"
-                    : "border-white/25 hover:border-white/50 hover:bg-white/5 cursor-pointer"
-                }`}
-              >
-                <Camera size={36} className="text-white/60" />
-                <div className="text-center">
-                  <p className="text-sm font-medium text-white/80">{t("home.imageDropTitle")}</p>
-                  <p className="text-xs text-white/40 mt-1">{t("home.imageDropSub")}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="relative rounded-xl overflow-hidden border border-white/20 bg-black/20">
-                {loading ? (
-                  <div className="min-h-48 flex flex-col items-center justify-center gap-3 py-10">
-                    <span className="w-7 h-7 border-2 border-white/25 border-t-white rounded-full animate-spin" />
-                    <span className="text-sm text-white/60">{loadingMsg || t("search.searching")}</span>
-                  </div>
-                ) : (
-                  <img src={previewDataUrl} alt="Query" className="w-full max-h-72 object-contain" />
-                )}
-                {!loading && (
-                  <button
-                    onClick={clearSearch}
-                    className="absolute top-3 end-3 bg-black/60 backdrop-blur-sm rounded-full p-2 text-white/70 hover:text-white transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Item picker (shown below preview after detection, hidden once user picks) */}
-            {detectedItems && showPicker && !loading && (
-              <div className="mt-4">
-                <ItemPickerModal items={detectedItems} onSelect={handlePickerSelect} />
-              </div>
-            )}
-
-            {/* Error */}
-            {error && !loading && (
-              <p className="mt-3 text-xs text-red-400 text-center">{error}</p>
-            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+              }}
+            />
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-            }}
-          />
-
-          <div className="mt-12 flex flex-col items-start gap-2 text-white/50 animate-bounce-slow">
-            <span className="text-sm tracking-wide">{t("home.browseCatalog")}</span>
-            <ChevronDown size={20} />
+          <div className="mt-12 flex flex-col items-start gap-2 text-white/25 animate-bounce-slow">
+            <span className="text-xs tracking-[0.3em] uppercase">{t("home.browseCatalog")}</span>
+            <ChevronDown size={18} />
           </div>
         </div>
       </section>
@@ -431,20 +436,38 @@ export default function HomePage() {
       {results !== null && (
         <section ref={resultsRef} className="bg-surface py-20">
           <div className="max-w-7xl mx-auto px-6 md:px-12">
-            {detectedItems && !showPicker && (
-              <div className="mb-6">
-                <button
-                  onClick={() => { setShowPicker(true); setResults(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors"
-                >
-                  <ArrowLeft size={13} />
-                  {t("search.backToPicker")}
-                </button>
-              </div>
-            )}
-            <div className="flex items-center gap-3 mb-10">
+            <div className="mb-6 flex items-center gap-4">
+              <button
+                onClick={() => {
+                  clearSearch();
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                <ArrowLeft size={13} />
+                {t("search.newSearch")}
+              </button>
+              {detectedItems && !showPicker && (
+                <>
+                  <span className="text-outline-variant text-xs">|</span>
+                  <button
+                    onClick={() => {
+                      setShowPicker(true);
+                      setResults(null);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft size={13} />
+                    {t("search.backToPicker")}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4 mb-12">
               <div className="h-px flex-1 bg-outline-variant" />
-              <p className="text-xs font-bold tracking-widest uppercase text-on-surface-variant">
+              <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-on-surface-variant whitespace-nowrap">
                 {results.length > 0
                   ? t("search.resultsFound").replace("{n}", String(Math.min(visibleCount, results.length)))
                   : t("search.noResults")}
@@ -474,10 +497,10 @@ export default function HomePage() {
                 </div>
 
                 {visibleCount < results.length && (
-                  <div className="mt-12 flex justify-center">
+                  <div className="mt-16 flex justify-center">
                     <button
                       onClick={() => setVisibleCount(results.length)}
-                      className="px-8 py-3 border border-outline-variant text-sm font-semibold text-on-surface-variant rounded-xl hover:border-primary hover:text-primary transition-colors"
+                      className="px-10 py-3 border border-outline-variant text-[11px] font-bold text-on-surface-variant rounded-none hover:border-primary hover:text-primary transition-colors tracking-[0.2em] uppercase cursor-pointer"
                     >
                       {t("search.showMore")} ({results.length - visibleCount})
                     </button>
@@ -489,51 +512,127 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ── Bento + Experience — hidden while results are shown ── */}
+      {/* ── Bento + Experience — hidden while results shown ── */}
       {!results && (
         <>
-          <section className="bg-surface py-20">
+          {/* Editorial bento grid */}
+          <section className="bg-[#181818] py-20">
             <div className="max-w-7xl mx-auto px-6 md:px-12">
+              {/* Section title — gold text, left-aligned, editorial */}
+              <h2 className="font-headline text-2xl md:text-3xl font-black text-white mb-10">
+                {t("home.bentoSectionTitle")}
+              </h2>
+
               <div className="grid grid-cols-12 gap-4 auto-rows-[260px]">
-                <div className="col-span-12 md:col-span-8 row-span-2 relative rounded-2xl overflow-hidden bg-surface-container group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-zinc-600 to-zinc-800" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                  <div className="absolute bottom-0 left-0 p-8">
-                    <p className="text-xs font-bold tracking-[0.2em] uppercase text-tertiary-fixed mb-2">{t("home.bento.collectionTag")}</p>
-                    <h2 className="font-headline text-3xl font-bold text-white">{t("home.bento.collectionTitle")}</h2>
+                {/* Large tile: Bespoke Tailoring */}
+                <div className="col-span-12 md:col-span-8 row-span-2 relative overflow-hidden group cursor-pointer">
+                  <img
+                    src="/placeholders/bento-collection.png"
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover object-center"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  {/* Removed opaque fallback — image now fills the tile */}
+                  <div
+                    className="absolute inset-0 opacity-[0.03]"
+                    style={{ backgroundImage: "repeating-linear-gradient(-45deg, white 0, white 1px, transparent 0, transparent 40px)" }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                  {/* Corner accents — appear on hover */}
+                  <div className="absolute top-5 start-5 w-8 h-8 border-t border-s border-[#e9c176]/0 group-hover:border-[#e9c176]/40 transition-all duration-500" />
+                  <div className="absolute top-5 end-5 w-8 h-8 border-t border-e border-[#e9c176]/0 group-hover:border-[#e9c176]/40 transition-all duration-500" />
+                  <div className="absolute bottom-0 start-0 p-8">
+                    <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-[#e9c176]/70 mb-2">
+                      {t("home.bento.collectionTag")}
+                    </p>
+                    <h2 className="font-headline text-3xl font-bold text-white">
+                      {t("home.bento.collectionTitle")}
+                    </h2>
                   </div>
                 </div>
-                <div className="col-span-12 md:col-span-4 rounded-2xl bg-surface-container-highest p-8 flex flex-col justify-center">
-                  <p className="text-xs font-bold tracking-widest uppercase text-on-tertiary-container mb-3">{t("home.bento.craftTag")}</p>
-                  <h3 className="font-headline text-2xl font-bold text-on-surface leading-snug">{t("home.bento.craftTitle")}</h3>
-                  <p className="text-sm text-secondary mt-3 leading-relaxed">{t("home.bento.craftBody")}</p>
+
+                {/* Text info tile */}
+                <div className="col-span-12 md:col-span-4 bg-[#222222] p-8 flex flex-col justify-center border border-white/5">
+                  <div className="w-6 h-[1.5px] bg-[#e9c176] mb-5" />
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-[#e9c176]/70 mb-3">
+                    {t("home.bento.craftTag")}
+                  </p>
+                  <h3 className="font-headline text-2xl font-bold text-white leading-snug">
+                    {t("home.bento.craftTitle")}
+                  </h3>
+                  <p className="text-sm text-white/50 mt-3 leading-relaxed">
+                    {t("home.bento.craftBody")}
+                  </p>
                 </div>
-                <div className="col-span-12 md:col-span-4 rounded-2xl overflow-hidden bg-surface-container-high relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-zinc-400 to-zinc-500" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  <div className="absolute bottom-4 left-5">
-                    <p className="text-xs text-white/80 font-medium tracking-wide">{t("home.bento.accessories")}</p>
+
+                {/* Accessories tile */}
+                <div className="col-span-12 md:col-span-4 relative overflow-hidden">
+                  <img
+                    src="/placeholders/bento-accessories.png"
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover object-center"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  {/* Removed opaque fallback — image now fills the tile */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-4 start-5">
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-[#e9c176]/70 font-medium">
+                      {t("home.bento.accessories")}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="bg-surface-container-low py-20">
+          {/* Atelier experience */}
+          <section className="bg-[#141414] py-24">
             <div className="max-w-7xl mx-auto px-6 md:px-12">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                 <div>
-                  <p className="text-xs font-bold tracking-[0.2em] uppercase text-on-tertiary-container mb-4">{t("home.experience.tag")}</p>
-                  <h2 className="font-headline text-4xl font-bold text-on-surface leading-tight mb-6">{t("home.experience.title")}</h2>
-                  <p className="text-base text-secondary leading-relaxed mb-8">{t("about.description")}</p>
+                  <div className="w-8 h-[1.5px] bg-[#e9c176] mb-6" />
+                  <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#e9c176]/70 mb-4">
+                    {t("home.experience.tag")}
+                  </p>
+                  <h2 className="font-headline text-4xl font-bold text-white leading-tight mb-6">
+                    {t("home.experience.title")}
+                  </h2>
+                  <p className="text-base text-white/50 leading-relaxed mb-8">
+                    {t("about.description")}
+                  </p>
                   <div className="flex flex-wrap gap-3">
-                    <span className="bg-surface-container-highest text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full border border-outline-variant">{t("home.experience.badge1")}</span>
-                    <span className="bg-surface-container-highest text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full border border-outline-variant">{t("home.experience.badge2")}</span>
+                    <span className="border border-white/15 text-white/60 text-xs font-semibold px-4 py-2 rounded-full">
+                      {t("home.experience.badge1")}
+                    </span>
+                    <span className="border border-white/15 text-white/60 text-xs font-semibold px-4 py-2 rounded-full">
+                      {t("home.experience.badge2")}
+                    </span>
                   </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="aspect-[3/4] rounded-xl bg-gradient-to-br from-zinc-300 to-zinc-400" />
-                  <div className="aspect-[3/4] rounded-xl bg-gradient-to-br from-zinc-400 to-zinc-500 mt-8" />
+                  <div className="aspect-[3/4] relative overflow-hidden">
+                    <img
+                      src="/placeholders/experience-1.png"
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                    <div className="absolute inset-0 bg-black/15" />
+                    <div className="absolute top-3 start-3 w-5 h-5 border-t border-s border-white/40" />
+                    <div className="absolute bottom-3 end-3 w-5 h-5 border-b border-e border-white/40" />
+                  </div>
+                  <div className="aspect-[3/4] relative overflow-hidden mt-8">
+                    <img
+                      src="/placeholders/experience-2.png"
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                    <div className="absolute inset-0 bg-black/15" />
+                    <div className="absolute top-3 start-3 w-5 h-5 border-t border-s border-white/40" />
+                    <div className="absolute bottom-3 end-3 w-5 h-5 border-b border-e border-white/40" />
+                  </div>
                 </div>
               </div>
             </div>
