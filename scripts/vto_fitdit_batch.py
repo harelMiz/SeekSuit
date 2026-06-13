@@ -19,15 +19,13 @@ scripts/vto_samples/
 Results
 -------
 scripts/vto_results_fitdit/
-    model_01/
-        suit_002_front/
-            photo_01_vto.jpg
-            photo_02_vto.jpg
-        vest_001_front/
-            photo_01_vto.jpg
-    model_02/
-        suit_002_front/
-            photo_01_vto.jpg
+    suit_002_front/
+        model_1_Caucasian_1_vto.jpg
+        model_2_black_1_vto.jpg
+        model_2_black_2_vto.jpg
+        ...
+    vest_001_front/
+        model_1_Caucasian_1_vto.jpg
         ...
 
 Setup (run once):
@@ -273,7 +271,7 @@ def main():
             cached_mask = None
 
             for ptype, garment_path in garments:
-                out_dir = OUTPUT_DIR / model_dir.name / garment_path.stem
+                out_dir = OUTPUT_DIR / garment_path.stem
                 out_dir.mkdir(parents=True, exist_ok=True)
                 out_path = out_dir / f"{photo_path.stem}_vto.jpg"
 
