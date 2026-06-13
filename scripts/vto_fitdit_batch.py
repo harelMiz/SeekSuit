@@ -231,6 +231,12 @@ def _get_upscaler():
     global _upscaler
     if _upscaler is None:
         import urllib.request
+        import types as _types
+        import torchvision.transforms.functional as _F
+        import sys as _sys
+        _ft = _types.ModuleType("torchvision.transforms.functional_tensor")
+        _ft.rgb_to_grayscale = _F.rgb_to_grayscale
+        _sys.modules.setdefault("torchvision.transforms.functional_tensor", _ft)
         from basicsr.archs.rrdbnet_arch import RRDBNet
         from realesrgan import RealESRGANer
 
