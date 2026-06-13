@@ -221,6 +221,50 @@ def _composite_vest_sam2(
 
 
 # ---------------------------------------------------------------------------
+# Upscaling — Real-ESRGAN x4
+# ---------------------------------------------------------------------------
+
+_upscaler = None
+
+
+def _get_upscaler():
+    global _upscaler
+    if _upscaler is None:
+        import urllib.request
+        from basicsr.archs.rrdbnet_arch import RRDBNet
+        from realesrgan import RealESRGANer
+
+        weights_path = Path("/workspace/RealESRGAN_x4plus.pth")
+        if not weights_path.exists():
+            url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+            print("[ESRGAN] downloading weights...")
+            urllib.request.urlretrieve(url, str(weights_path))
+
+        model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+        _upscaler = RealESRGANer(
+            scale=4,
+            model_path=str(weights_path),
+            model=model,
+            tile=512,
+            tile_pad=10,
+            pre_pad=0,
+            half=True,
+            device="cuda",
+        )
+        print("[ESRGAN] ready.")
+    return _upscaler
+
+
+def _upscale(img: Image.Image) -> Image.Image:
+    import cv2
+    upscaler = _get_upscaler()
+    arr = np.array(img.convert("RGB"))
+    bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+    out_bgr, _ = upscaler.enhance(bgr, outscale=4)
+    return Image.fromarray(cv2.cvtColor(out_bgr, cv2.COLOR_BGR2RGB))
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -264,6 +308,7 @@ def main():
     parser.add_argument("--model",   help="Run only this model folder (e.g. model_01)")
     parser.add_argument("--type",    choices=["JACKETS", "VESTS"], help="Garment type filter")
     parser.add_argument("--garment", help="Run only this garment stem (e.g. suit_002_front)")
+    parser.add_argument("--upscale", action="store_true", help="Upscale result x4 with Real-ESRGAN")
     args = parser.parse_args()
 
     models   = collect_models(args.model)
@@ -345,6 +390,10 @@ def main():
 
                     if ptype == "VESTS":
                         result = _composite_vest_sam2(result, person_pil, fitdit)
+
+                    if args.upscale:
+                        print("upscaling... ", end="", flush=True)
+                        result = _upscale(result)
 
                     result.save(out_path, quality=92)
                     print("ok")
