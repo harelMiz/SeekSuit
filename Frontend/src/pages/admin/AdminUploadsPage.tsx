@@ -9,7 +9,7 @@ import {
   processAllImages,
   deleteProductImage,
 } from "../../services/product.service";
-import { COLOR_OPTIONS, colorLabel } from "../../lib/colorMap";
+import { COLOR_OPTIONS, colorDisplay } from "../../lib/colorMap";
 import type { ProductImage, ProductType, ProductStatus, CreateProductInput } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -34,7 +34,7 @@ const INITIAL_FORM: CreateProductInput = {
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export default function AdminUploadsPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // All unassigned images in the grid
@@ -60,13 +60,17 @@ export default function AdminUploadsPage() {
   // Lightbox — URL of the image currently being previewed full-size
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
+  // English name for the new product (stored in attributes.nameEn)
+  const [nameEn, setNameEn] = useState("");
+
   // Color combobox state for the assignment panel
   const [colorSearch, setColorSearch] = useState("");
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
   const colorRef = useRef<HTMLDivElement>(null);
 
   const filteredColors = COLOR_OPTIONS.filter((key) =>
-    colorLabel(key).includes(colorSearch) || key.toLowerCase().includes(colorSearch.toLowerCase())
+    colorDisplay(key, lang).toLowerCase().includes(colorSearch.toLowerCase()) ||
+    key.toLowerCase().includes(colorSearch.toLowerCase())
   );
 
   // Close color dropdown when clicking outside the combobox
@@ -218,6 +222,7 @@ export default function AdminUploadsPage() {
   function openAssignForm() {
     if (!selected.size) return;
     setForm(INITIAL_FORM);
+    setNameEn("");
     setSaveError("");
     setShowForm(true);
   }
@@ -227,7 +232,8 @@ export default function AdminUploadsPage() {
     setSaving(true);
     setSaveError("");
     try {
-      await assignImagesToProduct(Array.from(selected), form);
+      const payload = { ...form, attributes: nameEn ? { nameEn } : undefined };
+      await assignImagesToProduct(Array.from(selected), payload);
       // Remove assigned images from grid
       setImageStates((prev) => prev.filter((s) => !selected.has(s.image.id)));
       setSelected(new Set());
@@ -252,31 +258,31 @@ export default function AdminUploadsPage() {
           <div className="flex items-center gap-3 mb-2">
             <span className="block w-10 h-px bg-gradient-to-r from-tertiary-fixed-dim to-tertiary-fixed" />
             <p className="text-xs font-bold tracking-[0.18em] uppercase text-on-tertiary-container">
-              AI Processing
+              {t("admin.uploadSub")}
             </p>
           </div>
-          <h1 className="font-headline text-4xl font-bold text-on-surface">
-            Bulk{" "}
-            <span className="italic text-on-tertiary-container">Uploads</span>
+          <h1 className="font-headline font-bold text-on-surface leading-[1.05] inline-block">
+            <span className="text-5xl block">{t("admin.uploadsTitle1")}</span>
+            <span className="text-6xl italic text-on-tertiary-container block text-center">{t("admin.uploadsTitle2")}</span>
           </h1>
         </div>
 
         {/* Action bar — shown when images are selected */}
         {selected.size > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-secondary">{selected.size} selected</span>
+            <span className="text-sm text-secondary">{selected.size} {t("admin.selectedLabel")}</span>
             <button
               onClick={clearSelection}
               className="text-sm text-secondary hover:text-primary border border-outline-variant px-3 py-2 rounded-xl transition-colors"
             >
-              Clear
+              {t("admin.clearSelection")}
             </button>
             <button
               onClick={openAssignForm}
               className="flex items-center gap-2 text-sm font-semibold gold-shimmer text-on-tertiary-fixed px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
             >
               <ChevronRight size={15} />
-              Create product from {selected.size} image{selected.size > 1 ? "s" : ""}
+              {t("admin.createProduct")} ({selected.size})
             </button>
           </div>
         )}
@@ -350,7 +356,7 @@ export default function AdminUploadsPage() {
           <>
             <Loader2 size={28} className="text-on-tertiary-container animate-spin" />
             <p className="text-sm font-semibold text-on-surface">
-              Uploading... {uploadProgress}%
+              {t("admin.uploading")} {uploadProgress}%
             </p>
             <div className="w-48 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
               <div
@@ -366,15 +372,15 @@ export default function AdminUploadsPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-on-surface">
-                Drop images here or click to browse
+                {t("admin.dropZoneTitle")}
               </p>
               <p className="text-xs text-secondary mt-1">
-                JPG, PNG, WEBP — upload as many as you like
+                {t("admin.dropZoneFormats")}
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-on-tertiary-container bg-tertiary-fixed/20 border border-tertiary-fixed-dim/30 px-4 py-2 rounded-full">
               <Sparkles size={12} />
-              AI background removal starts automatically
+              {t("admin.dropZoneAi")}
             </div>
           </>
         )}
@@ -386,13 +392,13 @@ export default function AdminUploadsPage() {
           {/* Grid header */}
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs font-bold tracking-widest uppercase text-secondary">
-              {imageStates.length} image{imageStates.length !== 1 ? "s" : ""} awaiting assignment
+              {imageStates.length} {t("admin.imagesAwaitingAssignment")}
             </p>
             <button
               onClick={selected.size === imageStates.length ? clearSelection : selectAll}
               className="text-xs text-on-tertiary-container font-semibold hover:opacity-70 transition-opacity"
             >
-              {selected.size === imageStates.length ? "Deselect all" : "Select all"}
+              {selected.size === imageStates.length ? t("admin.deselectAll") : t("admin.selectAll")}
             </button>
           </div>
 
@@ -452,21 +458,21 @@ export default function AdminUploadsPage() {
                   {isFailed && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50">
                       <span className="text-white text-[9px] font-bold bg-red-500/80 px-1.5 py-0.5 rounded">
-                        Failed
+                        {t("admin.failed")}
                       </span>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRetry(image.id); }}
                         className="flex items-center gap-1 text-[10px] font-semibold bg-white/20 hover:bg-white/40 text-white px-2 py-1 rounded-lg transition-colors"
                       >
                         <RefreshCw size={9} />
-                        Retry
+                        {t("admin.retry")}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRemoveImage(image.id); }}
                         className="flex items-center gap-1 text-[10px] font-semibold bg-white/20 hover:bg-red-500/60 text-white px-2 py-1 rounded-lg transition-colors"
                       >
                         <X size={9} />
-                        Delete
+                        {t("admin.delete")}
                       </button>
                     </div>
                   )}
@@ -506,7 +512,7 @@ export default function AdminUploadsPage() {
       {/* Empty state */}
       {imageStates.length === 0 && uploadStatus !== "uploading" && (
         <div className="text-center py-20 text-secondary text-sm">
-          No images waiting for assignment. Upload some above.
+          {t("admin.noImagesWaiting")}
         </div>
       )}
 
@@ -523,7 +529,7 @@ export default function AdminUploadsPage() {
           <div className="w-96 bg-surface h-full overflow-y-auto shadow-2xl flex flex-col">
             <div className="px-8 py-7 border-b border-outline-variant flex items-center justify-between">
               <h2 className="font-headline text-xl font-bold text-on-surface">
-                New Product
+                {t("admin.newProductTitle")}
               </h2>
               <button
                 onClick={() => !saving && setShowForm(false)}
@@ -536,7 +542,7 @@ export default function AdminUploadsPage() {
             {/* Selected images preview — ordered by selection order */}
             <div className="px-8 py-4 border-b border-outline-variant">
               <p className="text-[10px] text-secondary uppercase tracking-widest mb-3">
-                {selected.size} image{selected.size > 1 ? "s" : ""} selected
+                {selected.size} {t("admin.selectedLabel")}
               </p>
               <div className="flex gap-2 flex-wrap">
                 {(() => {
@@ -559,7 +565,7 @@ export default function AdminUploadsPage() {
                     });
                 })()}
               </div>
-              <p className="text-[10px] text-outline mt-2">First selected image will be set as main</p>
+              <p className="text-[10px] text-outline mt-2">{t("admin.firstImageAsMain")}</p>
             </div>
 
             {/* Form */}
@@ -573,6 +579,19 @@ export default function AdminUploadsPage() {
                   required
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
+                  {t("admin.productNameEn")}
+                </label>
+                <input
+                  type="text"
+                  value={nameEn}
+                  onChange={(e) => setNameEn(e.target.value)}
+                  placeholder={t("admin.productNameEnPlaceholder")}
                   className={inputClass}
                 />
               </div>
@@ -612,8 +631,8 @@ export default function AdminUploadsPage() {
                   <input
                     type="text"
                     required
-                    placeholder="חפש צבע..."
-                    value={colorSearch || colorLabel(form.color)}
+                    placeholder={t("admin.colorSearchPlaceholder")}
+                    value={colorSearch || colorDisplay(form.color, lang)}
                     onFocus={() => { setColorSearch(""); setColorDropdownOpen(true); }}
                     onChange={(e) => { setColorSearch(e.target.value); setColorDropdownOpen(true); }}
                     className={inputClass}
@@ -631,7 +650,7 @@ export default function AdminUploadsPage() {
                           }}
                           className={`px-3 py-2 cursor-pointer hover:bg-surface-container text-on-surface ${form.color === key ? "font-semibold text-primary" : ""}`}
                         >
-                          {colorLabel(key)}
+                          {colorDisplay(key, lang)}
                         </li>
                       ))}
                     </ul>
@@ -663,10 +682,10 @@ export default function AdminUploadsPage() {
                 >
                   {saving ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 size={14} className="animate-spin" /> Saving...
+                      <Loader2 size={14} className="animate-spin" /> {t("admin.saving")}
                     </span>
                   ) : (
-                    "Create Product"
+                    t("admin.createProduct")
                   )}
                 </button>
                 <button
@@ -675,7 +694,7 @@ export default function AdminUploadsPage() {
                   disabled={saving}
                   className="px-4 py-3 border border-outline-variant text-on-surface-variant hover:border-outline text-sm rounded-xl transition-colors"
                 >
-                  Cancel
+                  {t("admin.cancel")}
                 </button>
               </div>
             </form>

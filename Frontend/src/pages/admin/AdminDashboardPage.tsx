@@ -14,13 +14,13 @@ import { getProducts, processAllUnprocessed } from "../../services/product.servi
 import { mainImage, bestImageUrl } from "../../types/product";
 import type { Product } from "../../types/product";
 
-const RECENT_MOCK = [
-  { num: 1, name: "Classic Wool Jacket", note: "Added to inventory", sku: "JKT-001" },
-  { num: 2, name: "Slim Fit Trousers", note: "Status updated", sku: "PNT-004" },
-  { num: 3, name: "Oxford Dress Shirt", note: "Added to inventory", sku: "SHT-012" },
-  { num: 4, name: "Silk Vest", note: "In catalogue", sku: "VST-007" },
-  { num: 5, name: "Leather Belt", note: "In catalogue", sku: "BLT-002" },
-  { num: 6, name: "Slim Bow Tie", note: "In catalogue", sku: "TIE-003" },
+const RECENT_MOCK_DATA = [
+  { num: 1, name: "Classic Wool Jacket", noteKey: "admin.addedToInventory", sku: "JKT-001" },
+  { num: 2, name: "Slim Fit Trousers", noteKey: "admin.statusUpdated", sku: "PNT-004" },
+  { num: 3, name: "Oxford Dress Shirt", noteKey: "admin.addedToInventory", sku: "SHT-012" },
+  { num: 4, name: "Silk Vest", noteKey: "admin.inCatalogue", sku: "VST-007" },
+  { num: 5, name: "Leather Belt", noteKey: "admin.inCatalogue", sku: "BLT-002" },
+  { num: 6, name: "Slim Bow Tie", noteKey: "admin.inCatalogue", sku: "TIE-003" },
 ];
 
 const BTN_PRIMARY   = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold gold-shimmer text-on-tertiary-fixed hover:opacity-90 transition-opacity cursor-pointer w-full";
@@ -47,7 +47,7 @@ function Sparkline() {
 }
 
 export default function AdminDashboardPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [products, setProducts]           = useState<Product[]>([]);
   const [topProducts, setTopProducts]     = useState<TopProduct[]>([]);
   const [topProductsLoaded, setTopProductsLoaded] = useState(false);
@@ -75,10 +75,10 @@ export default function AdminDashboardPage() {
     setProcessAllResult(null);
     try {
       const result = await processAllUnprocessed();
-      setProcessAllResult(`${result.queued} images queued`);
+      setProcessAllResult(`${result.queued} ${t("admin.imagesQueued")}`);
       setTimeout(() => setProcessAllResult(null), 4000);
     } catch {
-      setProcessAllResult("Failed to queue");
+      setProcessAllResult(t("admin.failedToQueue"));
       setTimeout(() => setProcessAllResult(null), 4000);
     } finally {
       setProcessingAll(false);
@@ -102,8 +102,8 @@ export default function AdminDashboardPage() {
   const canNext = carouselOffset + CAROUSEL_VISIBLE < carouselItems.length;
 
   const activityRows = products.length > 0
-    ? products.slice(0, 6).map((p, i) => ({ num: i + 1, name: p.name, note: "in catalogue", sku: p.sku }))
-    : RECENT_MOCK;
+    ? products.slice(0, 6).map((p, i) => ({ num: i + 1, name: p.name, note: t("admin.inCatalogue"), sku: p.sku }))
+    : RECENT_MOCK_DATA.map(m => ({ ...m, note: t(m.noteKey) }));
 
   return (
     <AdminLayout>
@@ -127,7 +127,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="text-start">
               <p className="text-sm font-bold text-on-surface">{t("insights.chatOpen")}</p>
-              <p className="text-xs text-secondary">AI Business Agent</p>
+              <p className="text-xs text-secondary">{t("admin.aiBusinessAgent")}</p>
             </div>
             <ChevronRight size={14} className="text-secondary group-hover:text-primary transition-colors ml-1" />
           </button>
@@ -140,7 +140,7 @@ export default function AdminDashboardPage() {
 
           {/* [visual RIGHT] col-4: Stock Status — fills card with justify-between */}
           <div className="col-span-12 md:col-span-4 bg-surface-container-low border border-outline-variant rounded-2xl p-6 flex flex-col justify-between">
-            <p className="text-xs font-bold tracking-widest uppercase text-secondary">Stock Status</p>
+            <p className="text-xs font-bold tracking-widest uppercase text-secondary">{t("admin.stockStatus")}</p>
 
             {/* Donut centred */}
             <div className="flex flex-col items-center py-4">
@@ -152,21 +152,21 @@ export default function AdminDashboardPage() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <p className="font-headline text-3xl font-black text-on-surface leading-none">{inStockPct}%</p>
-                  <p className="text-[9px] text-secondary mt-0.5">in stock</p>
+                  <p className="text-[9px] text-secondary mt-0.5">{t("admin.inStockPct")}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-8">
                 <div className="text-center">
                   <p className="font-headline text-4xl font-black text-on-surface">{stats?.inStock ?? "—"}</p>
-                  <p className="text-xs text-secondary mt-1">In Stock</p>
+                  <p className="text-xs text-secondary mt-1">{t("status.in_stock")}</p>
                 </div>
                 <div className="w-px h-10 bg-outline-variant" />
                 <div className="text-center">
                   <p className={`font-headline text-4xl font-black ${stats?.outOfStock ? "text-error" : "text-on-surface"}`}>
                     {stats?.outOfStock ?? "—"}
                   </p>
-                  <p className="text-xs text-secondary mt-1">Out of Stock</p>
+                  <p className="text-xs text-secondary mt-1">{t("status.out_of_stock")}</p>
                 </div>
               </div>
             </div>
@@ -176,23 +176,20 @@ export default function AdminDashboardPage() {
               <div className="h-1.5 rounded-full bg-outline-variant overflow-hidden mb-2">
                 <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${inStockPct}%`, background: "#e9c176" }} />
               </div>
-              <p className="text-xs text-secondary text-center">of catalogue in stock {inStockPct}%</p>
+              <p className="text-xs text-secondary text-center">{inStockPct}% {t("admin.catalogueOfStock")}</p>
             </div>
           </div>
 
           {/* [visual MIDDLE] col-5: Product Items + Sparkline */}
           <div className="col-span-12 md:col-span-5 bg-surface-container-low border border-outline-variant rounded-2xl p-8 flex flex-col justify-between overflow-hidden">
             <div>
-              <p className="text-xs font-bold tracking-widest uppercase text-secondary mb-2">Product Items</p>
+              <p className="text-xs font-bold tracking-widest uppercase text-secondary mb-2">{t("admin.productItems")}</p>
               <p className="font-headline text-7xl font-black text-on-surface leading-none mb-3">{stats?.totalProducts ?? "—"}</p>
               <p className="text-sm text-secondary leading-relaxed max-w-xs">
-                Total items in the product catalogue, across all categories and statuses.
+                {t("admin.productItemsSub")}
               </p>
             </div>
             <div className="h-16 mt-5 -mx-2"><Sparkline /></div>
-            <div className="flex items-center gap-1.5 mt-3 text-xs text-on-tertiary-container">
-              <TrendingUp size={12} /><span>Collection growing</span><ArrowRight size={11} />
-            </div>
           </div>
 
           {/* [visual LEFT] col-3: Searches + Upload Queue + Missing Images */}
@@ -207,29 +204,29 @@ export default function AdminDashboardPage() {
                 <Search size={13} className="text-on-surface-variant group-hover:text-primary transition-colors" />
               </div>
               <p className="font-headline text-4xl font-black text-on-surface mb-1">{stats?.searchesToday ?? "—"}</p>
-              <p className="text-xs text-secondary">Text + image searches</p>
+              <p className="text-xs text-secondary">{t("admin.searchesSub")}</p>
             </button>
 
             <div className="flex-1 bg-surface-container-low border border-outline-variant rounded-2xl p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold tracking-widest uppercase text-secondary">Upload Queue</p>
+                  <p className="text-xs font-bold tracking-widest uppercase text-secondary">{t("admin.uploadQueue")}</p>
                   <Upload size={13} className="text-on-surface-variant" />
                 </div>
                 <p className="font-headline text-4xl font-black text-on-surface mb-1">{stats != null ? stats.uploadsTotal : "—"}</p>
                 <div className="space-y-1 mt-2 text-xs text-secondary">
                   <div className="flex justify-between">
-                    <span>Processed</span>
+                    <span>{t("admin.processed")}</span>
                     <span className="font-semibold text-on-surface">{stats?.uploadsProcessed ?? "—"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Processing</span>
+                    <span>{t("admin.processing")}</span>
                     <span className={`font-semibold ${stats?.uploadsProcessing ? "text-on-tertiary-container" : "text-on-surface"}`}>{stats?.uploadsProcessing ?? "—"}</span>
                   </div>
                 </div>
               </div>
               <Link to="/admin/uploads" className={`${BTN_SECONDARY} mt-3`}>
-                <Upload size={11} />View uploads
+                <Upload size={11} />{t("admin.viewUploads")}
               </Link>
             </div>
 
@@ -241,10 +238,10 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="flex items-baseline gap-2 mb-1">
                   <p className={`font-headline text-4xl font-black ${stats?.missingImages ? "text-error" : "text-on-surface"}`}>{stats?.missingImages ?? "—"}</p>
-                  <span className="text-sm text-secondary">products</span>
+                  <span className="text-sm text-secondary">{t("admin.products")}</span>
                 </div>
                 <p className="text-xs text-secondary">
-                  <span className={`font-bold ${stats?.totalMissingProcessedImages ? "text-error" : "text-on-surface"}`}>{stats?.totalMissingProcessedImages ?? "—"}</span>{" "}images missing
+                  <span className={`font-bold ${stats?.totalMissingProcessedImages ? "text-error" : "text-on-surface"}`}>{stats?.totalMissingProcessedImages ?? "—"}</span>{" "}{t("admin.imagesMissing")}
                 </p>
               </div>
               <div className="flex gap-2 mt-3">
@@ -255,10 +252,10 @@ export default function AdminDashboardPage() {
                   style={{ fontSize: "12px", padding: "8px 10px" }}
                 >
                   {processingAll ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-                  Process All
+                  {t("admin.processAll")}
                 </button>
                 <Link to="/admin/inventory?filter=missing-images" className={`${BTN_SECONDARY} flex-1`}>
-                  View products
+                  {t("admin.viewProducts")}
                 </Link>
               </div>
               {processAllResult && <p className="text-xs text-on-tertiary-container font-semibold text-center mt-2">{processAllResult}</p>}
@@ -278,8 +275,8 @@ export default function AdminDashboardPage() {
           {/* [visual LEFT] col-3: Quick Actions — same min-h */}
           <div className="col-span-12 md:col-span-3 bg-zinc-900 rounded-2xl p-6 flex flex-col justify-between min-h-[260px]">
             <div>
-              <p className="text-xs font-bold tracking-widest uppercase text-white/50 mb-1">Quick Actions</p>
-              <p className="font-headline text-lg font-bold text-white leading-snug mb-2">Manage your catalogue</p>
+              <p className="text-xs font-bold tracking-widest uppercase text-white/50 mb-1">{t("admin.quickActions")}</p>
+              <p className="font-headline text-lg font-bold text-white leading-snug mb-2">{t("admin.quickActionsSub")}</p>
             </div>
             <div className="space-y-3">
               <Link to="/admin/inventory/new" className={BTN_PRIMARY}>
@@ -301,9 +298,9 @@ export default function AdminDashboardPage() {
           {/* col-6: Recent Activity — visual RIGHT in RTL */}
           <div className="col-span-12 md:col-span-6 bg-surface-container-low border border-outline-variant rounded-2xl p-6">
             <div className="flex items-center justify-between mb-5">
-              <p className="text-sm font-bold text-on-surface">Recent Activity</p>
+              <p className="text-sm font-bold text-on-surface">{t("admin.recentActivity")}</p>
               <div className="flex items-center gap-1.5 text-xs text-secondary">
-                <Clock size={12} /><span>Last 24hrs</span>
+                <Clock size={12} /><span>{t("admin.last24hrs")}</span>
               </div>
             </div>
             <div className="space-y-0">
@@ -324,20 +321,20 @@ export default function AdminDashboardPage() {
           <div className="col-span-12 md:col-span-6 bg-surface-container-low border border-outline-variant rounded-2xl overflow-hidden flex flex-col">
             <div className="px-6 pt-5 pb-3 flex items-center justify-between shrink-0">
               <div>
-                <p className="text-[10px] font-bold tracking-widest uppercase text-on-tertiary-container">Trending</p>
-                <h3 className="font-headline text-xl font-bold text-on-surface">Top Products</h3>
-                <p className="text-xs text-secondary mt-0.5">Most previewed this month</p>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-on-tertiary-container">{t("admin.trending")}</p>
+                <h3 className="font-headline text-xl font-bold text-on-surface">{t("admin.topProducts")}</h3>
+                <p className="text-xs text-secondary mt-0.5">{t("admin.topProductsSub")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => setCarouselOffset(o => Math.max(0, o - 1))} disabled={!canPrev}
                   className="w-7 h-7 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface transition-colors disabled:opacity-30 cursor-pointer">
-                  <ChevronLeft size={13} />
+                  {lang === "he" ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
                 </button>
                 <button onClick={() => setCarouselOffset(o => Math.min(Math.max(0, carouselItems.length - CAROUSEL_VISIBLE), o + 1))} disabled={!canNext}
                   className="w-7 h-7 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface transition-colors disabled:opacity-30 cursor-pointer">
-                  <ChevronRight size={13} />
+                  {lang === "he" ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
                 </button>
-                <Link to="/admin/inventory" className="text-xs text-secondary hover:text-primary transition-colors ml-1">View all →</Link>
+                <Link to="/admin/inventory" className="text-xs text-secondary hover:text-primary transition-colors ml-1">{t("admin.viewAll")} →</Link>
               </div>
             </div>
             <div className="px-6 pb-6 flex-1">
@@ -360,7 +357,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               ) : (
-                <div className="h-36 flex items-center justify-center text-secondary text-sm">No products with images yet</div>
+                <div className="h-36 flex items-center justify-center text-secondary text-sm">{t("admin.noProductsWithImages")}</div>
               )}
             </div>
           </div>

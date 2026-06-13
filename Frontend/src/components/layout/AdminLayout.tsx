@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Upload, Settings, HelpCircle, LogOut, Bell, Search, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Package, Upload, LogOut, Sun, Moon } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
+import type { Language } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 
 const NAV_ITEMS = [
@@ -10,14 +11,10 @@ const NAV_ITEMS = [
   { to: "/admin/uploads", label: "admin.uploads", icon: Upload, exact: false },
 ];
 
-const BOTTOM_ITEMS = [
-  { to: "#", label: "Settings", icon: Settings },
-  { to: "#", label: "Support", icon: HelpCircle },
-];
-
 // Admin layout: dark sidebar + main content area with sticky top bar
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { t } = useLang();
+  const { t, lang, setLang } = useLang();
+  const otherLang: Language = lang === "he" ? "en" : "he";
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -54,14 +51,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <aside className="w-64 fixed left-0 top-0 h-screen bg-neutral-900 border-r border-neutral-800 flex flex-col justify-between z-50">
         {/* Top: brand */}
         <div>
-          <Link to="/admin" className="block px-8 py-7 border-b border-neutral-800">
-            <div className="font-headline italic text-xl text-white">
-              The Atelier
+          <div className="px-8 py-7 border-b border-neutral-800">
+            <img src="/logo.svg" alt="SeekSuit" className="h-8 w-auto" />
+            <div className="text-[10px] tracking-widest uppercase text-neutral-500 mt-1.5">
+              אופנת ג׳נודי
             </div>
-            <div className="text-[10px] tracking-widest uppercase text-neutral-500 mt-0.5">
-              Admin Console
-            </div>
-          </Link>
+          </div>
 
           {/* Nav links */}
           <nav className="p-4 space-y-1 mt-2">
@@ -85,22 +80,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </nav>
         </div>
 
-        {/* Bottom: settings + logout */}
-        <div className="p-4 border-t border-neutral-800 space-y-1">
-          {BOTTOM_ITEMS.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={label}
-              to={to}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-neutral-400 hover:text-white hover:bg-neutral-800/30 transition-colors"
-            >
-              <Icon size={15} />
-              {label}
-            </Link>
-          ))}
-
+        {/* Bottom: logout */}
+        <div className="p-4 border-t border-neutral-800">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 transition-colors mt-3"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 transition-colors"
           >
             <LogOut size={15} />
             {t("admin.logout")}
@@ -120,15 +104,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Search input */}
-            <div className="flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2">
-              <Search size={14} className="text-secondary" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-transparent text-sm text-on-surface placeholder-secondary outline-none w-40"
-              />
-            </div>
+            {/* Language toggle */}
+            <button
+              onClick={() => setLang(otherLang)}
+              className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-xs font-bold text-secondary hover:text-on-surface hover:border-on-surface/40 transition-colors"
+            >
+              {otherLang === "en" ? "EN" : "עב"}
+            </button>
 
             {/* Dark/light toggle */}
             <button
@@ -138,16 +120,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             >
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-
-            {/* Bell */}
-            <button className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface transition-colors">
-              <Bell size={16} />
-            </button>
-
-            {/* Account avatar */}
-            <div className="w-9 h-9 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center">
-              <span className="text-xs font-bold text-on-surface">A</span>
-            </div>
           </div>
         </header>
 

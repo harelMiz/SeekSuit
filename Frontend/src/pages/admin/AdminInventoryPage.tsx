@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUpDown, X, Sparkles, Loader2 } from "lucide-react";
 import axios from "axios";
 import { useLang } from "../../context/LanguageContext";
@@ -7,6 +7,7 @@ import AdminLayout from "../../components/layout/AdminLayout";
 import { getProducts, deleteProduct, processAllImages } from "../../services/product.service";
 import type { Product, ProductType, ProductStatus } from "../../types/product";
 import { mainImage, bestImageUrl } from "../../types/product";
+import { colorDisplay } from "../../lib/colorMap";
 
 // Number of rows shown per page
 const PAGE_SIZE = 10;
@@ -18,7 +19,8 @@ type SortDir = "asc" | "desc";
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export default function AdminInventoryPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,8 +171,10 @@ export default function AdminInventoryPage() {
     [products]
   );
   const availableColors = useMemo(
-    () => [...new Set(products.map((p) => p.color).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")),
-    [products]
+    () => [...new Set(products.map((p) => p.color).filter(Boolean))].sort((a, b) =>
+      colorDisplay(a, lang).localeCompare(colorDisplay(b, lang), lang === "he" ? "he" : "en")
+    ),
+    [products, lang]
   );
 
   function toggleSort(field: SortField) {
@@ -227,13 +231,13 @@ export default function AdminInventoryPage() {
           <div className="flex items-center gap-3 mb-3">
             <span className="block w-14 h-[1.5px] bg-gradient-to-r from-tertiary-fixed to-tertiary-fixed-dim" />
             <p className="text-xs font-bold tracking-[0.22em] uppercase text-on-tertiary-container">
-              Stock Overview
+              {t("admin.stockOverview")}
             </p>
           </div>
           <h1 className="font-headline font-bold text-on-surface leading-[1.05]">
-            <span className="text-5xl">Product</span>
+            <span className="text-5xl">{t("admin.inventoryTitle1")}</span>
             <br />
-            <span className="text-6xl italic text-on-tertiary-container">Catalogue</span>
+            <span className="text-6xl italic text-on-tertiary-container">{t("admin.inventoryTitle2")}</span>
           </h1>
           <div className="mt-4 w-20 h-[2px] bg-gradient-to-r from-tertiary-fixed-dim to-tertiary-fixed" />
         </div>
@@ -259,15 +263,15 @@ export default function AdminInventoryPage() {
         <div className="mt-8 bg-surface-container-low p-1 rounded-2xl overflow-hidden">
           {/* Sort + filter bars still shown even when empty */}
           <div className="flex items-center gap-1.5 px-4 py-3 border-b border-outline-variant/60">
-            <span className="text-[10px] text-secondary uppercase tracking-widest mr-2">Sort</span>
+            <span className="text-[10px] text-secondary uppercase tracking-widest mr-2">{t("admin.sort")}</span>
           </div>
           <div className="flex items-center justify-center h-32 text-secondary text-sm">
-            No products match the current filters.{" "}
+            {t("admin.noProductsFiltered")}{" "}
             <button
               onClick={() => { setFilterType(""); setFilterColor(""); setFilterStatus(""); }}
               className="ml-1 text-on-tertiary-container font-semibold hover:opacity-70 transition-opacity"
             >
-              Clear filters
+              {t("shop.clearFilters")}
             </button>
           </div>
         </div>
@@ -278,10 +282,10 @@ export default function AdminInventoryPage() {
 
             {/* Sort toggle buttons: Name / SKU / Date Added */}
             {([
-              { field: "name"      as SortField, label: "Name" },
-              { field: "sku"       as SortField, label: "SKU" },
-              { field: "createdAt" as SortField, label: "Date Added" },
-            ]).map(({ field, label }) => (
+              { field: "name"      as SortField, labelKey: "admin.sortByName" },
+              { field: "sku"       as SortField, labelKey: "SKU" },
+              { field: "createdAt" as SortField, labelKey: "admin.sortByDate" },
+            ]).map(({ field, labelKey }) => (
               <button
                 key={field}
                 onClick={() => { toggleSort(field); setPage(1); }}
@@ -291,7 +295,7 @@ export default function AdminInventoryPage() {
                     : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
                 }`}
               >
-                {label}
+                {labelKey.startsWith("admin.") ? t(labelKey) : labelKey}
                 {sortBy === field
                   ? sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />
                   : <ArrowUpDown size={11} className="opacity-25" />}
@@ -311,22 +315,22 @@ export default function AdminInventoryPage() {
                     : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
                 }`}
               >
-                {filterType ? t(`type.${filterType}`) : "Type"}
+                {filterType ? t(`type.${filterType}`) : t("admin.filterType")}
                 <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "type" ? "rotate-180" : ""}`} />
               </button>
               {openDropdown === "type" && (
-                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]">
+                <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]`}>
                   <button
                     onClick={() => { setFilterType(""); setOpenDropdown(null); setPage(1); }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterType ? "text-on-surface font-semibold" : "text-secondary"}`}
+                    className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterType ? "text-on-surface font-semibold" : "text-secondary"}`}
                   >
-                    All types
+                    {t("shop.allTypes")}
                   </button>
                   {availableTypes.map((type) => (
                     <button
                       key={type}
                       onClick={() => { setFilterType(type); setOpenDropdown(null); setPage(1); }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterType === type ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                      className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterType === type ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
                     >
                       {t(`type.${type}`)}
                     </button>
@@ -345,24 +349,24 @@ export default function AdminInventoryPage() {
                     : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
                 }`}
               >
-                {filterColor || "Color"}
+                {filterColor ? colorDisplay(filterColor, lang) : t("admin.filterColor")}
                 <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "color" ? "rotate-180" : ""}`} />
               </button>
               {openDropdown === "color" && (
-                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[120px] max-h-56 overflow-y-auto">
+                <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[120px] max-h-56 overflow-y-auto`}>
                   <button
                     onClick={() => { setFilterColor(""); setOpenDropdown(null); setPage(1); }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterColor ? "text-on-surface font-semibold" : "text-secondary"}`}
+                    className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterColor ? "text-on-surface font-semibold" : "text-secondary"}`}
                   >
-                    All colors
+                    {t("shop.allColors")}
                   </button>
                   {availableColors.map((color) => (
                     <button
                       key={color}
                       onClick={() => { setFilterColor(color); setOpenDropdown(null); setPage(1); }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterColor === color ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                      className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterColor === color ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
                     >
-                      {color}
+                      {colorDisplay(color, lang)}
                     </button>
                   ))}
                 </div>
@@ -379,22 +383,22 @@ export default function AdminInventoryPage() {
                     : "text-secondary hover:text-on-surface hover:bg-surface-container-high"
                 }`}
               >
-                {filterStatus ? t(`status.${filterStatus.toLowerCase()}`) : "Status"}
+                {filterStatus ? t(`status.${filterStatus.toLowerCase()}`) : t("admin.filterStatus")}
                 <ChevronDown size={11} className={`transition-transform duration-150 ${openDropdown === "status" ? "rotate-180" : ""}`} />
               </button>
               {openDropdown === "status" && (
-                <div className="absolute top-full left-0 mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]">
+                <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]`}>
                   <button
                     onClick={() => { setFilterStatus(""); setOpenDropdown(null); setPage(1); }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterStatus ? "text-on-surface font-semibold" : "text-secondary"}`}
+                    className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterStatus ? "text-on-surface font-semibold" : "text-secondary"}`}
                   >
-                    All statuses
+                    {t("shop.allStatuses")}
                   </button>
                   {(["IN_STOCK", "OUT_OF_STOCK"] as ProductStatus[]).map((s) => (
                     <button
                       key={s}
                       onClick={() => { setFilterStatus(s); setOpenDropdown(null); setPage(1); }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterStatus === s ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
+                      className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterStatus === s ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}
                     >
                       {t(`status.${s.toLowerCase()}`)}
                     </button>
@@ -413,7 +417,7 @@ export default function AdminInventoryPage() {
               }`}
             >
               <ImageOff size={11} />
-              Missing images
+              {t("insights.missingImages")}
             </button>
 
             {/* Clear active filters */}
@@ -453,10 +457,11 @@ export default function AdminInventoryPage() {
               {paginated.map((product) => (
                 <tr
                   key={product.id}
-                  className="group border-b border-outline-variant/50 hover:bg-surface-container-high/30 transition-colors"
+                  onClick={() => navigate(`/products/${product.id}`)}
+                  className="group border-b border-outline-variant/50 hover:bg-surface-container-high/30 transition-colors cursor-pointer"
                 >
                   {/* Thumbnail — click opens lightbox with all images */}
-                  <td className="px-5 py-5">
+                  <td className="px-5 py-5" onClick={(e) => e.stopPropagation()}>
                     {(() => {
                       const images = product.images.slice().sort((a, b) => a.order - b.order);
                       const img = mainImage(product);
@@ -504,24 +509,20 @@ export default function AdminInventoryPage() {
 
                   {/* Color */}
                   <td className="px-4 py-5 text-lg text-secondary hidden md:table-cell">
-                    {product.color}
+                    {colorDisplay(product.color, lang)}
                   </td>
 
-                  {/* Status badge */}
+                  {/* Status */}
                   <td className="px-4 py-5">
-                    <span
-                      className={`inline-flex items-center text-base font-semibold px-3 py-1.5 rounded-full ${
-                        product.status === "IN_STOCK"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-neutral-100 text-neutral-500"
-                      }`}
-                    >
+                    <span className={`text-base font-semibold ${
+                      product.status === "IN_STOCK" ? "text-emerald-500" : "text-red-500"
+                    }`}>
                       {t(`status.${product.status.toLowerCase()}`)}
                     </span>
                   </td>
 
                   {/* Actions — fade in on row hover */}
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* AI Process button — hidden once processed */}
                       {(() => {
@@ -538,10 +539,10 @@ export default function AdminInventoryPage() {
                             disabled={isActive || !hasRaw}
                             title={
                               !hasRaw
-                                ? "No images to process"
+                                ? t("admin.noImagesToProcess")
                                 : status === "FAILED"
-                                ? "Failed — retry"
-                                : `Process ${product.images.filter((i) => i.rawUrl && !i.processedUrl).length} image(s) with AI`
+                                ? t("admin.retryFailed")
+                                : `${t("admin.processImages")} ${product.images.filter((i) => i.rawUrl && !i.processedUrl).length}`
                             }
                             className={`p-2 rounded-lg transition-colors ${
                               status === "FAILED"
@@ -581,7 +582,7 @@ export default function AdminInventoryPage() {
           {/* Pagination footer */}
           <div className="flex items-center justify-between px-5 py-4 border-t border-outline-variant">
             <p className="text-xs text-secondary">
-              Showing {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length}{activeFilters > 0 ? ` (filtered from ${products.length})` : ""} items
+              {t("admin.showing")} {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} {t("admin.of")} {sorted.length}{activeFilters > 0 ? ` (${t("admin.filteredFrom")}${products.length})` : ""} {t("admin.items")}
             </p>
             <div className="flex items-center gap-2">
               <button
