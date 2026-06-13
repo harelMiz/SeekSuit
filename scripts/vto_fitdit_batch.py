@@ -90,19 +90,46 @@ def _apply_custom_mask(pre_mask: dict, photo_path: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# JACKETS — composite via FitDiT pre_mask
+# JACKETS — ATR mask from original photo as FitDiT input + composite
 # ---------------------------------------------------------------------------
 
-def _composite_jacket(
+def _make_jacket_atr_mask(original: Image.Image, fitdit, pre_mask_template: dict):
+    """Run ATR on the original photo, return (modified pre_mask, mask_img at 384x512).
+    The mask is used as FitDiT input AND for compositing."""
+    import copy
+
+    parsing = getattr(fitdit, "parsing_model", None)
+    if parsing is None:
+        from preprocess.humanparsing.run_parsing import Parsing
+        parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
+
+    parse_result, _ = parsing(original.convert("RGB").resize((384, 512)))
+    parse_arr = np.array(parse_result)
+
+    mask_384 = (parse_arr == 4).astype(np.uint8) * 255
+    mask_img = Image.fromarray(mask_384, "L")
+    mask_img = mask_img.filter(ImageFilter.MaxFilter(size=15))
+    mask_img = mask_img.filter(ImageFilter.MinFilter(size=7))
+
+    ph, pw = pre_mask_template["layers"][0][:, :, 3].shape
+    mask_fitdit = np.array(mask_img.resize((pw, ph), Image.NEAREST))
+
+    modified = copy.deepcopy(pre_mask_template)
+    modified["layers"][0][:, :, 3] = mask_fitdit
+
+    print(f"[ATR] jacket mask: {mask_fitdit.mean()/255*100:.1f}% coverage")
+    return modified, mask_img
+
+
+def _composite_with_mask(
     fitdit_result: Image.Image,
     original: Image.Image,
-    pre_mask: dict,
+    mask_img: Image.Image,
 ) -> Image.Image:
     orig = original.convert("RGB")
     ow, oh = orig.size
     fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
-    mask_arr = pre_mask["layers"][0][:, :, 3]
-    garment_mask = Image.fromarray(mask_arr, "L").filter(ImageFilter.GaussianBlur(radius=1))
+    garment_mask = mask_img.resize((ow, oh), Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=2))
     return Image.composite(fitdit_full, orig, garment_mask)
 
 
@@ -302,7 +329,20 @@ def main():
                             print(f"[mask] saved auto mask: {auto_mask_path.name}")
 
                     pre_mask, pose_arr = cached_mask
-                    process_mask = _apply_custom_mask(pre_mask, photo_path)
+
+                    if ptype == "JACKETS":
+                        custom_path = photo_path.parent / f"{photo_path.stem}_mask.png"
+                        if custom_path.exists():
+                            process_mask = _apply_custom_mask(pre_mask, photo_path)
+                            composite_mask = Image.fromarray(
+                                process_mask["layers"][0][:, :, 3], "L"
+                            )
+                        else:
+                            process_mask, composite_mask = _make_jacket_atr_mask(
+                                person_pil, fitdit, pre_mask
+                            )
+                    else:
+                        process_mask = _apply_custom_mask(pre_mask, photo_path)
 
                     result = fitdit.process(
                         vton_img=str(TEMP_PERSON),
@@ -317,7 +357,7 @@ def main():
                     )[0]
 
                     if ptype == "JACKETS":
-                        result = _composite_jacket(result, person_pil, pre_mask)
+                        result = _composite_with_mask(result, person_pil, composite_mask)
                     elif ptype == "VESTS":
                         result = _composite_vest_sam2(result, person_pil, fitdit)
 
