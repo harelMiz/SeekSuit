@@ -79,12 +79,28 @@ UPPER_TYPES = {"JACKETS", "VESTS"}
 # JACKETS — composite via FitDiT pre_mask (preserves original resolution)
 # ---------------------------------------------------------------------------
 
+_HAND_MODEL_PATH = "/tmp/hand_landmarker.task"
+_HAND_MODEL_URL  = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
+
+
+def _ensure_hand_model():
+    if not Path(_HAND_MODEL_PATH).exists():
+        import urllib.request
+        print("[Hands] Downloading hand landmarker model (~1 MB)...")
+        urllib.request.urlretrieve(_HAND_MODEL_URL, _HAND_MODEL_PATH)
+        print("[Hands] Model ready.")
+
+
 def _mask_out_hands(pre_mask: dict, original: Image.Image) -> dict:
     """Use MediaPipe to detect hands and remove them from the pre_mask (NAND),
     so FitDiT preserves the original hands instead of regenerating them."""
     import copy
     import mediapipe as mp
+    from mediapipe.tasks import python as mp_python
+    from mediapipe.tasks.python import vision
     from PIL import ImageDraw
+
+    _ensure_hand_model()
 
     mask = copy.deepcopy(pre_mask)
     alpha = mask["layers"][0][:, :, 3]
@@ -92,12 +108,15 @@ def _mask_out_hands(pre_mask: dict, original: Image.Image) -> dict:
 
     img_rgb = np.array(original.convert("RGB").resize((w, h), Image.LANCZOS))
 
-    with mp.solutions.hands.Hands(
-        static_image_mode=True, max_num_hands=2, min_detection_confidence=0.5
-    ) as detector:
-        results = detector.process(img_rgb)
+    options = vision.HandLandmarkerOptions(
+        base_options=mp_python.BaseOptions(model_asset_path=_HAND_MODEL_PATH),
+        num_hands=2,
+    )
+    with vision.HandLandmarker.create_from_options(options) as detector:
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        results = detector.detect(mp_image)
 
-    if not results.multi_hand_landmarks:
+    if not results.hand_landmarks:
         print("[Hands] No hands detected")
         return mask
 
@@ -105,9 +124,9 @@ def _mask_out_hands(pre_mask: dict, original: Image.Image) -> dict:
     draw = ImageDraw.Draw(hand_mask)
     padding = int(h * 0.03)
 
-    for hand_lm in results.multi_hand_landmarks:
-        xs = [int(lm.x * w) for lm in hand_lm.landmark]
-        ys = [int(lm.y * h) for lm in hand_lm.landmark]
+    for hand_lm in results.hand_landmarks:
+        xs = [int(lm.x * w) for lm in hand_lm]
+        ys = [int(lm.y * h) for lm in hand_lm]
         x1 = max(0, min(xs) - padding)
         y1 = max(0, min(ys) - padding)
         x2 = min(w, max(xs) + padding)
