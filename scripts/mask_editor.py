@@ -1,9 +1,13 @@
 """
-Local Gradio tool for editing VTO masks per model photo.
+Local mask editor — adjust FitDiT's auto-generated mask per model photo.
 
-Draw in WHITE over the area where you want the garment to appear.
-The mask is saved as {photo_stem}_mask.png next to the photo.
-The batch script will use it automatically on the next run.
+Workflow:
+  1. RunPod: run vto_fitdit_batch.py --export-masks  → saves *_auto_mask.png
+  2. RunPod: git push
+  3. Local:  git pull
+  4. Local:  python scripts/mask_editor.py
+  5. Local:  adjust sliders → Save  → git push
+  6. RunPod: git pull → run batch (will use *_mask.png automatically)
 
 Usage:
     pip install gradio pillow
@@ -19,127 +23,155 @@ import numpy as np
 SCRIPTS_DIR = Path(__file__).parent
 MODELS_DIR  = SCRIPTS_DIR / "vto_models"
 
-MAX_DISPLAY_W = 700   # max width in the editor (pixels)
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _photo_choices() -> list[str]:
     choices = []
     for model_dir in sorted(MODELS_DIR.iterdir()):
         if not model_dir.is_dir():
             continue
-        for photo in sorted(list(model_dir.glob("*.png")) + list(model_dir.glob("*.jpg"))):
-            if not photo.stem.endswith("_mask"):
+        for photo in sorted(
+            list(model_dir.glob("*.png")) + list(model_dir.glob("*.jpg"))
+        ):
+            if not photo.stem.endswith(("_mask", "_auto_mask")):
                 choices.append(str(photo))
     return choices
 
 
-def _display_size(orig_w: int, orig_h: int) -> tuple[int, int]:
-    scale = min(1.0, MAX_DISPLAY_W / orig_w)
-    return int(orig_w * scale), int(orig_h * scale)
+def _load_mask(photo_path: Path) -> np.ndarray | None:
+    """Load custom mask if it exists, else auto mask, else None."""
+    for stem_suffix in ("_mask", "_auto_mask"):
+        p = photo_path.parent / f"{photo_path.stem}{stem_suffix}.png"
+        if p.exists():
+            return np.array(Image.open(p).convert("L"))
+    return None
 
 
-def load_for_editor(photo_path: str):
+def _apply_wrist_strip(mask: np.ndarray, strip_pct: float) -> np.ndarray:
+    """Zero out the bottom strip_pct% of sleeve columns (left + right thirds)."""
+    if strip_pct <= 0:
+        return mask
+    result = mask.copy()
+    h, w = result.shape
+    strip_px = max(1, int(h * strip_pct / 100))
+    side_w = w // 3
+    for cols in [range(0, side_w), range(w - side_w, w)]:
+        for col in cols:
+            white_rows = np.where(result[:, col] > 128)[0]
+            if len(white_rows) == 0:
+                continue
+            bottom = white_rows.max()
+            top = max(0, bottom - strip_px)
+            result[top:bottom + 1, col] = 0
+    return result
+
+
+def _build_preview(photo: Image.Image, mask: np.ndarray) -> Image.Image:
+    """Return photo with mask overlaid as a red tint."""
+    rgb = np.array(photo.convert("RGB"), dtype=np.float32)
+    region = mask > 128
+    rgb[region, 0] = np.clip(rgb[region, 0] * 0.4 + 180, 0, 255)
+    rgb[region, 1] = np.clip(rgb[region, 1] * 0.4,       0, 255)
+    rgb[region, 2] = np.clip(rgb[region, 2] * 0.4,       0, 255)
+    return Image.fromarray(rgb.astype(np.uint8))
+
+
+# ---------------------------------------------------------------------------
+# Gradio callbacks
+# ---------------------------------------------------------------------------
+
+def on_photo_change(photo_path: str, wrist_strip: float):
     if not photo_path:
         return None, "בחר תמונה"
 
     p = Path(photo_path)
     photo = Image.open(p).convert("RGB")
-    orig_w, orig_h = photo.size
-    dw, dh = _display_size(orig_w, orig_h)
-    photo_display = np.array(photo.resize((dw, dh), Image.LANCZOS))
+    mask = _load_mask(p)
 
-    mask_path = p.parent / f"{p.stem}_mask.png"
-    if mask_path.exists():
-        existing = np.array(Image.open(mask_path).convert("L").resize((dw, dh), Image.NEAREST))
-        layer = np.zeros((dh, dw, 4), dtype=np.uint8)
-        layer[:, :, 0] = 255
-        layer[:, :, 1] = 255
-        layer[:, :, 2] = 255
-        layer[:, :, 3] = existing
-        layers = [layer]
-        status = f"נטענה מסכה קיימת: {mask_path.name}"
-    else:
-        layers = [np.zeros((dh, dw, 4), dtype=np.uint8)]
-        status = "אין מסכה — צייר עם לבן את אזור החליפה"
+    if mask is None:
+        return np.array(photo), "אין auto mask — הרץ קודם בפוד עם --export-masks"
 
-    return {
-        "background": photo_display,
-        "layers": layers,
-        "composite": photo_display,
-    }, status
+    has_custom = (p.parent / f"{p.stem}_mask.png").exists()
+    has_auto   = (p.parent / f"{p.stem}_auto_mask.png").exists()
+
+    source = "מותאמת אישית" if has_custom else "אוטומטית (FitDiT)"
+    status = f"מסכה {source} נטענה  |  כיסוי {mask.mean()/255*100:.1f}%"
+
+    adjusted = _apply_wrist_strip(mask, wrist_strip)
+    preview  = _build_preview(photo, adjusted)
+    return np.array(preview), status
 
 
-def save_mask(photo_path: str, editor_value):
+def on_slider_change(photo_path: str, wrist_strip: float):
+    return on_photo_change(photo_path, wrist_strip)
+
+
+def on_save(photo_path: str, wrist_strip: float):
     if not photo_path:
         return "בחר תמונה תחילה"
-    if editor_value is None:
-        return "אין מסכה לשמירה"
-
-    layers = editor_value.get("layers", [])
-    if not layers or layers[0] is None:
-        return "צייר מסכה תחילה"
-
-    layer = np.asarray(layers[0], dtype=np.uint8)
-    mask_display = layer[:, :, 3] if layer.ndim == 3 and layer.shape[2] == 4 else layer[:, :, 0]
 
     p = Path(photo_path)
-    orig_w, orig_h = Image.open(p).size
-    mask_path = p.parent / f"{p.stem}_mask.png"
-    Image.fromarray(mask_display, "L").resize((orig_w, orig_h), Image.NEAREST).save(str(mask_path))
+    mask = _load_mask(p)
+    if mask is None:
+        return "אין מסכה — הרץ קודם בפוד עם --export-masks"
 
-    coverage = mask_display.mean() / 255 * 100
+    adjusted  = _apply_wrist_strip(mask, wrist_strip)
+    mask_path = p.parent / f"{p.stem}_mask.png"
+    Image.fromarray(adjusted, "L").save(str(mask_path))
+
+    coverage = adjusted.mean() / 255 * 100
     return f"נשמר: {mask_path.name}  (כיסוי {coverage:.1f}%)"
 
 
-def clear_mask(photo_path: str, editor_value):
-    if not editor_value:
-        return editor_value, "אין מה לנקות"
-
-    bg = editor_value.get("background")
-    h, w = (bg.shape[0], bg.shape[1]) if bg is not None else (512, 384)
-    new_value = {
-        "background": bg,
-        "layers": [np.zeros((h, w, 4), dtype=np.uint8)],
-        "composite": bg,
-    }
-
-    if photo_path:
-        mask_path = Path(photo_path).parent / f"{Path(photo_path).stem}_mask.png"
-        if mask_path.exists():
-            mask_path.unlink()
-
-    return new_value, "מסכה נוקתה"
+def on_reset(photo_path: str):
+    if not photo_path:
+        return "בחר תמונה תחילה"
+    p = Path(photo_path)
+    mask_path = p.parent / f"{p.stem}_mask.png"
+    if mask_path.exists():
+        mask_path.unlink()
+        return "המסכה המותאמת נמחקה — יחזור לאוטומטי"
+    return "אין מסכה מותאמת למחיקה"
 
 
-def refresh_choices():
-    return gr.Dropdown(choices=_photo_choices())
+# ---------------------------------------------------------------------------
+# UI
+# ---------------------------------------------------------------------------
 
-
-with gr.Blocks(title="VTO Mask Editor", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("## VTO Mask Editor\nצייר **לבן** על אזור החליפה/הווסט. שחור = FitDiT לא יגע שם.")
+with gr.Blocks(title="VTO Mask Editor") as demo:
+    gr.Markdown(
+        "## VTO Mask Editor\n"
+        "האזור **האדום** הוא מה שFitDiT ישנה. "
+        "שנה את הסליידר כדי לכוונן ולחץ **שמור**."
+    )
 
     with gr.Row():
-        photo_dd  = gr.Dropdown(choices=_photo_choices(), label="תמונת דוגמן", scale=4)
+        photo_dd    = gr.Dropdown(choices=_photo_choices(), label="תמונת דוגמן", scale=4)
         refresh_btn = gr.Button("רענן", scale=0, size="sm")
 
     status_box = gr.Textbox(label="סטטוס", interactive=False)
 
-    editor = gr.ImageEditor(
-        label="ערוך מסכה",
-        type="numpy",
-        height=750,
-        brush=gr.Brush(default_size=30, colors=["#ffffff"], default_color="#ffffff"),
+    preview_img = gr.Image(label="תצוגה מקדימה", type="numpy", height=700)
+
+    wrist_slider = gr.Slider(
+        minimum=0, maximum=20, value=0, step=0.5,
+        label="חיתוך שרוול תחתון — wrist strip (%)",
+        info="הגדל כדי לגרום לFitDiT לא לגעת בשורש כף היד",
     )
 
     with gr.Row():
         save_btn  = gr.Button("שמור מסכה", variant="primary")
-        clear_btn = gr.Button("נקה מסכה", variant="secondary")
+        reset_btn = gr.Button("אפס למסכה אוטומטית", variant="secondary")
 
-    photo_dd.change(load_for_editor, photo_dd, [editor, status_box])
-    refresh_btn.click(refresh_choices, outputs=photo_dd)
-    save_btn.click(save_mask,  [photo_dd, editor], status_box)
-    clear_btn.click(clear_mask, [photo_dd, editor], [editor, status_box])
+    photo_dd.change(on_photo_change,  [photo_dd, wrist_slider], [preview_img, status_box])
+    refresh_btn.click(lambda: gr.Dropdown(choices=_photo_choices()), outputs=photo_dd)
+    wrist_slider.change(on_slider_change, [photo_dd, wrist_slider], [preview_img, status_box])
+    save_btn.click(on_save,  [photo_dd, wrist_slider], status_box)
+    reset_btn.click(on_reset, photo_dd, status_box)
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=gr.themes.Soft())

@@ -230,7 +230,7 @@ def collect_models(model_filter: str | None) -> list[Path]:
 
 def collect_photos(model_dir: Path) -> list[Path]:
     photos = sorted(model_dir.glob("*.jpg")) + sorted(model_dir.glob("*.png"))
-    return photos
+    return [p for p in photos if not p.stem.endswith(("_mask", "_auto_mask"))]
 
 
 def collect_garments(type_filter: str | None) -> list[tuple[str, Path]]:
@@ -314,6 +314,13 @@ def main():
                             str(TEMP_PERSON), "Upper-body", 0, 0, 0, 0,
                         )
                         cached_mask = (pre_mask, np.array(pose_img))
+
+                        # Save auto mask for local editing (skip if already saved)
+                        auto_mask_path = photo_path.parent / f"{photo_path.stem}_auto_mask.png"
+                        if not auto_mask_path.exists():
+                            mask_arr_save = pre_mask["layers"][0][:, :, 3]
+                            Image.fromarray(mask_arr_save, "L").save(str(auto_mask_path))
+                            print(f"[mask] saved auto mask: {auto_mask_path.name}")
                     pre_mask, pose_arr = cached_mask
 
                     process_mask = _apply_custom_mask(pre_mask, photo_path)
