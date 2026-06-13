@@ -79,27 +79,46 @@ UPPER_TYPES = {"JACKETS", "VESTS"}
 # JACKETS — composite via FitDiT pre_mask (preserves original resolution)
 # ---------------------------------------------------------------------------
 
-def _mask_out_wrists(pre_mask: dict, strip_ratio: float = 0.06) -> dict:
-    """Zero out the bottom of the sleeve columns in the pre_mask so FitDiT
-    preserves the original wrists/hands instead of regenerating them."""
+def _mask_out_hands(pre_mask: dict, original: Image.Image) -> dict:
+    """Use MediaPipe to detect hands and remove them from the pre_mask (NAND),
+    so FitDiT preserves the original hands instead of regenerating them."""
     import copy
+    import mediapipe as mp
+    from PIL import ImageDraw
+
     mask = copy.deepcopy(pre_mask)
-    alpha = mask["layers"][0][:, :, 3].copy()
+    alpha = mask["layers"][0][:, :, 3]
     h, w = alpha.shape
 
-    # Only process the left and right thirds — where sleeves are
-    side_w = w // 3
-    for region_cols in [range(0, side_w), range(w - side_w, w)]:
-        for col in region_cols:
-            white_rows = np.where(alpha[:, col] > 128)[0]
-            if len(white_rows) == 0:
-                continue
-            bottom = white_rows.max()
-            strip_px = max(1, int(h * strip_ratio))
-            top = max(0, bottom - strip_px)
-            alpha[top:bottom + 1, col] = 0
+    img_rgb = np.array(original.convert("RGB").resize((w, h), Image.LANCZOS))
 
-    mask["layers"][0][:, :, 3] = alpha
+    with mp.solutions.hands.Hands(
+        static_image_mode=True, max_num_hands=2, min_detection_confidence=0.5
+    ) as detector:
+        results = detector.process(img_rgb)
+
+    if not results.multi_hand_landmarks:
+        print("[Hands] No hands detected")
+        return mask
+
+    hand_mask = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(hand_mask)
+    padding = int(h * 0.03)
+
+    for hand_lm in results.multi_hand_landmarks:
+        xs = [int(lm.x * w) for lm in hand_lm.landmark]
+        ys = [int(lm.y * h) for lm in hand_lm.landmark]
+        x1 = max(0, min(xs) - padding)
+        y1 = max(0, min(ys) - padding)
+        x2 = min(w, max(xs) + padding)
+        y2 = min(h, max(ys) + padding)
+        draw.rectangle([x1, y1, x2, y2], fill=255)
+        print(f"[Hands] detected at ({x1},{y1})-({x2},{y2})")
+
+    hand_arr = np.array(hand_mask)
+    alpha_copy = alpha.copy()
+    alpha_copy[hand_arr > 128] = 0
+    mask["layers"][0][:, :, 3] = alpha_copy
     return mask
 
 
@@ -317,7 +336,7 @@ def main():
                         cached_mask = (pre_mask, np.array(pose_img))
                     pre_mask, pose_arr = cached_mask
 
-                    process_mask = _mask_out_wrists(pre_mask) if ptype == "JACKETS" else pre_mask
+                    process_mask = _mask_out_hands(pre_mask, person_pil) if ptype == "JACKETS" else pre_mask
 
                     result = fitdit.process(
                         vton_img=str(TEMP_PERSON),
