@@ -329,20 +329,7 @@ def main():
                             print(f"[mask] saved auto mask: {auto_mask_path.name}")
 
                     pre_mask, pose_arr = cached_mask
-
-                    if ptype == "JACKETS":
-                        custom_path = photo_path.parent / f"{photo_path.stem}_mask.png"
-                        if custom_path.exists():
-                            process_mask = _apply_custom_mask(pre_mask, photo_path)
-                            composite_mask = Image.fromarray(
-                                process_mask["layers"][0][:, :, 3], "L"
-                            )
-                        else:
-                            process_mask, composite_mask = _make_jacket_atr_mask(
-                                person_pil, fitdit, pre_mask
-                            )
-                    else:
-                        process_mask = _apply_custom_mask(pre_mask, photo_path)
+                    process_mask = _apply_custom_mask(pre_mask, photo_path)
 
                     result = fitdit.process(
                         vton_img=str(TEMP_PERSON),
@@ -356,9 +343,7 @@ def main():
                         resolution=RESOLUTION,
                     )[0]
 
-                    if ptype == "JACKETS":
-                        result = _composite_with_mask(result, person_pil, composite_mask)
-                    elif ptype == "VESTS":
+                    if ptype == "VESTS":
                         result = _composite_vest_sam2(result, person_pil, fitdit)
 
                     result.save(out_path, quality=92)
