@@ -311,9 +311,9 @@ def main():
             cached_mask = None
 
             for ptype, garment_path in garments:
-                out_dir  = OUTPUT_DIR / garment_path.stem
+                out_dir  = OUTPUT_DIR / photo_path.stem
                 out_dir.mkdir(parents=True, exist_ok=True)
-                out_path = out_dir / f"{photo_path.stem}_vto.jpg"
+                out_path = out_dir / f"{garment_path.stem}_vto.jpg"
 
                 print(f"    [{ptype}] {garment_path.stem} ... ", end="", flush=True)
                 try:
