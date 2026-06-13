@@ -115,19 +115,19 @@ def _composite_jacket_atr(
     parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
     parse_arr = np.array(parse_result)
 
-    # 4=jacket body, 14=left-arm, 15=right-arm
-    jacket_mask = np.isin(parse_arr, [4, 14, 15]).astype(np.uint8) * 255
+    # class 4 = upper-clothes (jacket body + sleeves); arms (14/15) excluded to avoid wrist artifacts
+    jacket_mask = (parse_arr == 4).astype(np.uint8) * 255
     coverage = jacket_mask.mean() / 255 * 100
     print(f"[ATR] jacket coverage: {coverage:.1f}%")
 
     mask_img = Image.fromarray(jacket_mask, "L")
-    mask_img = mask_img.filter(ImageFilter.MaxFilter(size=5))
-    mask_img = mask_img.filter(ImageFilter.MinFilter(size=3))
+    mask_img = mask_img.filter(ImageFilter.MaxFilter(size=9))
+    mask_img = mask_img.filter(ImageFilter.MinFilter(size=5))
 
     orig = original.convert("RGB")
     ow, oh = orig.size
     fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
-    garment_mask = mask_img.resize((ow, oh), Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=3))
+    garment_mask = mask_img.resize((ow, oh), Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=1))
 
     return Image.composite(fitdit_full, orig, garment_mask)
 
