@@ -252,13 +252,20 @@ def collect_garments(type_filter: str | None) -> list[tuple[str, Path]]:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--one",   action="store_true", help="Quick test: first model/photo/garment only")
-    parser.add_argument("--model", help="Run only this model folder (e.g. model_01)")
-    parser.add_argument("--type",  choices=["JACKETS", "VESTS"], help="Run only this garment type")
+    parser.add_argument("--one",     action="store_true", help="Quick test: first model/photo/garment only")
+    parser.add_argument("--model",   help="Run only this model folder (e.g. model_01)")
+    parser.add_argument("--type",    choices=["JACKETS", "VESTS"], help="Run only this garment type")
+    parser.add_argument("--garment", help="Run only this garment stem (e.g. suit_002_front)")
     args = parser.parse_args()
 
     models   = collect_models(args.model)
     garments = collect_garments(args.type)
+
+    if args.garment:
+        garments = [(t, p) for t, p in garments if p.stem == args.garment]
+        if not garments:
+            print(f"[ERROR] Garment '{args.garment}' not found in {SAMPLES_DIR}")
+            sys.exit(1)
 
     if not garments:
         print(f"[ERROR] No garment images found in {SAMPLES_DIR}")
