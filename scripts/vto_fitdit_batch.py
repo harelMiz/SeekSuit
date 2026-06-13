@@ -220,6 +220,97 @@ def _composite_vest_sam2(
     return Image.composite(fitdit_result, orig, vest_mask)
 
 
+# ---------------------------------------------------------------------------
+# Two-pass pipeline
+# ---------------------------------------------------------------------------
+
+def _run_two_pass(fitdit, garments, all_models):
+    pass1_dir = OUTPUT_DIR / "_pass1"
+    pass1_dir.mkdir(parents=True, exist_ok=True)
+
+    suit_dir = MODELS_DIR / "model_suit"
+    suit_photos = collect_photos(suit_dir)
+    if not suit_photos:
+        print("[ERROR] No photos in model_suit")
+        sys.exit(1)
+
+    suit_photo = suit_photos[0]
+    suit_pil = Image.open(suit_photo).convert("RGB")
+    suit_pil.save(str(TEMP_PERSON), quality=95)
+
+    print(f"\n=== Pass 1: generating worn garments on {suit_photo.name} ===")
+    pre_mask1, pose_img1 = fitdit.generate_mask(str(TEMP_PERSON), "Upper-body", 0, 0, 0, 0)
+    pose_arr1 = np.array(pose_img1)
+
+    pass1_garments = {}
+    for ptype, garment_path in garments:
+        pass1_out = pass1_dir / f"{garment_path.stem}_worn.jpg"
+        pass1_garments[garment_path.stem] = (ptype, pass1_out)
+        if pass1_out.exists():
+            print(f"  {garment_path.stem} — cached")
+            continue
+        print(f"  [{ptype}] {garment_path.stem} ... ", end="", flush=True)
+        try:
+            result = fitdit.process(
+                vton_img=str(TEMP_PERSON),
+                garm_img=str(garment_path),
+                pre_mask=pre_mask1,
+                pose_image=pose_arr1,
+                n_steps=STEPS, image_scale=SCALE, seed=SEED,
+                num_images_per_prompt=1, resolution=RESOLUTION,
+            )[0]
+            result.save(str(pass1_out), quality=95)
+            print("ok")
+        except Exception as e:
+            print(f"FAIL {e}")
+            import traceback; traceback.print_exc()
+
+    other_models = [m for m in all_models if m.name != "model_suit"]
+    print(f"\n=== Pass 2: applying worn garments to {len(other_models)} model folders ===")
+
+    total_ok = total_err = 0
+    for model_dir in other_models:
+        photos = collect_photos(model_dir)
+        if not photos:
+            continue
+        print(f"\nModel: {model_dir.name}  ({len(photos)} photo(s))")
+        for photo_path in photos:
+            print(f"  Photo: {photo_path.name}")
+            person_pil = Image.open(photo_path).convert("RGB")
+            person_pil.save(str(TEMP_PERSON), quality=95)
+            pre_mask2, pose_img2 = fitdit.generate_mask(str(TEMP_PERSON), "Upper-body", 0, 0, 0, 0)
+            pose_arr2 = np.array(pose_img2)
+            for garment_stem, (ptype, worn_path) in pass1_garments.items():
+                if not worn_path.exists():
+                    continue
+                out_dir = OUTPUT_DIR / garment_stem
+                out_dir.mkdir(parents=True, exist_ok=True)
+                out_path = out_dir / f"{photo_path.stem}_vto.jpg"
+                print(f"    [{ptype}] {garment_stem} ... ", end="", flush=True)
+                try:
+                    process_mask = _apply_custom_mask(pre_mask2, photo_path)
+                    result = fitdit.process(
+                        vton_img=str(TEMP_PERSON),
+                        garm_img=str(worn_path),
+                        pre_mask=process_mask,
+                        pose_image=pose_arr2,
+                        n_steps=STEPS, image_scale=SCALE, seed=SEED,
+                        num_images_per_prompt=1, resolution=RESOLUTION,
+                    )[0]
+                    if ptype == "VESTS":
+                        result = _composite_vest_sam2(result, person_pil, fitdit)
+                    result.save(str(out_path), quality=92)
+                    print("ok")
+                    total_ok += 1
+                except Exception as e:
+                    print(f"FAIL {e}")
+                    import traceback; traceback.print_exc()
+                    total_err += 1
+
+    if TEMP_PERSON.exists():
+        TEMP_PERSON.unlink(missing_ok=True)
+    print(f"\nDone — {total_ok} ok, {total_err} failed")
+    print(f"Results: {OUTPUT_DIR.resolve()}")
 
 
 # ---------------------------------------------------------------------------
@@ -265,7 +356,8 @@ def main():
     parser.add_argument("--one",     action="store_true", help="Quick test: 1 model/photo/garment")
     parser.add_argument("--model",   help="Run only this model folder (e.g. model_01)")
     parser.add_argument("--type",    choices=["JACKETS", "VESTS"], help="Garment type filter")
-    parser.add_argument("--garment", help="Run only this garment stem (e.g. suit_002_front)")
+    parser.add_argument("--garment",   help="Run only this garment stem (e.g. suit_002_front)")
+    parser.add_argument("--two-pass",  action="store_true", help="Two-pass: generate on model_suit first, then use as garment for all other models")
     args = parser.parse_args()
 
     models   = collect_models(args.model)
@@ -289,6 +381,10 @@ def main():
     print("Loading FitDiT...")
     fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
     OUTPUT_DIR.mkdir(exist_ok=True)
+
+    if args.two_pass:
+        _run_two_pass(fitdit, garments, models)
+        return
 
     total_ok = total_err = 0
 
