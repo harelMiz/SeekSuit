@@ -1,14 +1,16 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, Trash2, ImageOff, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { ArrowLeft, Pencil, Trash2, ImageOff, Sparkles, Phone, ChevronDown } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import Layout from "../components/layout/Layout";
 import ProductCard from "../components/ui/ProductCard";
 import { getProduct, deleteProduct } from "../services/product.service";
+import { recordProductView } from "../services/insights.service";
 import api from "../services/api";
 import type { Product, ProductImage, ProductType, ProductStatus } from "../types/product";
-import { bestImageUrl, mainImage } from "../types/product";
+import { bestImageUrl } from "../types/product";
+import { colorDisplay } from "../lib/colorMap";
 
 interface SearchResult {
   id: string;
@@ -49,16 +51,17 @@ function toProduct(r: SearchResult): Product {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useLang();
+  const location = useLocation();
+  const { t, lang } = useLang();
   const { session } = useAuth();
   const isAdmin = session !== null;
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  // Index of the image currently shown in the large viewer
   const [activeIdx, setActiveIdx] = useState(0);
   const [similarProducts, setSimilarProducts] = useState<SearchResult[] | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
+  const similarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -72,6 +75,13 @@ export default function ProductDetailPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!product?.id || isAdmin) return;
+    const state = location.state as { source?: string; searchQuery?: string } | null;
+    const source = (state?.source as "BROWSE" | "SEARCH_RESULT" | "SIMILAR") ?? "BROWSE";
+    recordProductView(product.id, source, state?.searchQuery).catch(() => {});
+  }, [product?.id]);
 
   useEffect(() => {
     if (!product?.id) return;
@@ -92,7 +102,7 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh] text-secondary">
+        <div className="flex items-center justify-center min-h-[60vh] bg-[#121212] text-zinc-500 text-sm">
           {t("common.loading")}
         </div>
       </Layout>
@@ -102,12 +112,9 @@ export default function ProductDetailPage() {
   if (notFound || !product) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-secondary">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] bg-[#121212] gap-4 text-zinc-500">
           <p>{t("product.notFound")}</p>
-          <Link
-            to="/shop"
-            className="text-on-tertiary-container hover:text-primary text-sm transition-colors"
-          >
+          <Link to="/shop" className="text-[#e9c176] hover:text-white text-sm transition-colors">
             {t("product.backToShop")}
           </Link>
         </div>
@@ -124,184 +131,205 @@ export default function ProductDetailPage() {
       ? product.attributes.material
       : null;
 
+  const displayName = lang === "en" && product.attributes?.nameEn
+    ? String(product.attributes.nameEn)
+    : product.name;
+
   return (
     <Layout>
-      <div className="bg-surface min-h-screen">
-        <div className="max-w-5xl mx-auto px-6 py-20">
+      <div className="bg-[#121212] text-white antialiased">
+
+        {/* Hero — fills exactly one viewport height */}
+        <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
 
           {/* Back link */}
-          <Link
-            to="/shop"
-            className="inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary mb-10 transition-colors"
-          >
-            <ArrowLeft size={14} />
-            {t("product.backToShop")}
-          </Link>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14">
-            {/* ── Left: Image gallery ── */}
-            <div className="flex gap-3">
-              {/* Thumbnail strip — only shown when there are multiple images */}
-              {images.length > 1 && (
-                <div className="flex flex-col gap-2 w-16 flex-shrink-0">
-                  {images.map((img, idx) => {
-                    const url = bestImageUrl(img);
-                    return (
-                      <button
-                        key={img.id}
-                        onClick={() => setActiveIdx(idx)}
-                        className={`w-16 h-20 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                          idx === activeIdx
-                            ? "border-on-tertiary-container"
-                            : "border-transparent hover:border-outline-variant"
-                        }`}
-                      >
-                        {url ? (
-                          <img
-                            src={url}
-                            alt={`view ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-surface-container-low flex items-center justify-center">
-                            <ImageOff size={12} className="text-outline-variant" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Main image viewer */}
-              <div className="flex-1 aspect-[3/4] rounded-xl overflow-hidden bg-surface-container">
-                {activeUrl ? (
-                  <img
-                    src={activeUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-outline-variant">
-                    <ImageOff size={48} />
-                    <span className="text-sm text-secondary">{t("product.noImage")}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── Right: Details ── */}
-            <div className="flex flex-col">
-              {/* Type label */}
-              <p className="text-xs font-extrabold tracking-[0.2em] uppercase text-on-tertiary-container mb-3">
-                {t(`type.${product.type}`)}
-              </p>
-
-              {/* Product name */}
-              <h1 className="font-headline text-5xl font-black leading-[1.1] text-on-surface mb-8">
-                {product.name}
-              </h1>
-
-              {/* Attributes row */}
-              <div className="flex items-stretch gap-0 mb-8 border border-outline-variant rounded-xl overflow-hidden">
-                {[
-                  { label: t("product.color"), value: product.color },
-                  { label: t("product.sku"), value: product.sku },
-                  {
-                    label: t("product.status"),
-                    value: (
-                      <span className="flex items-center gap-1.5">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            product.status === "IN_STOCK"
-                              ? "bg-emerald-500"
-                              : "bg-outline"
-                          }`}
-                        />
-                        {product.status === "IN_STOCK"
-                          ? "Ready to Ship"
-                          : t("status.out_of_stock")}
-                      </span>
-                    ),
-                  },
-                ].map(({ label, value }, idx) => (
-                  <div
-                    key={label}
-                    className={`flex-1 flex flex-col items-center justify-center py-4 px-3 ${
-                      idx < 2 ? "border-e border-outline-variant" : ""
-                    }`}
-                  >
-                    <span className="text-[10px] text-secondary uppercase tracking-widest mb-1">
-                      {label}
-                    </span>
-                    <span className="text-sm font-semibold text-on-surface text-center">
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Atelier Badge */}
-              {material && (
-                <div className="flex items-center gap-3 mb-8 bg-surface-container-low border border-outline-variant rounded-xl p-4">
-                  <span className="text-on-tertiary-container text-xs font-bold tracking-widest uppercase">
-                    Atelier
-                  </span>
-                  <span className="text-sm text-on-surface-variant">{material}</span>
-                </div>
-              )}
-
-              {/* Action buttons — admin only */}
-              {isAdmin && (
-                <div className="flex gap-3 mt-auto">
-                  <Link
-                    to={`/admin/inventory/${product.id}/edit`}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-on-primary font-semibold text-sm rounded-xl transition-opacity hover:opacity-80"
-                  >
-                    <Pencil size={14} />
-                    {t("product.edit")}
-                  </Link>
-                  <button
-                    onClick={handleDelete}
-                    className="flex items-center gap-2 px-4 py-3 border border-outline-variant text-on-surface-variant hover:border-error hover:text-error text-sm rounded-xl transition-colors"
-                  >
-                    <Trash2 size={14} />
-                    {t("product.delete")}
-                  </button>
-                </div>
-              )}
-            </div>
+          <div className="max-w-7xl mx-auto w-full px-6 pt-8">
+            <Link
+              to="/shop"
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-zinc-500 hover:text-[#e9c176] transition-colors duration-300 cursor-pointer"
+            >
+              <ArrowLeft size={12} />
+              {t("product.backToShop")}
+            </Link>
           </div>
 
-          {/* Similar Items */}
-          <div className="mt-20 pt-12 border-t border-outline-variant">
-            <div className="flex items-center gap-2 mb-6">
-              <Sparkles size={16} className="text-on-tertiary-container" />
-              <h2 className="font-headline text-xl font-bold text-on-surface">
-                {t("product.similar")}
-              </h2>
+          {/* Hero: 12-col grid — flex-1 fills remaining height */}
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 max-w-7xl mx-auto w-full px-6 py-6">
+
+          {/* ── LEFT: image gallery ── */}
+          <div className="lg:col-span-5 lg:pe-12 w-full h-full flex flex-col gap-3">
+
+            {/* Main image — fills remaining height after thumbnails */}
+            <div className="flex-1 min-h-0 bg-white rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
+              {activeUrl ? (
+                <img
+                  src={activeUrl}
+                  alt={product.name}
+                  className="w-full h-full object-contain hover:scale-105 transition-transform duration-700 ease-out"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-zinc-600">
+                  <ImageOff size={48} />
+                  <span className="text-sm">{t("product.noImage")}</span>
+                </div>
+              )}
             </div>
 
-            {similarLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {[1, 2, 3, 4].map((n) => (
-                  <div key={n} className="aspect-[3/4] rounded-xl bg-surface-container-low animate-pulse" />
-                ))}
+            {/* Thumbnail strip — shrink-0 so it never overflows */}
+            {images.length > 1 && (
+              <div className="shrink-0 flex items-center gap-3 overflow-x-auto py-1">
+                {images.map((img, idx) => {
+                  const url = bestImageUrl(img);
+                  return (
+                    <button
+                      key={img.id}
+                      onClick={() => setActiveIdx(idx)}
+                      className={`w-20 aspect-[4/5] rounded-xl overflow-hidden shrink-0 transition-all duration-300 cursor-pointer ${
+                        idx === activeIdx
+                          ? "border-2 border-[#e9c176] opacity-100"
+                          : "border border-white/10 bg-[#1c1c1c] opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      {url ? (
+                        <img src={url} alt={`view ${idx + 1}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-[#1c1c1c] flex items-center justify-center">
+                          <ImageOff size={12} className="text-zinc-600" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            ) : similarProducts && similarProducts.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-16">
-                {similarProducts.map((r) => (
-                  <ProductCard
-                    key={r.id}
-                    product={toProduct(r)}
-                    matchPercentage={Math.round(r.similarity * 100)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-secondary">{t("product.similarNote")}</p>
             )}
           </div>
+
+          {/* ── RIGHT: product info (col-span-7) ── */}
+          <div className="lg:col-span-7 w-full flex flex-col items-start gap-6">
+
+            {/* Type tag */}
+            <p className="text-xs uppercase tracking-widest text-[#e9c176] font-medium">
+              {t(`type.${product.type}`)}
+            </p>
+
+            {/* Product name */}
+            <h1 className="font-headline text-4xl md:text-5xl font-black text-white tracking-tight leading-none">
+              {displayName}
+            </h1>
+
+            {/* Metadata row */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
+              {/* Status */}
+              <div className="flex items-center gap-2 text-white font-medium">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                  product.status === "IN_STOCK"
+                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse"
+                    : "bg-red-500/60"
+                }`} />
+                {product.status === "IN_STOCK" ? t("product.readyToShip") : t("status.out_of_stock")}
+              </div>
+
+              {/* Color */}
+              <div className="flex items-center gap-2 text-zinc-400">
+                <span className="text-xs text-zinc-500 uppercase tracking-widest">{t("product.color")}:</span>
+                <span className="text-white">{colorDisplay(product.color, lang)}</span>
+              </div>
+
+              {/* SKU */}
+              <span className="text-xs font-mono tracking-wider text-zinc-500 bg-white/5 px-2 py-0.5 rounded">
+                SKU: {product.sku}
+              </span>
+            </div>
+
+            {/* Material badge */}
+            {material && (
+              <div className="flex items-center gap-3 bg-[#1c1c1c] border border-white/5 rounded-xl px-4 py-3">
+                <span className="text-[#e9c176] text-xs font-bold tracking-widest uppercase">Atelier</span>
+                <span className="text-sm text-zinc-400">{material}</span>
+              </div>
+            )}
+
+            {/* Divider */}
+            <div className="w-full h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
+
+            {/* CTA — non-admin: visit store button */}
+            {!isAdmin && (
+              <Link
+                to="/contact"
+                className="w-full gold-shimmer text-[#121212] text-sm font-semibold tracking-wider uppercase py-4 rounded-xl shadow-[0_4px_24px_rgba(233,193,118,0.2)] hover:shadow-[0_4px_32px_rgba(233,193,118,0.3)] hover:opacity-90 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Phone size={15} />
+                {t("product.visitStore")}
+              </Link>
+            )}
+
+            {/* Admin actions */}
+            {isAdmin && (
+              <div className="flex gap-3 w-full">
+                <Link
+                  to={`/admin/inventory/${product.id}/edit`}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/15 text-white font-semibold text-sm rounded-xl transition-colors"
+                >
+                  <Pencil size={14} />
+                  {t("product.edit")}
+                </Link>
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 px-4 py-3 border border-white/10 text-zinc-400 hover:border-red-500/50 hover:text-red-400 text-sm rounded-xl transition-colors cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                  {t("product.delete")}
+                </button>
+              </div>
+            )}
+          </div>
+          </div>
+
+          {/* Gold line + scroll button — pinned to bottom of hero */}
+          <div className="shrink-0 flex flex-col items-center gap-3 pb-3">
+            <div className="w-full max-w-7xl mx-auto px-6">
+              <div className="h-px bg-gradient-to-r from-transparent via-[#e9c176]/40 to-transparent" />
+            </div>
+            <button
+              onClick={() => similarRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="flex flex-col items-center gap-1.5 text-white/30 hover:text-[#e9c176] transition-colors duration-300 cursor-pointer animate-bounce-slow"
+            >
+              <span className="text-[10px] uppercase tracking-widest">{t("product.similar")}</span>
+              <ChevronDown size={16} />
+            </button>
+          </div>
+
+        </div>{/* end hero */}
+
+        {/* Similar products */}
+        <div ref={similarRef} className="max-w-7xl mx-auto px-6 pt-16 pb-24">
+          <div className="flex items-center gap-2 mb-8">
+            <Sparkles size={15} className="text-[#e9c176]" />
+            <h2 className="font-headline text-xl text-zinc-200 tracking-wide">
+              {t("product.similar")}
+            </h2>
+          </div>
+
+          {similarLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="aspect-[3/4] rounded-xl bg-[#1c1c1c] animate-pulse" />
+              ))}
+            </div>
+          ) : similarProducts && similarProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-16">
+              {similarProducts.map((r) => (
+                <ProductCard
+                  key={r.id}
+                  product={toProduct(r)}
+                  matchPercentage={Math.round(r.similarity * 100)}
+                  source="SIMILAR"
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-600">{t("product.similarNote")}</p>
+          )}
         </div>
       </div>
     </Layout>

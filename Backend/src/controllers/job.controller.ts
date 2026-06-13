@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as jobService from '../services/job.service';
 import * as productService from '../services/product.service';
 import * as aiService from '../services/ai.service';
+import prisma from '../lib/prisma';
 
 // In-memory processing queue — ensures only one AI job runs at a time so the
 // Python AI service (single-threaded) is never overwhelmed by concurrent uploads.
@@ -109,6 +110,32 @@ async function runProcessing(
     await jobService.updateJobStatus(jobId, 'FAILED', err.message ?? 'Unknown error');
   }
 }
+
+// POST /api/jobs/process-all
+// Creates jobs for ALL ProductImages that have a rawUrl but no processedUrl yet.
+// Used by the dashboard "Process All" button.
+export const createJobsForAll = async (_req: Request, res: Response) => {
+  const images = await prisma.productImage.findMany({
+    where: { rawUrl: { not: null }, processedUrl: null },
+    include: { product: { select: { type: true } } },
+  });
+
+  if (!images.length) {
+    res.status(200).json({ message: 'All images already processed', jobs: [] });
+    return;
+  }
+
+  const jobs = await Promise.all(images.map(img => jobService.createJob(img.id)));
+  res.status(201).json({ queued: jobs.length, jobs });
+
+  for (const img of images) {
+    const job = jobs.find(j => j.productImageId === img.id);
+    if (job && img.rawUrl) {
+      const productType = img.product?.type ?? null;
+      enqueueJob(() => runProcessing(job.id, img.id, img.rawUrl!, productType));
+    }
+  }
+};
 
 // GET /api/jobs
 // Returns all processing jobs with image + product info.

@@ -38,6 +38,7 @@
   /* Typography */
   --font-headline: "Noto Serif", Georgia, serif;
   --font-body: "Manrope", system-ui, sans-serif;
+  --font-body-he: "Heebo", system-ui, sans-serif;
 }
 
 /* ─── Global Base ─── */
@@ -45,6 +46,28 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Default arrow cursor — in @layer base so Tailwind utilities (cursor-pointer) still win */
+@layer base {
+  * {
+    cursor: default;
+  }
+  a, button, [role="button"], label, select,
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
+  a *, button *, [role="button"] *, label *, select * {
+    cursor: inherit;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  textarea {
+    cursor: text;
+  }
 }
 
 html {
@@ -59,6 +82,11 @@ body {
   /* Light scrollbar */
   scrollbar-width: thin;
   scrollbar-color: #c4c7c7 #fcf9f8;
+}
+
+/* Hebrew font override */
+:root:lang(he) body {
+  font-family: var(--font-body-he);
 }
 
 /* Scrollbar for Webkit */
@@ -94,6 +122,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── Admin dark theme ─── */
+/* Applied to the admin main area — overrides all CSS-variable-based Tailwind classes.
+   Sidebar is bg-neutral-900 (#171717); surface is slightly lighter for separation. */
+.admin-dark {
+  --color-surface: #151717;
+  --color-surface-container-lowest: #0d0f0f;
+  --color-surface-container-low: #1c1f1f;
+  --color-surface-container: #222525;
+  --color-surface-container-high: #292c2c;
+  --color-surface-container-highest: #303333;
+  --color-surface-variant: #1c1f1f;
+  --color-on-surface: #e8e6e5;
+  --color-on-surface-variant: #c8caca;
+  --color-primary: #e8e6e5;
+  --color-on-primary: #151717;
+  --color-primary-container: #222525;
+  --color-outline: #606464;
+  --color-outline-variant: #313535;
+  --color-secondary: #9a9c9c;
+  --color-error: #f47167;
+  --color-on-tertiary-container: #c8993e;
+}
+
+/* Dark scrollbar in admin area */
+.admin-dark ::-webkit-scrollbar-track { background: #151717; }
+.admin-dark ::-webkit-scrollbar-thumb { background: #363a3a; }
+.admin-dark { scrollbar-color: #363a3a #151717; }
+
 /* ─── Headline font helper ─── */
 .font-headline {
   font-family: var(--font-headline);
@@ -107,3 +163,32 @@ body {
 .animate-bounce-slow {
   animation: bounce-slow 2s ease-in-out infinite;
 }
+
+/* ─── Public site dark mode ─── */
+html.dark {
+  color-scheme: dark;
+  --color-surface: #121212;
+  --color-surface-container-lowest: #0d0d0d;
+  --color-surface-container-low: #1c1c1c;
+  --color-surface-container: #222222;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #313131;
+  --color-surface-variant: #1c1c1c;
+  --color-on-surface: #e8e6e5;
+  --color-on-surface-variant: #aaa8a6;
+  --color-primary: #e8e6e5;
+  --color-on-primary: #121212;
+  --color-primary-container: #222222;
+  --color-outline: #525252;
+  --color-outline-variant: #2e2e2e;
+  --color-secondary: #888684;
+  --color-error: #f47167;
+}
+
+html.dark body {
+  background-color: #121212;
+  scrollbar-color: #3a3a3a #121212;
+}
+
+html.dark ::-webkit-scrollbar-track { background: #121212; }
+html.dark ::-webkit-scrollbar-thumb { background: #3a3a3a; }

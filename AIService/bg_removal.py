@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from PIL import Image, ImageEnhance, ImageOps
 from transformers import AutoModelForImageSegmentation
+import numpy as np
 import torch
 from torchvision import transforms
 
@@ -26,8 +27,6 @@ _MODEL_IDS: dict[str, str] = {
     'pants_finetuned':     str(_FINETUNED_DIR / 'pants'),
     'bow_ties_finetuned':  str(_FINETUNED_DIR / 'bow_ties'),
     'ties_finetuned':      str(_FINETUNED_DIR / 'ties'),
-    'jackets_finetuned':   str(_FINETUNED_DIR / 'jackets'),
-    'vests_finetuned':     str(_FINETUNED_DIR / 'vests'),
 }
 
 # Which model key to use per product type
@@ -144,12 +143,38 @@ def _normalize_canvas(img_rgba: Image.Image) -> Image.Image:
     return canvas
 
 
-def _remove_background(model, transform, pil_image: Image.Image) -> Image.Image:
+def _remove_stand_protrusion(mask: Image.Image) -> Image.Image:
+    """
+    Cut the mannequin stand from the bottom of the mask.
+    Stand = narrow vertical protrusion: rows in the bottom 40% of the image
+    where foreground width is < 15% of the global max mask width.
+    """
+    arr = np.array(mask)
+    h, w = arr.shape
+    row_widths = np.array([np.sum(arr[r] > 127) for r in range(h)], dtype=float)
+    global_max = row_widths.max()
+    if global_max == 0:
+        return mask
+    stand_threshold = global_max * 0.15
+    search_start = int(h * 0.60)
+    bottom_widths = row_widths[search_start:]
+    stand_rows = np.where((bottom_widths > 0) & (bottom_widths < stand_threshold))[0]
+    if len(stand_rows) == 0:
+        return mask
+    cut_row = search_start + int(stand_rows[0])
+    result = arr.copy()
+    result[cut_row:] = 0
+    return Image.fromarray(result, mode='L')
+
+
+def _remove_background(model, transform, pil_image: Image.Image, product_type: str | None = None) -> Image.Image:
     """Remove background with the given model; returns RGBA image."""
     tensor = transform(pil_image.convert("RGB")).unsqueeze(0)
     with torch.no_grad():
         preds = model(tensor)[-1].sigmoid().cpu()
     mask = transforms.ToPILImage()(preds[0].squeeze()).resize(pil_image.size)
+    if product_type in ('JACKET', 'VEST', 'SHIRT'):
+        mask = _remove_stand_protrusion(mask)
     result = pil_image.convert("RGBA")
     result.putalpha(mask)
     return result
@@ -169,7 +194,7 @@ def process_image(image_bytes: bytes, filename: str = "image.jpg", product_type:
     model_key = _select_model_key(product_type, filename)
     model, transform = _get_model(model_key)
 
-    img_rgba = _remove_background(model, transform, img)
+    img_rgba = _remove_background(model, transform, img, product_type)
     r, g, b, a = img_rgba.split()
     rgb = Image.merge("RGB", (r, g, b))
 

@@ -30,10 +30,8 @@ export default function Footer() {
 
         {/* Column 1: Brand */}
         <div>
-          <div className="text-xl font-black tracking-widest text-primary mb-1">
-            SEEKSUIT
-          </div>
-          <div className="text-xs text-on-surface-variant mb-4">אופנת ג&#39;נודי</div>
+          <img src="/logo.svg" alt="Jenudi Fashion" className="h-8 w-auto mb-1" />
+          <div className="text-xs text-on-surface-variant mb-4">{t("nav.brandSubtitle")}</div>
           <p className="text-sm text-secondary leading-relaxed">
             {t("about.description")}
           </p>
@@ -44,7 +42,7 @@ export default function Footer() {
           {/* Company links */}
           <div>
             <h3 className="text-xs font-bold tracking-widest uppercase text-on-surface mb-4">
-              Company
+              {t("footer.company")}
             </h3>
             <ul className="space-y-3">
               <li>
@@ -77,7 +75,7 @@ export default function Footer() {
           {/* Support links */}
           <div>
             <h3 className="text-xs font-bold tracking-widest uppercase text-on-surface mb-4">
-              Support
+              {t("footer.support")}
             </h3>
             <ul className="space-y-3">
               <li>
@@ -85,13 +83,13 @@ export default function Footer() {
                   href="#"
                   className="text-sm text-secondary hover:text-primary transition-colors"
                 >
-                  Privacy Policy
+                  {t("footer.privacyPolicy")}
                 </a>
               </li>
               <li>
                 <div className="flex items-center gap-2 text-sm text-secondary">
                   <MapPin size={13} className="shrink-0" />
-                  <span>העליייה 11, ת&#34;א</span>
+                  <span>{t("footer.addressShort")}</span>
                 </div>
               </li>
               <li>
@@ -110,10 +108,10 @@ export default function Footer() {
         {/* Column 3: Newsletter */}
         <div>
           <h3 className="text-xs font-bold tracking-widest uppercase text-on-surface mb-2">
-            Join the Atelier
+            {t("footer.joinAtelier")}
           </h3>
           <p className="text-sm text-secondary mb-5 leading-relaxed">
-            Stay informed about new arrivals and exclusive collections.
+            {t("footer.joinSub")}
           </p>
           <form onSubmit={handleNewsletter} className="flex gap-2">
             <input
@@ -128,21 +126,21 @@ export default function Footer() {
               type="submit"
               className="gold-shimmer text-on-tertiary-fixed font-semibold text-sm px-4 py-2.5 rounded-lg whitespace-nowrap transition-opacity hover:opacity-90"
             >
-              Join
+              {t("footer.join")}
             </button>
           </form>
 
           {/* Store hours summary */}
           <div className="mt-6 flex items-center gap-2 text-xs text-secondary">
             <Clock size={13} />
-            <span>Sun–Thu 10:00–19:00 · Fri 10:00–14:30</span>
+            <span>{t("footer.hoursSummary")}</span>
           </div>
         </div>
       </div>
 
       {/* Bottom bar */}
       <div className="border-t border-outline-variant py-4 text-center text-xs text-secondary">
-        © {new Date().getFullYear()} אופנת ג&#39;נודי — Jenudi Fashion. All rights reserved.
+        © {new Date().getFullYear()} {t("footer.copyrightBrand")}
       </div>
     </footer>
   );

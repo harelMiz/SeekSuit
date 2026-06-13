@@ -9,7 +9,8 @@ import ShopPage from "./pages/ShopPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
-import ImageSearchPage from "./pages/ImageSearchPage";
+
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 
 // Admin pages
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -45,7 +46,9 @@ function App() {
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
-            <Route path="/search" element={<ImageSearchPage />} />
+
+            {/* Auth callback — handles password reset and invite acceptance */}
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
             {/* Admin login — public */}
             <Route path="/admin/login" element={<AdminLoginPage />} />

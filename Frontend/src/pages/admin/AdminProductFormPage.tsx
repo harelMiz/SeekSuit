@@ -11,7 +11,7 @@ import {
   deleteProductImage,
   setMainImage,
 } from "../../services/product.service";
-import { COLOR_OPTIONS, colorLabel } from "../../lib/colorMap";
+import { COLOR_OPTIONS, colorDisplay } from "../../lib/colorMap";
 import type { ProductType, ProductStatus, ProductImage } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -19,6 +19,7 @@ const MAX_IMAGES = 5;
 
 interface FormState {
   name: string;
+  nameEn: string;
   sku: string;
   type: ProductType;
   color: string;
@@ -27,6 +28,7 @@ interface FormState {
 
 const INITIAL_FORM: FormState = {
   name: "",
+  nameEn: "",
   sku: "",
   type: "JACKET",
   color: "",
@@ -43,7 +45,7 @@ interface PendingImage {
 export default function AdminProductFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const isEdit = Boolean(id);
 
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
@@ -56,7 +58,8 @@ export default function AdminProductFormPage() {
   const colorRef = useRef<HTMLDivElement>(null);
 
   const filteredColors = COLOR_OPTIONS.filter((key) =>
-    colorLabel(key).includes(colorSearch) || key.toLowerCase().includes(colorSearch.toLowerCase())
+    colorDisplay(key, lang).toLowerCase().includes(colorSearch.toLowerCase()) ||
+    key.toLowerCase().includes(colorSearch.toLowerCase())
   );
 
   // Images already saved in the DB (edit mode)
@@ -82,7 +85,14 @@ export default function AdminProductFormPage() {
     if (!id) return;
     getProduct(id)
       .then((p) => {
-        setForm({ name: p.name, sku: p.sku, type: p.type, color: p.color, status: p.status });
+        setForm({
+          name: p.name,
+          nameEn: (p.attributes?.nameEn as string) ?? "",
+          sku: p.sku,
+          type: p.type,
+          color: p.color,
+          status: p.status,
+        });
         setSavedImages(p.images.sort((a, b) => a.order - b.order));
       })
       .catch(() => setError(t("common.error")))
@@ -159,10 +169,13 @@ export default function AdminProductFormPage() {
     try {
       let productId = id;
 
+      const { nameEn, ...baseForm } = form;
+      const payload = { ...baseForm, attributes: nameEn ? { nameEn } : undefined };
+
       if (isEdit && productId) {
-        await updateProduct(productId, form);
+        await updateProduct(productId, payload);
       } else {
-        const product = await createProduct(form);
+        const product = await createProduct(payload);
         productId = product.id;
       }
 
@@ -186,7 +199,7 @@ export default function AdminProductFormPage() {
   }
 
   const inputClass =
-    "w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary py-3 text-sm text-on-surface placeholder-secondary outline-none transition-colors";
+    "w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary py-2 text-sm text-on-surface placeholder-secondary outline-none transition-colors";
 
   const selectClass =
     "w-full bg-surface-container-low border border-outline-variant hover:border-outline focus:border-primary rounded-lg px-3 py-2.5 text-sm text-on-surface outline-none transition-colors cursor-pointer";
@@ -201,49 +214,87 @@ export default function AdminProductFormPage() {
     );
   }
 
+  // Determine featured image for left panel
+  const mainSaved = savedImages.find((img) => img.isMain);
+  const mainPending = pendingImages.find((img) => img.isMain);
+  const featuredUrl = mainSaved
+    ? (mainSaved.processedUrl ?? mainSaved.rawUrl)
+    : mainPending
+    ? mainPending.preview
+    : savedImages[0]
+    ? (savedImages[0].processedUrl ?? savedImages[0].rawUrl)
+    : pendingImages[0]?.preview ?? null;
+
   return (
     <AdminLayout>
-      <div className="max-w-xl">
-        <p className="text-xs font-bold tracking-widest uppercase text-secondary mb-2">
-          {isEdit ? "Edit" : "New"} Product
-        </p>
-        <h1 className="font-headline text-3xl font-bold text-on-surface mb-10">
-          {isEdit ? t("admin.editProduct") : t("admin.addProduct")}
-        </h1>
+      <form onSubmit={handleSubmit}>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Name */}
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between mb-5">
           <div>
-            <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
-              {t("admin.productName")}
-            </label>
-            <input
-              type="text"
-              required
-              value={form.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              className={inputClass}
-            />
+            <div className="flex items-center gap-3 mb-3">
+              <span className="block w-14 h-[1.5px] bg-gradient-to-r from-tertiary-fixed to-tertiary-fixed-dim" />
+              <p className="text-xs font-bold tracking-[0.22em] uppercase text-on-tertiary-container">
+                {isEdit ? t("admin.editProductTitle") : t("admin.newProductTitle")}
+              </p>
+            </div>
+            <h1 className="font-headline font-bold text-on-surface leading-[1.05]">
+              <span className="text-5xl">{isEdit ? t("admin.productFormTitleEdit") : t("admin.productFormTitleNew")}</span>
+              <br />
+              <span className="text-6xl italic text-on-tertiary-container">
+                {t("admin.productFormTitle1")}
+              </span>
+            </h1>
+            <div className="mt-4 w-20 h-[2px] bg-gradient-to-r from-tertiary-fixed-dim to-tertiary-fixed" />
           </div>
 
-          {/* SKU */}
-          <div>
-            <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
-              {t("admin.productSku")}
-            </label>
-            <input
-              type="text"
-              required
-              value={form.sku}
-              onChange={(e) => handleChange("sku", e.target.value)}
-              className={inputClass}
-            />
-          </div>
+        </div>
 
-          <div className="h-px bg-outline-variant" />
+        {/* ── 2-column body ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_44%] gap-8 items-start">
 
-          {/* Type + Color */}
-          <div className="grid grid-cols-2 gap-6">
+          {/* ── LEFT: Form fields (first in DOM = RIGHT in RTL) ── */}
+          <div className="space-y-4">
+
+            <div>
+              <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
+                {t("admin.productName")}
+              </label>
+              <input
+                type="text"
+                required
+                value={form.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
+                {t("admin.productNameEn")}
+              </label>
+              <input
+                type="text"
+                value={form.nameEn}
+                onChange={(e) => handleChange("nameEn", e.target.value)}
+                placeholder={t("admin.productNameEnPlaceholder")}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
+                {t("admin.productSku")}
+              </label>
+              <input
+                type="text"
+                required
+                value={form.sku}
+                onChange={(e) => handleChange("sku", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
             <div>
               <label className="block text-[10px] text-secondary uppercase tracking-widest mb-2">
                 {t("admin.productType")}
@@ -254,12 +305,11 @@ export default function AdminProductFormPage() {
                 className={selectClass}
               >
                 {PRODUCT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {t(`type.${type}`)}
-                  </option>
+                  <option key={type} value={type}>{t(`type.${type}`)}</option>
                 ))}
               </select>
             </div>
+
             <div ref={colorRef} className="relative">
               <label className="block text-[10px] text-secondary uppercase tracking-widest mb-1">
                 {t("admin.productColor")}
@@ -267,8 +317,8 @@ export default function AdminProductFormPage() {
               <input
                 type="text"
                 required
-                placeholder="חפש צבע..."
-                value={colorSearch || colorLabel(form.color)}
+                placeholder={t("admin.colorSearchPlaceholder")}
+                value={colorSearch || colorDisplay(form.color, lang)}
                 onFocus={() => { setColorSearch(""); setColorDropdownOpen(true); }}
                 onChange={(e) => { setColorSearch(e.target.value); setColorDropdownOpen(true); }}
                 className={inputClass}
@@ -279,53 +329,52 @@ export default function AdminProductFormPage() {
                   {filteredColors.map((key) => (
                     <li
                       key={key}
-                      onMouseDown={() => {
-                        handleChange("color", key);
-                        setColorSearch("");
-                        setColorDropdownOpen(false);
-                      }}
+                      onMouseDown={() => { handleChange("color", key); setColorSearch(""); setColorDropdownOpen(false); }}
                       className={`px-3 py-2 cursor-pointer hover:bg-surface-container text-on-surface ${form.color === key ? "font-semibold text-primary" : ""}`}
                     >
-                      {colorLabel(key)}
+                      {colorDisplay(key, lang)}
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-          </div>
 
-          {/* Status */}
-          <div>
-            <label className="block text-[10px] text-secondary uppercase tracking-widest mb-2">
-              {t("admin.productStatus")}
-            </label>
-            <select
-              value={form.status}
-              onChange={(e) => handleChange("status", e.target.value)}
-              className={selectClass}
-            >
-              <option value="IN_STOCK">{t("status.in_stock")}</option>
-              <option value="OUT_OF_STOCK">{t("status.out_of_stock")}</option>
-            </select>
-          </div>
-
-          {/* ── Images section ── */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-[10px] text-secondary uppercase tracking-widest">
-                {t("admin.imageUpload")} ({totalCount}/{MAX_IMAGES})
+            <div>
+              <label className="block text-[10px] text-secondary uppercase tracking-widest mb-2">
+                {t("admin.productStatus")}
               </label>
-              {totalCount < MAX_IMAGES && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-xs text-on-tertiary-container font-semibold hover:opacity-70 transition-opacity"
-                >
-                  <ImagePlus size={14} />
-                  Add image
-                </button>
-              )}
+              <select
+                value={form.status}
+                onChange={(e) => handleChange("status", e.target.value)}
+                className={selectClass}
+              >
+                <option value="IN_STOCK">{t("status.in_stock")}</option>
+                <option value="OUT_OF_STOCK">{t("status.out_of_stock")}</option>
+              </select>
             </div>
+
+            {error && <p className="text-sm text-error">{error}</p>}
+
+            <div className="flex gap-4 pt-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 gold-shimmer disabled:opacity-50 font-semibold py-3 rounded-xl text-sm text-on-tertiary-fixed transition-opacity hover:opacity-90"
+              >
+                {saving ? t("admin.saving") : t("admin.saveProduct")}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/admin/inventory")}
+                className="px-6 py-3 border border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface text-sm rounded-xl transition-colors"
+              >
+                {t("admin.cancel")}
+              </button>
+            </div>
+          </div>
+
+          {/* ── RIGHT: Image gallery (second in DOM = LEFT in RTL) ── */}
+          <div className="bg-surface-container-low rounded-2xl overflow-hidden border border-outline-variant">
 
             <input
               ref={fileInputRef}
@@ -336,153 +385,126 @@ export default function AdminProductFormPage() {
               onChange={handleFileSelect}
             />
 
-            {/* Image grid */}
-            {totalCount > 0 ? (
-              <div className="grid grid-cols-3 gap-3">
-                {/* Saved images (from DB) */}
-                {savedImages.map((img) => {
-                  const displayUrl = img.processedUrl ?? img.rawUrl;
-                  return (
-                    <div key={img.id} className="relative group aspect-[3/4] rounded-xl overflow-hidden bg-surface-container-low border border-outline-variant">
-                      {displayUrl ? (
-                        <img
-                          src={displayUrl}
-                          alt="product"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-outline-variant text-xs">
-                          No preview
-                        </div>
-                      )}
-
-                      {/* Main badge */}
-                      {img.isMain && (
-                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-400/90 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                          <Star size={9} fill="currentColor" />
-                          Main
-                        </div>
-                      )}
-
-                      {/* Hover controls */}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        {!img.isMain && (
-                          <button
-                            type="button"
-                            onClick={() => setSavedMain(img.id)}
-                            className="p-1.5 rounded-lg bg-amber-400/90 text-amber-900 hover:bg-amber-400 transition-colors"
-                            title="Set as main"
-                          >
-                            <Star size={13} />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeSaved(img.id)}
-                          className="p-1.5 rounded-lg bg-white/20 text-white hover:bg-red-500/80 transition-colors"
-                          title="Remove"
-                        >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Pending images (local preview) */}
-                {pendingImages.map((img, idx) => (
-                  <div key={idx} className="relative group aspect-[3/4] rounded-xl overflow-hidden bg-surface-container-low border-2 border-dashed border-outline-variant">
-                    <img
-                      src={img.preview}
-                      alt="pending upload"
-                      className="w-full h-full object-cover"
-                    />
-
-                    {/* Main badge */}
-                    {img.isMain && (
-                      <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-400/90 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        <Star size={9} fill="currentColor" />
-                        Main
-                      </div>
-                    )}
-
-                    {/* "Not uploaded" label */}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/40 text-white text-[10px] text-center py-1">
-                      Pending upload
-                    </div>
-
-                    {/* Hover controls */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      {!img.isMain && (
-                        <button
-                          type="button"
-                          onClick={() => setPendingMain(idx)}
-                          className="p-1.5 rounded-lg bg-amber-400/90 text-amber-900 hover:bg-amber-400 transition-colors"
-                          title="Set as main"
-                        >
-                          <Star size={13} />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removePending(idx)}
-                        className="p-1.5 rounded-lg bg-white/20 text-white hover:bg-red-500/80 transition-colors"
-                        title="Remove"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add slot — shown if under limit */}
-                {totalCount < MAX_IMAGES && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="aspect-[3/4] rounded-xl border-2 border-dashed border-outline-variant hover:border-primary flex flex-col items-center justify-center gap-2 transition-colors"
-                  >
-                    <ImagePlus size={20} className="text-secondary" />
-                    <span className="text-[10px] text-secondary">Add</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              /* Empty state — large drop zone */
+            {totalCount === 0 ? (
+              /* Empty state: single full rectangle */
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-surface-container-low border-2 border-dashed border-outline-variant hover:border-primary rounded-xl px-4 py-8 flex flex-col items-center gap-2 transition-colors cursor-pointer"
+                className="w-full flex flex-col items-center justify-center gap-4 bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors"
+                style={{ minHeight: "500px" }}
               >
-                <ImagePlus size={24} className="text-secondary" />
-                <span className="text-xs text-secondary">{t("admin.imageUpload")}</span>
-                <span className="text-[10px] text-outline">Up to {MAX_IMAGES} images — click the ★ to set main</span>
+                <div className="w-20 h-20 rounded-full border-2 border-dashed border-outline-variant flex items-center justify-center">
+                  <ImagePlus size={28} className="text-secondary" />
+                </div>
+                <p className="text-sm font-semibold text-on-surface">{t("admin.imageUpload")}</p>
               </button>
+            ) : (
+              /* Side-by-side: thumbnail strip + featured image */
+              <div className="flex h-[500px]">
+
+                {/* Vertical thumbnail strip — first in DOM = RIGHT in RTL */}
+                <div className="w-[150px] flex-shrink-0 border-e border-outline-variant flex flex-col gap-2 p-2 overflow-y-auto">
+
+                  {savedImages.map((img) => {
+                    const url = img.processedUrl ?? img.rawUrl;
+                    return (
+                      <div key={img.id} className="relative flex-shrink-0 group">
+                        <div
+                          onClick={() => setSavedMain(img.id)}
+                          className={`w-full h-[120px] rounded-lg overflow-hidden cursor-pointer border-2 transition-colors ${
+                            img.isMain ? "border-on-tertiary-container" : "border-transparent hover:border-outline-variant"
+                          }`}
+                        >
+                          {url ? (
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-surface-container-high" />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeSaved(img.id)}
+                          className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface border border-outline-variant text-secondary hover:bg-error hover:text-on-error hover:border-error flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                          title={t("admin.removeImage")}
+                        >
+                          <X size={10} />
+                        </button>
+                        {img.isMain && (
+                          <div className="absolute bottom-1 inset-x-0 flex justify-center">
+                            <Star size={10} className="text-amber-400" fill="currentColor" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {pendingImages.map((img, idx) => (
+                    <div key={idx} className="relative flex-shrink-0 group">
+                      <div
+                        onClick={() => setPendingMain(idx)}
+                        className={`relative w-full h-[120px] rounded-lg overflow-hidden cursor-pointer border-2 border-dashed transition-colors ${
+                          img.isMain ? "border-on-tertiary-container" : "border-outline-variant hover:border-outline"
+                        }`}
+                      >
+                        <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[9px] text-center py-0.5">
+                          {t("admin.pendingUpload")}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removePending(idx)}
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface border border-outline-variant text-secondary hover:bg-error hover:text-on-error hover:border-error flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <X size={10} />
+                      </button>
+                      {img.isMain && (
+                        <div className="absolute bottom-1 inset-x-0 flex justify-center">
+                          <Star size={10} className="text-amber-400" fill="currentColor" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {totalCount < MAX_IMAGES && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-shrink-0 w-full h-[72px] rounded-lg border-2 border-dashed border-outline-variant hover:border-on-tertiary-container flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <ImagePlus size={16} className="text-secondary" />
+                      <span className="text-[9px] text-secondary">{totalCount}/{MAX_IMAGES}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Featured image — fills remaining space, LEFT in RTL */}
+                <div className="flex-1 relative bg-surface-container overflow-hidden">
+                  {/* Blurred fill — hides letterbox bars */}
+                  <img
+                    src={featuredUrl!}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40"
+                  />
+                  {/* Sharp main image — no cropping */}
+                  <img
+                    src={featuredUrl!}
+                    alt="product"
+                    className="relative z-10 w-full h-full object-contain"
+                  />
+                  <div className="absolute z-20 top-3 left-3 flex items-center gap-1.5 bg-amber-400/90 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                    <Star size={10} fill="currentColor" />
+                    {t("admin.mainImage")}
+                  </div>
+                </div>
+
+              </div>
             )}
           </div>
 
-          {/* Error */}
-          {error && <p className="text-sm text-error">{error}</p>}
-
-          {/* Action buttons */}
-          <div className="flex gap-4 pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 gold-shimmer disabled:opacity-50 font-semibold py-3 rounded-xl text-sm text-on-tertiary-fixed transition-opacity hover:opacity-90"
-            >
-              {saving ? t("admin.saving") : t("admin.saveProduct")}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/admin/inventory")}
-              className="px-6 py-3 border border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface text-sm rounded-xl transition-colors"
-            >
-              {t("admin.cancel")}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </AdminLayout>
   );
 }
