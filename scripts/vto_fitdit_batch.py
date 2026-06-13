@@ -79,6 +79,30 @@ UPPER_TYPES = {"JACKETS", "VESTS"}
 # JACKETS — composite via FitDiT pre_mask (preserves original resolution)
 # ---------------------------------------------------------------------------
 
+def _mask_out_wrists(pre_mask: dict, strip_ratio: float = 0.06) -> dict:
+    """Zero out the bottom of the sleeve columns in the pre_mask so FitDiT
+    preserves the original wrists/hands instead of regenerating them."""
+    import copy
+    mask = copy.deepcopy(pre_mask)
+    alpha = mask["layers"][0][:, :, 3].copy()
+    h, w = alpha.shape
+
+    # Only process the left and right thirds — where sleeves are
+    side_w = w // 3
+    for region_cols in [range(0, side_w), range(w - side_w, w)]:
+        for col in region_cols:
+            white_rows = np.where(alpha[:, col] > 128)[0]
+            if len(white_rows) == 0:
+                continue
+            bottom = white_rows.max()
+            strip_px = max(1, int(h * strip_ratio))
+            top = max(0, bottom - strip_px)
+            alpha[top:bottom + 1, col] = 0
+
+    mask["layers"][0][:, :, 3] = alpha
+    return mask
+
+
 def _composite_jacket(
     fitdit_result: Image.Image,
     original: Image.Image,
@@ -88,7 +112,7 @@ def _composite_jacket(
     ow, oh = orig.size
     fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
     mask_arr = pre_mask["layers"][0][:, :, 3]   # 255 = garment region
-    garment_mask = Image.fromarray(mask_arr, "L").filter(ImageFilter.GaussianBlur(radius=3))
+    garment_mask = Image.fromarray(mask_arr, "L").filter(ImageFilter.GaussianBlur(radius=1))
     return Image.composite(fitdit_full, orig, garment_mask)
 
 
@@ -286,10 +310,12 @@ def main():
                         cached_mask = (pre_mask, np.array(pose_img))
                     pre_mask, pose_arr = cached_mask
 
+                    process_mask = _mask_out_wrists(pre_mask) if ptype == "JACKETS" else pre_mask
+
                     result = fitdit.process(
                         vton_img=str(TEMP_PERSON),
                         garm_img=str(garment_path),
-                        pre_mask=pre_mask,
+                        pre_mask=process_mask,
                         pose_image=pose_arr,
                         n_steps=STEPS,
                         image_scale=SCALE,
