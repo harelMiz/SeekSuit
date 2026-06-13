@@ -1,10 +1,9 @@
 """
 FitDiT batch VTO — puts JACKETS and VESTS on model photos.
 
-JACKETS: FitDiT result composited onto original using FitDiT's own pre_mask,
-         preserving original resolution for face/background/pants.
-VESTS:   SAM2 segments just the vest from the FitDiT result (dynamic ATR points),
-         then composites onto original to preserve the original shirt and arms.
+JACKETS: FitDiT result composited onto original using FitDiT's pre_mask.
+VESTS:   SAM2 segments the vest from the FitDiT result (ATR-guided points),
+         then composites onto original to preserve shirt and arms.
 
 Folder layout
 -------------
@@ -21,23 +20,18 @@ Results
 scripts/vto_results_fitdit/
     suit_002_front/
         model_1_Caucasian_1_vto.jpg
-        model_2_black_1_vto.jpg
-        model_2_black_2_vto.jpg
-        ...
-    vest_001_front/
-        model_1_Caucasian_1_vto.jpg
         ...
 
-Setup (run once):
+Setup (run once on RunPod):
   python scripts/vto_fitdit_download.py
   pip install sam2
 
 Usage:
-  cd /workspace/SeekSuit
-  python scripts/vto_fitdit_batch.py                       # all models, all garments
-  python scripts/vto_fitdit_batch.py --model model_01      # one model only
-  python scripts/vto_fitdit_batch.py --type JACKETS        # garment type filter
-  python scripts/vto_fitdit_batch.py --one                 # quick test: 1 model/photo/garment
+  python scripts/vto_fitdit_batch.py                   # all models, all garments
+  python scripts/vto_fitdit_batch.py --model model_01  # one model only
+  python scripts/vto_fitdit_batch.py --type JACKETS    # garment type filter
+  python scripts/vto_fitdit_batch.py --garment suit_002_front
+  python scripts/vto_fitdit_batch.py --one             # quick test: 1 model/photo/garment
 """
 
 import sys
@@ -59,11 +53,11 @@ os.chdir(str(FITDIT_DIR))
 
 from gradio_sd3 import FitDiTGenerator
 
-SCRIPTS_DIR  = Path(__file__).parent
-MODELS_DIR   = SCRIPTS_DIR / "vto_models"
-SAMPLES_DIR  = SCRIPTS_DIR / "vto_samples"
-OUTPUT_DIR   = SCRIPTS_DIR / "vto_results_fitdit"
-TEMP_PERSON  = SCRIPTS_DIR / "temp_model_rgb.jpg"
+SCRIPTS_DIR = Path(__file__).parent
+MODELS_DIR  = SCRIPTS_DIR / "vto_models"
+SAMPLES_DIR = SCRIPTS_DIR / "vto_samples"
+OUTPUT_DIR  = SCRIPTS_DIR / "vto_results_fitdit"
+TEMP_PERSON = SCRIPTS_DIR / "temp_model_rgb.jpg"
 
 MODEL_ROOT = str(FITDIT_DIR)
 DEVICE     = "cuda:0"
@@ -76,12 +70,10 @@ UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
 # ---------------------------------------------------------------------------
-# Custom mask support — override FitDiT's auto mask with a hand-drawn one
+# Custom mask — override FitDiT's auto mask with a locally edited one
 # ---------------------------------------------------------------------------
 
 def _apply_custom_mask(pre_mask: dict, photo_path: Path) -> dict:
-    """If a {photo_stem}_mask.png exists next to the photo, replace the
-    alpha channel in pre_mask with it (pose estimation is kept from FitDiT)."""
     mask_path = photo_path.parent / f"{photo_path.stem}_mask.png"
     if not mask_path.exists():
         return pre_mask
@@ -93,14 +85,13 @@ def _apply_custom_mask(pre_mask: dict, photo_path: Path) -> dict:
     )
     result = copy.deepcopy(pre_mask)
     result["layers"][0][:, :, 3] = custom
-    print(f"[mask] custom mask loaded: {mask_path.name}  (coverage {custom.mean()/255*100:.1f}%)")
+    print(f"[mask] custom mask: {mask_path.name}  ({custom.mean()/255*100:.1f}% coverage)")
     return result
 
 
 # ---------------------------------------------------------------------------
-# JACKETS — composite via FitDiT pre_mask (preserves original resolution)
+# JACKETS — composite via FitDiT pre_mask
 # ---------------------------------------------------------------------------
-
 
 def _composite_jacket(
     fitdit_result: Image.Image,
@@ -110,13 +101,13 @@ def _composite_jacket(
     orig = original.convert("RGB")
     ow, oh = orig.size
     fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
-    mask_arr = pre_mask["layers"][0][:, :, 3]   # 255 = garment region
+    mask_arr = pre_mask["layers"][0][:, :, 3]
     garment_mask = Image.fromarray(mask_arr, "L").filter(ImageFilter.GaussianBlur(radius=1))
     return Image.composite(fitdit_full, orig, garment_mask)
 
 
 # ---------------------------------------------------------------------------
-# VESTS — SAM2 with dynamic ATR points
+# VESTS — SAM2 with ATR-guided points
 # ---------------------------------------------------------------------------
 
 _sam2_predictor = None
@@ -127,15 +118,14 @@ def _get_sam2_predictor():
     if _sam2_predictor is None:
         import torch
         from sam2.sam2_image_predictor import SAM2ImagePredictor
-        print("[SAM2] Loading model (first use — downloads ~300 MB)...")
+        print("[SAM2] loading model...")
         _sam2_predictor = SAM2ImagePredictor.from_pretrained("facebook/sam2.1-hiera-large")
         _sam2_predictor.model.eval()
-        print("[SAM2] Ready.")
+        print("[SAM2] ready.")
     return _sam2_predictor
 
 
-def _atr_upper_points(fitdit_result: Image.Image, fitdit, w: int, h: int):
-    """Return dynamic SAM2 foreground points derived from ATR class-4 centroids."""
+def _atr_vest_points(fitdit_result: Image.Image, fitdit, w: int, h: int):
     parsing = getattr(fitdit, "parsing_model", None)
     if parsing is None:
         from preprocess.humanparsing.run_parsing import Parsing
@@ -163,27 +153,22 @@ def _atr_upper_points(fitdit_result: Image.Image, fitdit, w: int, h: int):
     return (lx, ly), (rx, ry)
 
 
-def _composite_with_sam2(
+def _composite_vest_sam2(
     fitdit_result: Image.Image,
     original: Image.Image,
     fitdit,
-    debug_dir: Path | None = None,
-    stem: str = "vest",
 ) -> Image.Image:
     import torch
 
     w, h = fitdit_result.size
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
 
-    if debug_dir:
-        fitdit_result.save(str(debug_dir / f"{stem}_raw.jpg"), quality=92)
-
-    (lx, ly), (rx, ry) = _atr_upper_points(fitdit_result, fitdit, w, h)
+    (lx, ly), (rx, ry) = _atr_vest_points(fitdit_result, fitdit, w, h)
 
     predictor = _get_sam2_predictor()
     with torch.inference_mode():
         predictor.set_image(np.array(fitdit_result.convert("RGB")))
-        masks, scores, _ = predictor.predict(
+        masks, _, _ = predictor.predict(
             point_coords=np.array([[lx, ly], [rx, ry]]),
             point_labels=np.array([1, 1]),
             multimask_output=False,
@@ -196,9 +181,6 @@ def _composite_with_sam2(
     if coverage > 127:
         mask_arr = 255 - mask_arr
         print(f"[SAM2] inverted → {mask_arr.mean():.1f}/255")
-
-    if debug_dir:
-        Image.fromarray(mask_arr, "L").save(str(debug_dir / f"{stem}_mask.jpg"))
 
     if mask_arr.mean() < 5:
         print("[SAM2] empty mask — using plain FitDiT result")
@@ -251,9 +233,9 @@ def collect_garments(type_filter: str | None) -> list[tuple[str, Path]]:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--one",     action="store_true", help="Quick test: first model/photo/garment only")
+    parser.add_argument("--one",     action="store_true", help="Quick test: 1 model/photo/garment")
     parser.add_argument("--model",   help="Run only this model folder (e.g. model_01)")
-    parser.add_argument("--type",    choices=["JACKETS", "VESTS"], help="Run only this garment type")
+    parser.add_argument("--type",    choices=["JACKETS", "VESTS"], help="Garment type filter")
     parser.add_argument("--garment", help="Run only this garment stem (e.g. suit_002_front)")
     args = parser.parse_args()
 
@@ -301,11 +283,9 @@ def main():
             cached_mask = None
 
             for ptype, garment_path in garments:
-                out_dir = OUTPUT_DIR / garment_path.stem
+                out_dir  = OUTPUT_DIR / garment_path.stem
                 out_dir.mkdir(parents=True, exist_ok=True)
                 out_path = out_dir / f"{photo_path.stem}_vto.jpg"
-
-                debug_dir = out_dir / "debug"
 
                 print(f"    [{ptype}] {garment_path.stem} ... ", end="", flush=True)
                 try:
@@ -315,14 +295,13 @@ def main():
                         )
                         cached_mask = (pre_mask, np.array(pose_img))
 
-                        # Save auto mask for local editing (skip if already saved)
                         auto_mask_path = photo_path.parent / f"{photo_path.stem}_auto_mask.png"
                         if not auto_mask_path.exists():
-                            mask_arr_save = pre_mask["layers"][0][:, :, 3]
-                            Image.fromarray(mask_arr_save, "L").save(str(auto_mask_path))
+                            mask_arr = pre_mask["layers"][0][:, :, 3]
+                            Image.fromarray(mask_arr, "L").save(str(auto_mask_path))
                             print(f"[mask] saved auto mask: {auto_mask_path.name}")
-                    pre_mask, pose_arr = cached_mask
 
+                    pre_mask, pose_arr = cached_mask
                     process_mask = _apply_custom_mask(pre_mask, photo_path)
 
                     result = fitdit.process(
@@ -340,12 +319,7 @@ def main():
                     if ptype == "JACKETS":
                         result = _composite_jacket(result, person_pil, pre_mask)
                     elif ptype == "VESTS":
-                        debug_dir.mkdir(parents=True, exist_ok=True)
-                        result = _composite_with_sam2(
-                            result, person_pil, fitdit,
-                            debug_dir=debug_dir,
-                            stem=f"{photo_path.stem}_{garment_path.stem}",
-                        )
+                        result = _composite_vest_sam2(result, person_pil, fitdit)
 
                     result.save(out_path, quality=92)
                     print("ok")
