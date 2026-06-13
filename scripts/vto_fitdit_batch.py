@@ -90,45 +90,19 @@ def _apply_custom_mask(pre_mask: dict, photo_path: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# JACKETS — composite via ATR parsing (precise jacket + sleeve mask)
+# JACKETS — composite via FitDiT pre_mask
 # ---------------------------------------------------------------------------
 
-_parsing_model = None
-
-
-def _get_parsing_model(fitdit):
-    global _parsing_model
-    if _parsing_model is None:
-        _parsing_model = getattr(fitdit, "parsing_model", None)
-    if _parsing_model is None:
-        from preprocess.humanparsing.run_parsing import Parsing
-        _parsing_model = Parsing(model_root=MODEL_ROOT, device="cpu")
-    return _parsing_model
-
-
-def _composite_jacket_atr(
+def _composite_jacket(
     fitdit_result: Image.Image,
     original: Image.Image,
-    fitdit,
+    pre_mask: dict,
 ) -> Image.Image:
-    parsing = _get_parsing_model(fitdit)
-    parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
-    parse_arr = np.array(parse_result)
-
-    # class 4 = upper-clothes (jacket body + sleeves); arms (14/15) excluded to avoid wrist artifacts
-    jacket_mask = (parse_arr == 4).astype(np.uint8) * 255
-    coverage = jacket_mask.mean() / 255 * 100
-    print(f"[ATR] jacket coverage: {coverage:.1f}%")
-
-    mask_img = Image.fromarray(jacket_mask, "L")
-    mask_img = mask_img.filter(ImageFilter.MaxFilter(size=9))
-    mask_img = mask_img.filter(ImageFilter.MinFilter(size=5))
-
     orig = original.convert("RGB")
     ow, oh = orig.size
     fitdit_full = fitdit_result.resize((ow, oh), Image.LANCZOS)
-    garment_mask = mask_img.resize((ow, oh), Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=1))
-
+    mask_arr = pre_mask["layers"][0][:, :, 3]
+    garment_mask = Image.fromarray(mask_arr, "L").filter(ImageFilter.GaussianBlur(radius=1))
     return Image.composite(fitdit_full, orig, garment_mask)
 
 
@@ -152,7 +126,10 @@ def _get_sam2_predictor():
 
 
 def _atr_vest_points(fitdit_result: Image.Image, fitdit, w: int, h: int):
-    parsing = _get_parsing_model(fitdit)
+    parsing = getattr(fitdit, "parsing_model", None)
+    if parsing is None:
+        from preprocess.humanparsing.run_parsing import Parsing
+        parsing = Parsing(model_root=MODEL_ROOT, device="cpu")
 
     parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
     upper = np.array(parse_result) == 4
@@ -340,7 +317,7 @@ def main():
                     )[0]
 
                     if ptype == "JACKETS":
-                        result = _composite_jacket_atr(result, person_pil, fitdit)
+                        result = _composite_jacket(result, person_pil, pre_mask)
                     elif ptype == "VESTS":
                         result = _composite_vest_sam2(result, person_pil, fitdit)
 
