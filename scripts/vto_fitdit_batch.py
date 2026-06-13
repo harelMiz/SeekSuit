@@ -76,6 +76,28 @@ UPPER_TYPES = {"JACKETS", "VESTS"}
 
 
 # ---------------------------------------------------------------------------
+# Custom mask support — override FitDiT's auto mask with a hand-drawn one
+# ---------------------------------------------------------------------------
+
+def _apply_custom_mask(pre_mask: dict, photo_path: Path) -> dict:
+    """If a {photo_stem}_mask.png exists next to the photo, replace the
+    alpha channel in pre_mask with it (pose estimation is kept from FitDiT)."""
+    mask_path = photo_path.parent / f"{photo_path.stem}_mask.png"
+    if not mask_path.exists():
+        return pre_mask
+
+    import copy
+    ph, pw = pre_mask["layers"][0][:, :, 3].shape
+    custom = np.array(
+        Image.open(mask_path).convert("L").resize((pw, ph), Image.NEAREST)
+    )
+    result = copy.deepcopy(pre_mask)
+    result["layers"][0][:, :, 3] = custom
+    print(f"[mask] custom mask loaded: {mask_path.name}  (coverage {custom.mean()/255*100:.1f}%)")
+    return result
+
+
+# ---------------------------------------------------------------------------
 # JACKETS — composite via FitDiT pre_mask (preserves original resolution)
 # ---------------------------------------------------------------------------
 
@@ -294,7 +316,7 @@ def main():
                         cached_mask = (pre_mask, np.array(pose_img))
                     pre_mask, pose_arr = cached_mask
 
-                    process_mask = pre_mask
+                    process_mask = _apply_custom_mask(pre_mask, photo_path)
 
                     result = fitdit.process(
                         vton_img=str(TEMP_PERSON),
