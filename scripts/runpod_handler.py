@@ -41,7 +41,8 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 # ── Bootstrap FitDiT ────────────────────────────────────────────────────────
-FITDIT_DIR = Path("/workspace/FitDiT")
+# FitDiT is expected on a Network Volume mounted at /runpod-volume or /workspace
+FITDIT_DIR = Path(os.environ.get("FITDIT_DIR", "/workspace/FitDiT"))
 sys.path.insert(0, str(FITDIT_DIR))
 
 mock_gr = types.ModuleType("gradio")
