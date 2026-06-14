@@ -124,6 +124,45 @@ async def detect_endpoint(file: UploadFile = File(...)):
     return {"items": items, "multipleFound": len(items) > 1}
 
 
+@app.post("/front-detect")
+async def front_detect(
+    file: UploadFile = File(...),
+    garment_type: str | None = Form(None),
+):
+    """
+    Detects whether an image shows the front view of a jacket or vest.
+    Uses CLIP zero-shot classification against front/back/side prompts.
+    Returns { isFront: bool, confidence: float (0-1) }.
+    """
+    image_bytes = await file.read()
+
+    gtype = (garment_type or "jacket").lower()
+    label = "vest" if "vest" in gtype else "jacket"
+
+    candidates = [
+        f"front view of a {label}",
+        f"back view of a {label}",
+        f"side view of a {label}",
+        f"close-up detail of {label} fabric",
+    ]
+
+    try:
+        from image_search import _get_clip
+        from PIL import Image as PILImage
+        import io as _io
+        import torch as _torch
+        model, processor = _get_clip()
+        image = PILImage.open(_io.BytesIO(image_bytes)).convert("RGB")
+        inputs = processor(text=candidates, images=image, return_tensors="pt", padding=True)
+        with _torch.no_grad():
+            outputs = model(**inputs)
+        probs = outputs.logits_per_image.softmax(dim=1)[0].tolist()
+        front_score = float(probs[0])
+        return {"isFront": front_score >= 0.40, "confidence": round(front_score, 4)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Front detection failed: {e}")
+
+
 @app.post("/embed-text")
 async def embed_text_endpoint(text: str = Form(...)):
     """

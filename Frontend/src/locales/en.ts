@@ -318,6 +318,34 @@ export const en: Record<string, string> = {
   "admin.items": "items",
   "admin.filteredFrom": "filtered from",
 
+  // VTO — Virtual Try-On
+  "admin.vto.sectionTitle": "AI Model Try-On",
+  "admin.vto.frontViewLabel": "Front view",
+  "admin.vto.frontViewHint": "Mark the front-facing image to enable AI model try-on",
+  "admin.vto.triggerBtn": "Dress models with AI",
+  "admin.vto.running": "Processing with AI — up to 3 minutes...",
+  "admin.vto.done": "Try-on complete",
+  "admin.vto.failed": "Try-on failed",
+  "admin.vto.selectHint": "Select which model photos to show on the website",
+  "admin.vto.publishBtn": "Add to gallery",
+  "admin.vto.publishDone": "Photos added to gallery",
+  "admin.vto.noFrontView": "Mark a front-view image to enable model try-on",
+  "admin.vto.needProcessed": "Images must be processed (background removal) before model try-on",
+  "admin.vto.alreadyRunning": "Try-on is already running in background",
+  "admin.vto.retryBtn": "Retry",
+
+  // VTO pod power control (dashboard)
+  "admin.vto.pod.title": "AI Try-On GPU",
+  "admin.vto.pod.subtitle": "Start the pod to dress jackets / vests on models",
+  "admin.vto.pod.start": "Start GPU",
+  "admin.vto.pod.stop": "Stop GPU",
+  "admin.vto.pod.starting": "Starting...",
+  "admin.vto.pod.stopping": "Stopping...",
+  "admin.vto.pod.running": "GPU active",
+  "admin.vto.pod.offline": "GPU offline",
+  "admin.vto.pod.autoStop": "Auto-stops after 1 hour",
+  "admin.vto.pod.notConfigured": "Not configured",
+
   // Common
   "common.loading": "Loading...",
   "common.error": "An error occurred, please try again",

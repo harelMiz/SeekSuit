@@ -318,6 +318,34 @@ export const he: Record<string, string> = {
   "admin.items": "פריטים",
   "admin.filteredFrom": "מסונן מ-",
 
+  // VTO — Virtual Try-On
+  "admin.vto.sectionTitle": "הלבשה על דוגמנים (AI)",
+  "admin.vto.frontViewLabel": "תמונת חזית",
+  "admin.vto.frontViewHint": "סמן את התמונה הקדמית של הפריט כדי להפעיל את הלבשת הדוגמנים",
+  "admin.vto.triggerBtn": "הלביש דוגמנים",
+  "admin.vto.running": "מעבד עם AI — עד 3 דקות...",
+  "admin.vto.done": "הלבשה הושלמה",
+  "admin.vto.failed": "הלבשה נכשלה",
+  "admin.vto.selectHint": "בחר אילו דוגמנים להציג באתר",
+  "admin.vto.publishBtn": "הוסף לגלריה",
+  "admin.vto.publishDone": "התמונות נוספו לגלריה",
+  "admin.vto.noFrontView": "יש לסמן תמונת חזית כדי להפעיל את הלבשת הדוגמנים",
+  "admin.vto.needProcessed": "יש לעבד את התמונות קודם (הסרת רקע) לפני הלבשת דוגמנים",
+  "admin.vto.alreadyRunning": "הלבשה כבר רצה ברקע",
+  "admin.vto.retryBtn": "נסה שנית",
+
+  // VTO pod power control (dashboard)
+  "admin.vto.pod.title": "GPU לדוגמנות AI",
+  "admin.vto.pod.subtitle": "הפעל את הפוד כדי להלביש ג'קטים/וסטים על דוגמנים",
+  "admin.vto.pod.start": "הפעל GPU",
+  "admin.vto.pod.stop": "כבה GPU",
+  "admin.vto.pod.starting": "מופעל...",
+  "admin.vto.pod.stopping": "נכבה...",
+  "admin.vto.pod.running": "GPU פעיל",
+  "admin.vto.pod.offline": "GPU כבוי",
+  "admin.vto.pod.autoStop": "נכבה אוטומטית אחרי שעה",
+  "admin.vto.pod.notConfigured": "לא מוגדר",
+
   // Common
   "common.loading": "טוען...",
   "common.error": "אירעה שגיאה, נסה שנית",

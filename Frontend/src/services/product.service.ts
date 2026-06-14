@@ -5,6 +5,7 @@ import type {
   CreateProductInput,
   UpdateProductInput,
   ProductFilters,
+  VTOJob,
 } from "../types/product";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
@@ -117,5 +118,69 @@ export async function processImage(imageId: string): Promise<void> {
 // Queue AI background removal for every image that still lacks a processedUrl
 export async function processAllUnprocessed(): Promise<{ queued: number }> {
   const { data } = await axios.post<{ queued: number }>(`${API_BASE}/api/jobs/process-all`);
+  return data;
+}
+
+// ── VTO (Virtual Try-On) ────────────────────────────────────────────────────
+
+// Mark / unmark a processed image as the front-view source for VTO
+export async function setFrontView(imageId: string, isFrontView: boolean): Promise<void> {
+  await axios.patch(`${API_BASE}/api/vto/image/${imageId}/front-view`, { isFrontView });
+}
+
+// Trigger a VTO generation job for a given product + source image
+export async function triggerVTO(productId: string, sourceImageId: string): Promise<VTOJob> {
+  const { data } = await axios.post<VTOJob>(`${API_BASE}/api/vto/trigger`, {
+    productId,
+    sourceImageId,
+  });
+  return data;
+}
+
+// Get current status of a VTO job (also triggers RunPod poll on the backend)
+export async function getVTOStatus(jobId: string): Promise<VTOJob> {
+  const { data } = await axios.get<VTOJob>(`${API_BASE}/api/vto/status/${jobId}`);
+  return data;
+}
+
+// Get all VTO jobs for a product
+export async function getProductVTOJobs(productId: string): Promise<VTOJob[]> {
+  const { data } = await axios.get<VTOJob[]>(`${API_BASE}/api/vto/product/${productId}`);
+  return data;
+}
+
+// Update which model images are selected for publishing
+export async function updateVTOSelections(
+  jobId: string,
+  selections: Record<string, boolean>
+): Promise<VTOJob> {
+  const { data } = await axios.patch<VTOJob>(`${API_BASE}/api/vto/${jobId}/selections`, {
+    selections,
+  });
+  return data;
+}
+
+// Publish selected VTO images as ProductImage rows (they appear in product gallery)
+export async function publishVTOImages(
+  jobId: string
+): Promise<{ published: number; imageIds: string[] }> {
+  const { data } = await axios.post<{ published: number; imageIds: string[] }>(
+    `${API_BASE}/api/vto/${jobId}/publish`
+  );
+  return data;
+}
+
+// Ask the AI service whether an image is a front-facing garment
+export async function detectFrontView(
+  file: File,
+  garmentType: string
+): Promise<{ isFront: boolean; confidence: number }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("garment_type", garmentType);
+  const { data } = await axios.post<{ isFront: boolean; confidence: number }>(
+    `${API_BASE.replace(":5000", ":8001")}/front-detect`,
+    formData
+  );
   return data;
 }

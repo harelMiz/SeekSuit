@@ -49,6 +49,7 @@ model Product {
   attributes  Json?
   images      ProductImage[]
   views       ProductView[]
+  vtoJobs     VTOJob[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 }
@@ -67,8 +68,10 @@ model ProductImage {
   embedding      Unsupported("vector(512)")?
   dominantColor  String?
   isMain         Boolean         @default(false)
+  isFrontView    Boolean         @default(false)
   order          Int             @default(0)
   processingJobs ProcessingJob[]
+  vtoJobs        VTOJob[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -87,6 +90,13 @@ model ProcessingJob {
 enum JobStatus {
   PENDING
   PROCESSING
+  DONE
+  FAILED
+}
+
+enum VTOStatus {
+  PENDING
+  RUNNING
   DONE
   FAILED
 }
@@ -112,6 +122,23 @@ model SearchLog {
   resultCount   Int
   detectedColor String?
   createdAt     DateTime  @default(now())
+}
+
+// Tracks a virtual try-on generation job for a JACKET or VEST product image.
+// RunPod runs FitDiT on all model photos and returns URLs in results JSON.
+// results shape: [{ modelKey: string, url: string, selected: boolean }]
+model VTOJob {
+  id            String      @id @default(uuid())
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sourceImageId String
+  sourceImage   ProductImage @relation(fields: [sourceImageId], references: [id])
+  runpodJobId   String?
+  status        VTOStatus   @default(PENDING)
+  errorMsg      String?
+  results       Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 // Records product page views from public users (skipped when admin is logged in).

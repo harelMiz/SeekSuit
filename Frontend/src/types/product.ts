@@ -19,7 +19,29 @@ export interface ProductImage {
   rawUrl: string | null;
   processedUrl: string | null;
   isMain: boolean;
+  isFrontView: boolean;
   order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A single model result inside a VTOJob
+export interface VTOResult {
+  modelKey: string;
+  url: string;
+  selected: boolean;
+}
+
+export type VTOStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
+
+export interface VTOJob {
+  id: string;
+  productId: string;
+  sourceImageId: string;
+  runpodJobId: string | null;
+  status: VTOStatus;
+  errorMsg: string | null;
+  results: VTOResult[] | null;
   createdAt: string;
   updatedAt: string;
 }
