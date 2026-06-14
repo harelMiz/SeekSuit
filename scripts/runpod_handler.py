@@ -1,112 +1,116 @@
 """
 RunPod Serverless handler for SeekSuit VTO.
 
-Expects input:
+Input:
   {
-    "garment_url":      "https://...",   # processedUrl of the front-view jacket/vest
-    "garment_type":     "JACKETS" | "VESTS",
-    "product_id":       "...",           # only used for logging / output metadata
-    "source_image_id":  "..."            # only used for output metadata
+    "garment_url":     "https://...",
+    "garment_type":    "JACKETS" | "VESTS",
+    "product_id":      "...",
+    "source_image_id": "..."
   }
 
-Returns:
-  {
-    "results": [
-      { "modelKey": "model_01", "url": "https://supabase-signed-url..." },
-      ...
-    ]
-  }
+Output:
+  { "results": [{ "modelKey": "model_01", "url": "https://..." }, ...] }
 
-Setup on RunPod (run once after pod start):
-  python scripts/vto_fitdit_download.py
-  pip install runpod sam2
-
-Deploy:
-  Use a RunPod Serverless template pointing at this file as the handler.
-  Required env vars on the template:
-    SUPABASE_URL
-    SUPABASE_SERVICE_ROLE_KEY
+Required env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 """
 
 import os
 import sys
 import time
-import types
 import io
 from pathlib import Path
 
-import runpod
-import requests
-import numpy as np
-from PIL import Image, ImageFilter
+# ── Constants (no heavy imports at module level) ──────────────────────────────
 
-# ── Bootstrap FitDiT ────────────────────────────────────────────────────────
-# FitDiT is expected on a Network Volume mounted at /runpod-volume or /workspace
-FITDIT_DIR = Path(os.environ.get("FITDIT_DIR", "/workspace/FitDiT"))
-sys.path.insert(0, str(FITDIT_DIR))
-
-mock_gr = types.ModuleType("gradio")
-sys.modules.setdefault("gradio", mock_gr)
-
-os.chdir(str(FITDIT_DIR))
-
-from gradio_sd3 import FitDiTGenerator  # noqa: E402
-
-MODEL_ROOT = str(FITDIT_DIR)
+FITDIT_DIR  = Path(os.environ.get("FITDIT_DIR",  "/workspace/FitDiT"))       # source code
+FITDIT_CKPT = Path(os.environ.get("FITDIT_CKPT", "/workspace/FitDiT/ckpt"))  # model weights
+MODEL_ROOT  = str(FITDIT_CKPT)
 DEVICE     = "cuda:0"
 STEPS      = 20
 SCALE      = 2.0
 SEED       = 42
 RESOLUTION = "768x1024"
-
-# Lazy-loaded FitDiT instance — reused across warm invocations
-_fitdit: FitDiTGenerator | None = None
-
-# Models directory — same layout as local dev
+VTO_BUCKET = "vto-results"
 MODELS_DIR = Path(__file__).parent / "vto_models"
 
-# Supabase
-from supabase import create_client  # noqa: E402
+SUPABASE_URL              = os.environ.get("SUPABASE_URL", "")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
-SUPABASE_URL              = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-VTO_BUCKET                = "vto-results"
-
-_supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+# Lazy singletons — initialized on first job, reused across warm invocations
+_fitdit    = None
+_supabase  = None
 
 
-# ── Helpers (lifted from vto_fitdit_batch.py) ────────────────────────────────
+def _get_supabase():
+    global _supabase
+    if _supabase is None:
+        from supabase import create_client
+        _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    return _supabase
+
+
+def _get_fitdit():
+    global _fitdit
+    if _fitdit is None:
+        import types
+        mock_gr = types.ModuleType("gradio")
+        sys.modules.setdefault("gradio", mock_gr)
+        sys.path.insert(0, str(FITDIT_DIR))
+        os.chdir(str(FITDIT_DIR))
+        from gradio_sd3 import FitDiTGenerator
+        print("[VTO] Loading FitDiT...")
+        _fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
+        print("[VTO] FitDiT ready")
+    return _fitdit
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _make_jacket_atr_mask(original, fitdit, pre_mask_template):
     import copy
+    import numpy as np
+    from PIL import Image, ImageFilter
     from preprocess.humanparsing.run_parsing import Parsing
-    parsing = getattr(fitdit, "parsing_model", None) or Parsing(model_root=MODEL_ROOT, device="cpu")
 
+    parsing = getattr(fitdit, "parsing_model", None) or Parsing(model_root=MODEL_ROOT, device="cpu")
     parse_result, _ = parsing(original.convert("RGB").resize((384, 512)))
     parse_arr = np.array(parse_result)
-
-    mask_384 = (parse_arr == 4).astype(np.uint8) * 255
-    mask_img = Image.fromarray(mask_384, "L")
-    mask_img = mask_img.filter(ImageFilter.MaxFilter(size=15))
-    mask_img = mask_img.filter(ImageFilter.MinFilter(size=7))
-
-    ph, pw = pre_mask_template["layers"][0][:, :, 3].shape
+    mask_384  = (parse_arr == 4).astype(np.uint8) * 255
+    mask_img  = Image.fromarray(mask_384, "L")
+    mask_img  = mask_img.filter(ImageFilter.MaxFilter(size=15))
+    mask_img  = mask_img.filter(ImageFilter.MinFilter(size=7))
+    ph, pw    = pre_mask_template["layers"][0][:, :, 3].shape
     mask_fitdit = np.array(mask_img.resize((pw, ph), Image.NEAREST))
-
-    modified = copy.deepcopy(pre_mask_template)
+    modified  = copy.deepcopy(pre_mask_template)
     modified["layers"][0][:, :, 3] = mask_fitdit
     return modified, mask_img
 
 
 def _composite_with_mask(fitdit_result, original, mask_img):
-    orig = original.convert("RGB")
-    ow, oh = orig.size
+    from PIL import Image, ImageFilter
+    orig         = original.convert("RGB")
+    ow, oh       = orig.size
     fitdit_full  = fitdit_result.resize((ow, oh), Image.LANCZOS)
     garment_mask = mask_img.resize((ow, oh), Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=2))
     return Image.composite(fitdit_full, orig, garment_mask)
 
 
+_sam2_predictor = None
+
+
+def _get_sam2():
+    global _sam2_predictor
+    if _sam2_predictor is None:
+        import torch
+        from sam2.sam2_image_predictor import SAM2ImagePredictor
+        _sam2_predictor = SAM2ImagePredictor.from_pretrained("facebook/sam2.1-hiera-large")
+        _sam2_predictor.model.eval()
+    return _sam2_predictor
+
+
 def _atr_vest_points(fitdit_result, fitdit, w, h):
+    import numpy as np
     from preprocess.humanparsing.run_parsing import Parsing
     parsing = getattr(fitdit, "parsing_model", None) or Parsing(model_root=MODEL_ROOT, device="cpu")
     parse_result, _ = parsing(fitdit_result.convert("RGB").resize((384, 512)))
@@ -124,21 +128,10 @@ def _atr_vest_points(fitdit_result, fitdit, w, h):
     return (lx, ly), (rx, ry)
 
 
-_sam2_predictor = None
-
-
-def _get_sam2():
-    global _sam2_predictor
-    if _sam2_predictor is None:
-        import torch
-        from sam2.sam2_image_predictor import SAM2ImagePredictor
-        _sam2_predictor = SAM2ImagePredictor.from_pretrained("facebook/sam2.1-hiera-large")
-        _sam2_predictor.model.eval()
-    return _sam2_predictor
-
-
 def _composite_vest_sam2(fitdit_result, original, fitdit):
     import torch
+    import numpy as np
+    from PIL import Image, ImageFilter
     w, h = fitdit_result.size
     orig = original.convert("RGB").resize((w, h), Image.LANCZOS)
     (lx, ly), (rx, ry) = _atr_vest_points(fitdit_result, fitdit, w, h)
@@ -162,25 +155,18 @@ def _composite_vest_sam2(fitdit_result, original, fitdit):
     return Image.composite(fitdit_result, orig, vest_mask)
 
 
-# ── Upload to Supabase ────────────────────────────────────────────────────────
-
-def _upload_to_supabase(img: Image.Image, path: str) -> str:
+def _upload_to_supabase(img, path: str) -> str:
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=92)
     buf.seek(0)
-    _supabase.storage.from_(VTO_BUCKET).upload(
-        path, buf.read(), {"content-type": "image/jpeg", "upsert": "true"}
-    )
-    signed = _supabase.storage.from_(VTO_BUCKET).create_signed_url(
-        path, 60 * 60 * 24 * 365 * 10  # 10-year URL
-    )
+    sb = _get_supabase()
+    sb.storage.from_(VTO_BUCKET).upload(path, buf.read(), {"content-type": "image/jpeg", "upsert": "true"})
+    signed = sb.storage.from_(VTO_BUCKET).create_signed_url(path, 60 * 60 * 24 * 365 * 10)
     url = signed.get("signedURL") or signed.get("signedUrl")
     if not url:
         raise RuntimeError(f"Failed to get signed URL for {path}")
     return url
 
-
-# ── Collect model photos ──────────────────────────────────────────────────────
 
 def _collect_models():
     if not MODELS_DIR.exists():
@@ -190,35 +176,31 @@ def _collect_models():
         photos = sorted(model_dir.glob("*.jpg")) + sorted(model_dir.glob("*.png"))
         photos = [p for p in photos if not p.stem.endswith(("_mask", "_auto_mask"))]
         if photos:
-            result.append((model_dir.name, photos[0]))  # one photo per model
+            result.append((model_dir.name, photos[0]))
     return result
 
 
-# ── Main handler ─────────────────────────────────────────────────────────────
+# ── Main handler ──────────────────────────────────────────────────────────────
 
 def handler(job):
-    global _fitdit
+    import numpy as np
+    from PIL import Image
+    import requests
 
     job_input    = job["input"]
     garment_url  = job_input["garment_url"]
-    garment_type = job_input.get("garment_type", "JACKETS").upper()   # JACKETS | VESTS
+    garment_type = job_input.get("garment_type", "JACKETS").upper()
     product_id   = job_input.get("product_id", "unknown")
     source_id    = job_input.get("source_image_id", "unknown")
 
     print(f"[VTO] product={product_id}  type={garment_type}  source={source_id}")
 
-    # Download garment image
     resp = requests.get(garment_url, timeout=30)
     resp.raise_for_status()
     garment_path = Path("/tmp/vto_garment.jpg")
     garment_path.write_bytes(resp.content)
 
-    # Load FitDiT once (warm start reuse)
-    if _fitdit is None:
-        print("[VTO] Loading FitDiT...")
-        _fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
-        print("[VTO] FitDiT ready")
-
+    fitdit = _get_fitdit()
     models = _collect_models()
     if not models:
         return {"error": "No model photos found in vto_models/"}
@@ -232,17 +214,15 @@ def handler(job):
             tmp_person = Path("/tmp/vto_person.jpg")
             person_pil.save(str(tmp_person), quality=95)
 
-            pre_mask, pose_img = _fitdit.generate_mask(
-                str(tmp_person), "Upper-body", 0, 0, 0, 0
-            )
+            pre_mask, pose_img = fitdit.generate_mask(str(tmp_person), "Upper-body", 0, 0, 0, 0)
 
             if garment_type == "JACKETS":
-                process_mask, mask_img = _make_jacket_atr_mask(person_pil, _fitdit, pre_mask)
+                process_mask, mask_img = _make_jacket_atr_mask(person_pil, fitdit, pre_mask)
             else:
                 process_mask = pre_mask
-                mask_img = None
+                mask_img     = None
 
-            result_img = _fitdit.process(
+            result_img = fitdit.process(
                 vton_img=str(tmp_person),
                 garm_img=str(garment_path),
                 pre_mask=process_mask,
@@ -255,24 +235,18 @@ def handler(job):
             )[0]
 
             if garment_type == "VESTS":
-                result_img = _composite_vest_sam2(result_img, person_pil, _fitdit)
+                result_img = _composite_vest_sam2(result_img, person_pil, fitdit)
             elif mask_img is not None:
                 result_img = _composite_with_mask(result_img, person_pil, mask_img)
 
-            # Upload to Supabase
-            ts = int(time.time() * 1000)
+            ts            = int(time.time() * 1000)
             supabase_path = f"{product_id}/{model_key}_{ts}.jpg"
-            url = _upload_to_supabase(result_img, supabase_path)
+            url           = _upload_to_supabase(result_img, supabase_path)
 
             results.append({"modelKey": model_key, "url": url})
-            print(f"[VTO] {model_key} → {url}")
+            print(f"[VTO] {model_key} → ok")
 
         except Exception as e:
             print(f"[VTO] {model_key} FAILED: {e}")
-            # Skip this model, continue with others
 
     return {"results": results}
-
-
-if __name__ == "__main__":
-    runpod.serverless.start({"handler": handler})
