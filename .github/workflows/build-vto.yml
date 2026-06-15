@@ -44,6 +44,7 @@ jobs:
         with:
           context: .
           push: true
+          provenance: false
           tags: jenudi/seeksuit-vto:latest
           cache-from: type=registry,ref=jenudi/seeksuit-vto:buildcache
           cache-to: type=registry,ref=jenudi/seeksuit-vto:buildcache,mode=max
