@@ -8,12 +8,11 @@ RUN apt-get update -qq && apt-get install -y git git-lfs && git lfs install && r
 # Clone FitDiT source code
 RUN git clone https://github.com/BoyuanJiang/FitDiT.git /workspace/FitDiT
 
-# Download all model weights into image — BoyuanJiang/FitDiT + CLIP used at runtime
+# Download FitDiT model weights into image (~10 GB)
 RUN pip install -q huggingface_hub && python -c "\
 from huggingface_hub import snapshot_download; \
 snapshot_download('BoyuanJiang/FitDiT', local_dir='/workspace/FitDiT/ckpt', max_workers=1); \
-snapshot_download('laion/CLIP-ViT-bigG-14-laion2B-39B-b160k', max_workers=1); \
-print('All models downloaded successfully')"
+print('FitDiT weights downloaded successfully')"
 
 # Install FitDiT's own dependencies
 RUN pip install --no-cache-dir -r /workspace/FitDiT/requirements.txt
