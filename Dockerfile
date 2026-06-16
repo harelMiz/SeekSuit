@@ -18,21 +18,25 @@ print('FitDiT weights downloaded successfully')"
 RUN pip install --no-cache-dir -r /workspace/FitDiT/requirements.txt
 
 # FitDiT pins torch==2.4.0 with no CUDA variant, so pip grabs the default PyPI
-# build (cu121's bundled nvidia-* runtime libs). Some RunPod hosts run an older
-# driver that can't satisfy that. Force the cu118 build instead — it matches
-# this base image's CUDA toolkit and works on virtually any datacenter driver.
-# --no-deps + a single --index-url avoids pip silently picking the non-cu118
-# wheel when a second index is also in play. The default torch install above
-# also pulled in separate nvidia-cuda-runtime-cu12/nvidia-cublas-cu12/etc. pip
-# packages (cu121's runtime libs) as dependencies; --no-deps here doesn't
-# remove them, so they're left orphaned in site-packages where they can get
-# loaded instead of torch's own bundled cu118 libs. Purge them explicitly.
-# Assert it took effect so a wrong build fails at image-build time instead of
-# at runtime on a RunPod worker.
-RUN pip install --no-cache-dir --force-reinstall --no-deps \
-    --index-url https://download.pytorch.org/whl/cu118 \
+# build (cu121, depending on separate nvidia-*-cu12 pip packages for its
+# runtime libs, including cuDNN 9). Some RunPod hosts run an older driver
+# that can't satisfy cu121. Force the cu118 build instead — it matches this
+# base image's CUDA toolkit and works on virtually any datacenter driver.
+#
+# torch's +cu118 wheel still depends on cuDNN 9 (libcudnn.so.9) at import
+# time but does not bundle it, so it needs a real nvidia-cudnn package
+# installed (--no-deps would skip that and crash on import). First wipe the
+# old torch/torchvision and any leftover nvidia-*-cu12 packages from the
+# install above, then reinstall cleanly: --extra-index-url (not --index-url)
+# keeps PyPI available so pip can resolve cudnn/etc. from there while
+# pulling the +cu118 torch/torchvision wheels specifically from PyTorch's
+# index. Assert the CUDA variant took effect so a wrong build fails at
+# image-build time instead of at runtime on a RunPod worker.
+RUN pip uninstall -y torch torchvision 2>/dev/null; \
+    pip list --format=freeze | awk -F= '/^nvidia-/{print $1}' | xargs -r pip uninstall -y; \
+    pip install --no-cache-dir --force-reinstall \
+    --extra-index-url https://download.pytorch.org/whl/cu118 \
     torch==2.4.0+cu118 torchvision==0.19.0+cu118 && \
-    pip list --format=freeze | awk -F= '/^nvidia-/{print $1}' | xargs -r pip uninstall -y && \
     python -c "import torch; v=torch.version.cuda; print('torch cuda:', v); assert v.startswith('11.8'), f'expected cu118, got {v}'"
 
 # Install our handler dependencies
