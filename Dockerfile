@@ -17,6 +17,14 @@ print('FitDiT weights downloaded successfully')"
 # Install FitDiT's own dependencies
 RUN pip install --no-cache-dir -r /workspace/FitDiT/requirements.txt
 
+# FitDiT pins torch==2.4.0 with no CUDA variant, so pip grabs the default PyPI
+# build (cu121's bundled nvidia-* runtime libs). Some RunPod hosts run an older
+# driver that can't satisfy that. Force the cu118 build instead — it matches
+# this base image's CUDA toolkit and works on virtually any datacenter driver.
+RUN pip install --no-cache-dir --force-reinstall torch==2.4.0 torchvision==0.19.0 \
+    --index-url https://download.pytorch.org/whl/cu118 \
+    --extra-index-url https://pypi.org/simple
+
 # Install our handler dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
