@@ -29,7 +29,7 @@ MODEL_ROOT  = str(FITDIT_CKPT)
 DEVICE     = "cuda:0"
 STEPS      = 20
 SCALE      = 2.0
-SEED       = 42
+SEED       = 1337
 RESOLUTION = "768x1024"
 VTO_BUCKET = "vto-results"
 MODELS_DIR = Path(__file__).parent / "vto_models"
@@ -192,6 +192,7 @@ def handler(job):
     garment_type = job_input.get("garment_type", "JACKETS").upper()
     product_id   = job_input.get("product_id", "unknown")
     source_id    = job_input.get("source_image_id", "unknown")
+    seed         = int(job_input.get("seed", SEED))
 
     print(f"[VTO] product={product_id}  type={garment_type}  source={source_id}")
 
@@ -229,7 +230,7 @@ def handler(job):
                 pose_image=np.array(pose_img),
                 n_steps=STEPS,
                 image_scale=SCALE,
-                seed=SEED,
+                seed=seed,
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
