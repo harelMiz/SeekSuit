@@ -22,11 +22,17 @@ RUN pip install --no-cache-dir -r /workspace/FitDiT/requirements.txt
 # driver that can't satisfy that. Force the cu118 build instead — it matches
 # this base image's CUDA toolkit and works on virtually any datacenter driver.
 # --no-deps + a single --index-url avoids pip silently picking the non-cu118
-# wheel when a second index is also in play. Assert it took effect so a wrong
-# build fails at image-build time instead of at runtime on a RunPod worker.
+# wheel when a second index is also in play. The default torch install above
+# also pulled in separate nvidia-cuda-runtime-cu12/nvidia-cublas-cu12/etc. pip
+# packages (cu121's runtime libs) as dependencies; --no-deps here doesn't
+# remove them, so they're left orphaned in site-packages where they can get
+# loaded instead of torch's own bundled cu118 libs. Purge them explicitly.
+# Assert it took effect so a wrong build fails at image-build time instead of
+# at runtime on a RunPod worker.
 RUN pip install --no-cache-dir --force-reinstall --no-deps \
     --index-url https://download.pytorch.org/whl/cu118 \
     torch==2.4.0+cu118 torchvision==0.19.0+cu118 && \
+    pip freeze | grep -i '^nvidia-' | cut -d= -f1 | xargs -r pip uninstall -y && \
     python -c "import torch; v=torch.version.cuda; print('torch cuda:', v); assert v.startswith('11.8'), f'expected cu118, got {v}'"
 
 # Install our handler dependencies
