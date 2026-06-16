@@ -14,17 +14,18 @@ from huggingface_hub import snapshot_download; \
 snapshot_download('BoyuanJiang/FitDiT', local_dir='/workspace/FitDiT/ckpt', max_workers=1); \
 print('FitDiT weights downloaded successfully')"
 
-# Pin NumPy 1.x before installing anything else: FitDiT's chain (matplotlib, opencv, etc.)
-# breaks under NumPy 2.x ABI, and letting later installs pull in numpy 2 silently
-# corrupts already-installed binary wheels.
-RUN pip install --no-cache-dir "numpy<2"
-
 # Install FitDiT's own dependencies
 RUN pip install --no-cache-dir -r /workspace/FitDiT/requirements.txt
 
 # Install our handler dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Force a clean NumPy 1.x reinstall as the final step: FitDiT's chain (matplotlib,
+# opencv, etc.) breaks under NumPy 2.x ABI, and earlier installs (FitDiT's own
+# pinned numpy==1.23.0, then sam2's own resolution) can leave inconsistent binary
+# wheels installed in between. Reinstalling last guarantees the final state is clean.
+RUN pip install --no-cache-dir --force-reinstall --no-deps "numpy<2"
 
 COPY scripts/ /workspace/scripts/
 COPY handler.py .

@@ -49,6 +49,8 @@ jobs:
           context: .
           push: true
           provenance: false
-          tags: ghcr.io/danieljenudi/seeksuit-vto:latest
+          tags: |
+            ghcr.io/danieljenudi/seeksuit-vto:latest
+            ghcr.io/danieljenudi/seeksuit-vto:${{ github.sha }}
           cache-from: type=registry,ref=ghcr.io/danieljenudi/seeksuit-vto:buildcache
           cache-to: type=registry,ref=ghcr.io/danieljenudi/seeksuit-vto:buildcache,mode=max
