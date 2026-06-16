@@ -14,6 +14,11 @@ from huggingface_hub import snapshot_download; \
 snapshot_download('BoyuanJiang/FitDiT', local_dir='/workspace/FitDiT/ckpt', max_workers=1); \
 print('FitDiT weights downloaded successfully')"
 
+# Pin NumPy 1.x before installing anything else: FitDiT's chain (matplotlib, opencv, etc.)
+# breaks under NumPy 2.x ABI, and letting later installs pull in numpy 2 silently
+# corrupts already-installed binary wheels.
+RUN pip install --no-cache-dir "numpy<2"
+
 # Install FitDiT's own dependencies
 RUN pip install --no-cache-dir -r /workspace/FitDiT/requirements.txt
 

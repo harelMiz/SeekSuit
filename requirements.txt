@@ -2,5 +2,5 @@ runpod
 supabase
 requests
 Pillow
-numpy
+numpy<2
 sam2
