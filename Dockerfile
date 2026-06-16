@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir -r /workspace/FitDiT/requirements.txt
 RUN pip install --no-cache-dir --force-reinstall --no-deps \
     --index-url https://download.pytorch.org/whl/cu118 \
     torch==2.4.0+cu118 torchvision==0.19.0+cu118 && \
-    pip freeze | grep -i '^nvidia-' | cut -d= -f1 | xargs -r pip uninstall -y && \
+    pip list --format=freeze | awk -F= '/^nvidia-/{print $1}' | xargs -r pip uninstall -y && \
     python -c "import torch; v=torch.version.cuda; print('torch cuda:', v); assert v.startswith('11.8'), f'expected cu118, got {v}'"
 
 # Install our handler dependencies
