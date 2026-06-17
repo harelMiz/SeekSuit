@@ -64,6 +64,8 @@ def _get_fitdit():
         print(f"[VTO] CLIP-bigG in cache: {clip_cached is not None} ({clip_cached})")
         print("[VTO] Loading FitDiT...")
         _fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
+        clip_cached_after = try_to_load_from_cache("laion/CLIP-ViT-bigG-14-laion2B-39B-b160k", "config.json")
+        print(f"[VTO] CLIP-bigG in cache after init: {clip_cached_after is not None} ({clip_cached_after})")
         print("[VTO] FitDiT ready")
     return _fitdit
 
