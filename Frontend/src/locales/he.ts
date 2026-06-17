@@ -322,7 +322,7 @@ export const he: Record<string, string> = {
   "admin.vto.sectionTitle": "הלבשה על דוגמנים (AI)",
   "admin.vto.frontViewLabel": "תמונת חזית",
   "admin.vto.frontViewHint": "סמן את התמונה הקדמית של הפריט כדי להפעיל את הלבשת הדוגמנים",
-  "admin.vto.triggerBtn": "הלביש דוגמנים",
+  "admin.vto.triggerBtn": "הלבש דוגמנים",
   "admin.vto.running": "מעבד עם AI — עד 3 דקות...",
   "admin.vto.done": "הלבשה הושלמה",
   "admin.vto.failed": "הלבשה נכשלה",
@@ -333,6 +333,17 @@ export const he: Record<string, string> = {
   "admin.vto.needProcessed": "יש לעבד את התמונות קודם (הסרת רקע) לפני הלבשת דוגמנים",
   "admin.vto.alreadyRunning": "הלבשה כבר רצה ברקע",
   "admin.vto.retryBtn": "נסה שנית",
+  "admin.vto.regenerateBtn": "יצר מחדש",
+  "admin.vto.orderHint": "לחץ על תמונה לבחירת הסדר — הראשון יהיה הראשי",
+  "admin.vto.deleteResult": "מחק תוצאה",
+
+  // Background processing
+  "admin.saveAndProcess": "שמור וקדם לעיבוד ←",
+  "admin.processBackgrounds": "עבד רקעים",
+  "admin.processingBackgrounds": "שולח לעיבוד...",
+  "admin.processBackgroundsQueued": "תמונות נשלחו לתור עיבוד",
+  "admin.processing.sectionTitle": "עיבוד תמונות",
+  "admin.processing.unprocessedHint": "יש תמונות שטרם עובדו עם AI",
 
   // VTO pod power control (dashboard)
   "admin.vto.pod.title": "GPU לדוגמנות AI",

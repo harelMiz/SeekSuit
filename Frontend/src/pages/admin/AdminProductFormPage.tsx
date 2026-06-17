@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ImagePlus, X, Star, Wand2, CheckSquare, Square, Loader2 } from "lucide-react";
+import { ImagePlus, X, Star, Wand2, Loader2, RefreshCw, Zap } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import {
@@ -10,12 +10,12 @@ import {
   uploadRawImage,
   deleteProductImage,
   setMainImage,
-  setFrontView,
   triggerVTO,
   getVTOStatus,
   getProductVTOJobs,
-  updateVTOSelections,
   publishVTOImages,
+  deleteVTOResult,
+  processAllImages,
 } from "../../services/product.service";
 import { COLOR_OPTIONS, colorDisplay } from "../../lib/colorMap";
 import type { ProductType, ProductStatus, ProductImage, VTOJob } from "../../types/product";
@@ -23,7 +23,6 @@ import type { ProductType, ProductStatus, ProductImage, VTOJob } from "../../typ
 const VTO_TYPES: ProductType[] = ["JACKET", "VEST"];
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
-const MAX_IMAGES = 5;
 
 interface FormState {
   name: string;
@@ -58,8 +57,9 @@ export default function AdminProductFormPage() {
 
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [loading, setLoading] = useState(isEdit);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [saving, setSaving]         = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError]           = useState("");
 
   const [colorSearch, setColorSearch] = useState("");
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
@@ -77,12 +77,21 @@ export default function AdminProductFormPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Background processing state — persisted in sessionStorage so refresh doesn't show button again
+  const [processing, setProcessing]           = useState(false);
+  const [processingQueued, setProcessingQueued] = useState(() =>
+    Boolean(sessionStorage.getItem(`processing-${id ?? 'new'}`))
+  );
+
   // VTO state
-  const [vtoJob, setVtoJob]             = useState<VTOJob | null>(null);
+  const [vtoJob, setVtoJob]               = useState<VTOJob | null>(null);
   const [vtoTriggering, setVtoTriggering] = useState(false);
   const [vtoPublishing, setVtoPublishing] = useState(false);
   const [vtoPublishDone, setVtoPublishDone] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Click-to-order: modelKeys in user-selected display order (index 0 = main)
+  const [vtoOrder, setVtoOrder]           = useState<string[]>([]);
+  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processPoller  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Close color dropdown when clicking outside
   useEffect(() => {
@@ -145,16 +154,44 @@ export default function AdminProductFormPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [vtoJob?.id, vtoJob?.status, startPolling]);
 
+  // Poll saved images after background processing until all have processedUrl
+  const startProcessPoll = useCallback((productId: string) => {
+    if (processPoller.current) clearInterval(processPoller.current);
+    processPoller.current = setInterval(async () => {
+      try {
+        const p = await getProduct(productId);
+        const imgs = p.images.sort((a, b) => a.order - b.order);
+        setSavedImages(imgs);
+        if (imgs.length > 0 && imgs.every((img) => img.processedUrl)) {
+          clearInterval(processPoller.current!);
+          processPoller.current = null;
+          sessionStorage.removeItem(`processing-${productId}`);
+          setProcessingQueued(false);
+        }
+      } catch {}
+    }, 4000);
+  }, []);
+
+  // Resume polling after page refresh if processing was in progress
+  useEffect(() => {
+    if (id && processingQueued) startProcessPoll(id);
+    return () => { if (processPoller.current) clearInterval(processPoller.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // Reset ordering state when the active VTO job changes (new job or regenerate)
+  useEffect(() => {
+    setVtoOrder([]);
+    setVtoPublishDone(false);
+  }, [vtoJob?.id]);
+
   const totalCount = savedImages.length + pendingImages.length;
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
 
-    const available = MAX_IMAGES - totalCount;
-    const toAdd = files.slice(0, available);
-
-    const newPending: PendingImage[] = toAdd.map((file, idx) => ({
+    const newPending: PendingImage[] = files.map((file, idx) => ({
       file,
       preview: URL.createObjectURL(file),
       // First image becomes main if there are no images yet
@@ -204,36 +241,67 @@ export default function AdminProductFormPage() {
     setPendingImages((prev) => prev.map((img) => ({ ...img, isMain: false })));
   }
 
-  async function toggleFrontView(imageId: string, current: boolean) {
-    await setFrontView(imageId, !current);
-    setSavedImages((prev) =>
-      prev.map((img) => (img.id === imageId ? { ...img, isFrontView: !current } : img))
-    );
+  async function handleProcessImages() {
+    if (!id) return;
+    setProcessing(true);
+    try {
+      await processAllImages(id);
+      sessionStorage.setItem(`processing-${id}`, '1');
+      setProcessingQueued(true);
+      startProcessPoll(id);
+    } catch {
+      // fail silently — user can retry
+    } finally {
+      setProcessing(false);
+    }
   }
 
   async function handleTriggerVTO() {
     if (!id) return;
-    const frontImg = savedImages.find((img) => img.isFrontView && img.processedUrl);
-    if (!frontImg) return;
+    // Use the main image that has been processed; fallback to first processed image
+    const sourceImg =
+      savedImages.find((img) => img.isMain && img.processedUrl) ??
+      savedImages.find((img) => img.processedUrl);
+    if (!sourceImg) return;
     setVtoTriggering(true);
     try {
-      const job = await triggerVTO(id, frontImg.id);
+      const job = await triggerVTO(id, sourceImg.id);
       setVtoJob(job);
     } finally {
       setVtoTriggering(false);
     }
   }
 
-  async function handleVTOSelection(jobId: string, modelKey: string, selected: boolean) {
-    const updated = await updateVTOSelections(jobId, { [modelKey]: selected });
-    setVtoJob(updated);
+  function handleVTOImageClick(modelKey: string) {
+    setVtoOrder((prev) =>
+      prev.includes(modelKey)
+        ? prev.filter((k) => k !== modelKey)
+        : [...prev, modelKey]
+    );
+  }
+
+  async function handleDeleteVTOResult(modelKey: string) {
+    if (!vtoJob) return;
+    const prevJob = vtoJob;
+    // Optimistic update: remove from UI immediately
+    setVtoJob({
+      ...vtoJob,
+      results: (vtoJob.results ?? []).filter((r) => r.modelKey !== modelKey),
+    });
+    setVtoOrder((prev) => prev.filter((k) => k !== modelKey));
+    try {
+      await deleteVTOResult(vtoJob.id, modelKey);
+    } catch {
+      // Restore on API failure
+      setVtoJob(prevJob);
+    }
   }
 
   async function handlePublishVTO() {
-    if (!vtoJob) return;
+    if (!vtoJob || vtoOrder.length === 0) return;
     setVtoPublishing(true);
     try {
-      await publishVTOImages(vtoJob.id);
+      await publishVTOImages(vtoJob.id, vtoOrder);
       // Refresh saved images from the server
       if (id) {
         const p = await getProduct(id);
@@ -247,6 +315,7 @@ export default function AdminProductFormPage() {
 
   function handleChange(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setSaveSuccess(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -278,9 +347,20 @@ export default function AdminProductFormPage() {
         await uploadRawImage(pending.file, productId!, isMain, order);
       }
 
-      navigate("/admin/inventory");
+      if (isEdit) {
+        // Stay on page — refresh images and show success state
+        setPendingImages([]);
+        const p = await getProduct(productId!);
+        setSavedImages(p.images.sort((a, b) => a.order - b.order));
+        setSaveSuccess(true);
+      } else {
+        // Clear pending state before navigating — same component instance reused by React Router
+        setPendingImages([]);
+        navigate(`/admin/inventory/${productId}/edit`);
+      }
     } catch {
       setError(t("admin.saveError"));
+    } finally {
       setSaving(false);
     }
   }
@@ -448,7 +528,7 @@ export default function AdminProductFormPage() {
                 disabled={saving}
                 className="flex-1 gold-shimmer disabled:opacity-50 font-semibold py-3 rounded-xl text-sm text-on-tertiary-fixed transition-opacity hover:opacity-90"
               >
-                {saving ? t("admin.saving") : t("admin.saveProduct")}
+                {saving ? t("admin.saving") : saveSuccess ? t("admin.saveSuccess") : isEdit ? t("admin.saveProduct") : t("admin.saveAndProcess")}
               </button>
               <button
                 type="button"
@@ -494,6 +574,7 @@ export default function AdminProductFormPage() {
 
                   {savedImages.map((img) => {
                     const url = img.processedUrl ?? img.rawUrl;
+                    const isProcessing = processingQueued && !img.processedUrl;
                     return (
                       <div key={img.id} className="relative flex-shrink-0 group">
                         <div
@@ -506,6 +587,11 @@ export default function AdminProductFormPage() {
                             <img src={url} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full bg-surface-container-high" />
+                          )}
+                          {isProcessing && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <Loader2 size={20} className="animate-spin text-white" />
+                            </div>
                           )}
                         </div>
                         <button
@@ -553,16 +639,14 @@ export default function AdminProductFormPage() {
                     </div>
                   ))}
 
-                  {totalCount < MAX_IMAGES && (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-shrink-0 w-full h-[72px] rounded-lg border-2 border-dashed border-outline-variant hover:border-on-tertiary-container flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <ImagePlus size={16} className="text-secondary" />
-                      <span className="text-[9px] text-secondary">{totalCount}/{MAX_IMAGES}</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-shrink-0 w-full h-[72px] rounded-lg border-2 border-dashed border-outline-variant hover:border-on-tertiary-container flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <ImagePlus size={16} className="text-secondary" />
+                    <span className="text-[9px] text-secondary">{totalCount}</span>
+                  </button>
                 </div>
 
                 {/* Featured image — fills remaining space, LEFT in RTL */}
@@ -592,136 +676,174 @@ export default function AdminProductFormPage() {
 
         </div>
 
-        {/* ── VTO Section (JACKET / VEST + edit mode only) ── */}
-        {isEdit && VTO_TYPES.includes(form.type) && (
+        {/* ── Unified processing + VTO section (edit mode only) ── */}
+        {isEdit && (
           <div className="mt-8 border border-outline-variant rounded-2xl overflow-hidden">
 
             {/* Header */}
             <div className="flex items-center gap-3 px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-              <Wand2 size={16} className="text-on-tertiary-container" />
-              <span className="text-sm font-semibold text-on-surface">{t("admin.vto.sectionTitle")}</span>
+              <Zap size={16} className="text-on-tertiary-container" />
+              <span className="text-sm font-semibold text-on-surface">{t("admin.processing.sectionTitle")}</span>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-8">
 
-              {/* Step 1: mark front-view image */}
-              {savedImages.some((img) => img.processedUrl) ? (
-                <div>
-                  <p className="text-xs text-secondary mb-3">{t("admin.vto.frontViewHint")}</p>
-                  <div className="flex flex-wrap gap-3">
-                    {savedImages
-                      .filter((img) => img.processedUrl)
-                      .map((img) => (
-                        <button
-                          key={img.id}
-                          type="button"
-                          onClick={() => toggleFrontView(img.id, img.isFrontView)}
-                          className={`relative w-[90px] h-[120px] rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                            img.isFrontView
-                              ? "border-on-tertiary-container"
-                              : "border-outline-variant hover:border-outline"
-                          }`}
-                        >
-                          <img src={img.processedUrl!} alt="" className="w-full h-full object-cover" />
-                          <div className={`absolute inset-0 flex items-end justify-center pb-1.5 ${
-                            img.isFrontView ? "bg-black/30" : "bg-transparent"
-                          }`}>
-                            {img.isFrontView && (
-                              <span className="text-[9px] font-bold text-white bg-amber-500/80 rounded-full px-1.5 py-0.5">
-                                {t("admin.vto.frontViewLabel")}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-secondary">{t("admin.vto.needProcessed")}</p>
-              )}
-
-              {/* Step 2: trigger button */}
-              {savedImages.some((img) => img.processedUrl) && (
-                <div>
-                  {(!vtoJob || vtoJob.status === 'FAILED') && (
-                    <div className="space-y-2">
-                      {!savedImages.some((img) => img.isFrontView) && (
-                        <p className="text-xs text-secondary">{t("admin.vto.noFrontView")}</p>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleTriggerVTO}
-                        disabled={vtoTriggering || !savedImages.some((img) => img.isFrontView && img.processedUrl)}
-                        className="flex items-center gap-2 gold-shimmer text-on-tertiary-fixed text-sm font-semibold px-5 py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-40"
-                      >
-                        {vtoTriggering ? (
-                          <><Loader2 size={14} className="animate-spin" /> {t("common.loading")}</>
-                        ) : (
-                          <><Wand2 size={14} /> {t("admin.vto.triggerBtn")}</>
-                        )}
-                      </button>
-                      {vtoJob?.status === 'FAILED' && (
-                        <p className="text-xs text-error">{vtoJob.errorMsg ?? t("admin.vto.failed")}</p>
-                      )}
+              {/* ── Background removal ── */}
+              {savedImages.some((img) => !img.processedUrl) && (
+                <div className="space-y-3">
+                  <p className="text-xs text-secondary">{t("admin.processing.unprocessedHint")}</p>
+                  {processingQueued ? (
+                    <div className="flex items-center gap-2 text-xs text-on-tertiary-container font-semibold">
+                      <Loader2 size={12} className="animate-spin" />
+                      {t("admin.processBackgroundsQueued")}
                     </div>
-                  )}
-
-                  {(vtoJob?.status === 'PENDING' || vtoJob?.status === 'RUNNING') && (
-                    <div className="flex items-center gap-3 text-sm text-secondary">
-                      <Loader2 size={16} className="animate-spin text-on-tertiary-container" />
-                      {t("admin.vto.running")}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Step 3: results grid + publish */}
-              {vtoJob?.status === 'DONE' && vtoJob.results && (
-                <div className="space-y-4">
-                  <p className="text-xs text-secondary">{t("admin.vto.selectHint")}</p>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {vtoJob.results.map((r) => (
-                      <button
-                        key={r.modelKey}
-                        type="button"
-                        onClick={() => handleVTOSelection(vtoJob.id, r.modelKey, !r.selected)}
-                        className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer aspect-[3/4] ${
-                          r.selected
-                            ? "border-on-tertiary-container"
-                            : "border-outline-variant opacity-50 hover:opacity-75"
-                        }`}
-                      >
-                        <img src={r.url} alt={r.modelKey} className="w-full h-full object-cover" />
-                        <div className="absolute top-2 right-2">
-                          {r.selected
-                            ? <CheckSquare size={16} className="text-white drop-shadow" />
-                            : <Square size={16} className="text-white/60 drop-shadow" />
-                          }
-                        </div>
-                        <div className="absolute bottom-0 inset-x-0 bg-black/40 text-white text-[9px] text-center py-1">
-                          {r.modelKey}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  {vtoPublishDone ? (
-                    <p className="text-xs text-on-tertiary-container font-semibold">{t("admin.vto.publishDone")}</p>
                   ) : (
                     <button
                       type="button"
-                      onClick={handlePublishVTO}
-                      disabled={vtoPublishing || !vtoJob.results.some((r) => r.selected)}
-                      className="flex items-center gap-2 gold-shimmer text-on-tertiary-fixed text-sm font-semibold px-5 py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-40"
+                      onClick={handleProcessImages}
+                      disabled={processing}
+                      className="flex items-center gap-2 border border-on-tertiary-container text-on-tertiary-container text-sm font-semibold px-5 py-2.5 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-40"
                     >
-                      {vtoPublishing ? (
-                        <><Loader2 size={14} className="animate-spin" /> {t("common.loading")}</>
+                      {processing ? (
+                        <><Loader2 size={14} className="animate-spin" /> {t("admin.processingBackgrounds")}</>
                       ) : (
-                        t("admin.vto.publishBtn")
+                        <><Wand2 size={14} /> {t("admin.processBackgrounds")}</>
                       )}
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* ── VTO (JACKET / VEST only) ── */}
+              {VTO_TYPES.includes(form.type) && (
+                <div className="space-y-6">
+
+                  <div className="flex items-center gap-2">
+                    <Wand2 size={14} className="text-on-tertiary-container" />
+                    <span className="text-xs font-semibold text-on-tertiary-container uppercase tracking-widest">
+                      {t("admin.vto.sectionTitle")}
+                    </span>
+                  </div>
+
+                  {/* Trigger / regenerate button */}
+                  {savedImages.some((img) => img.processedUrl) ? (
+                    <div className="space-y-2">
+                      {(!vtoJob || vtoJob.status === 'FAILED') && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleTriggerVTO}
+                            disabled={vtoTriggering}
+                            className="flex items-center gap-2 gold-shimmer text-on-tertiary-fixed text-sm font-semibold px-5 py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-40"
+                          >
+                            {vtoTriggering ? (
+                              <><Loader2 size={14} className="animate-spin" /> {t("common.loading")}</>
+                            ) : (
+                              <><Wand2 size={14} /> {t("admin.vto.triggerBtn")}</>
+                            )}
+                          </button>
+                          {vtoJob?.status === 'FAILED' && (
+                            <p className="text-xs text-error">{vtoJob.errorMsg ?? t("admin.vto.failed")}</p>
+                          )}
+                        </>
+                      )}
+
+                      {(vtoJob?.status === 'PENDING' || vtoJob?.status === 'RUNNING') && (
+                        <div className="flex items-center gap-3 text-sm text-secondary">
+                          <Loader2 size={16} className="animate-spin text-on-tertiary-container" />
+                          {t("admin.vto.running")}
+                        </div>
+                      )}
+
+                      {vtoJob?.status === 'DONE' && (
+                        <button
+                          type="button"
+                          onClick={handleTriggerVTO}
+                          disabled={vtoTriggering}
+                          className="flex items-center gap-2 border border-outline-variant text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-xl transition-colors hover:border-outline hover:text-on-surface disabled:opacity-40"
+                        >
+                          {vtoTriggering ? (
+                            <><Loader2 size={12} className="animate-spin" /> {t("common.loading")}</>
+                          ) : (
+                            <><RefreshCw size={12} /> {t("admin.vto.regenerateBtn")}</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-secondary">{t("admin.vto.needProcessed")}</p>
+                  )}
+
+                  {/* Step 3: results grid with click-to-order UX */}
+                  {vtoJob?.status === 'DONE' && vtoJob.results && vtoJob.results.length > 0 && (
+                    <div className="space-y-4">
+                      <p className="text-xs text-secondary">{t("admin.vto.orderHint")}</p>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {vtoJob.results.map((r) => {
+                          const orderPos = vtoOrder.indexOf(r.modelKey);
+                          const isSelected = orderPos !== -1;
+                          return (
+                            <div key={r.modelKey} className="relative group">
+                              <div
+                                onClick={() => handleVTOImageClick(r.modelKey)}
+                                className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer aspect-[3/4] ${
+                                  isSelected
+                                    ? "border-on-tertiary-container"
+                                    : "border-outline-variant opacity-60 hover:opacity-80"
+                                }`}
+                              >
+                                <img src={r.url} alt={r.modelKey} className="w-full h-full object-cover" />
+
+                                {/* Order badge */}
+                                {isSelected && (
+                                  <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-on-tertiary-container text-surface text-[11px] font-bold flex items-center justify-center">
+                                    {orderPos + 1}
+                                  </div>
+                                )}
+
+                                {/* Main label on first selected */}
+                                {orderPos === 0 && (
+                                  <div className="absolute bottom-0 inset-x-0 bg-amber-500/80 text-white text-[9px] font-bold text-center py-1">
+                                    <Star size={8} className="inline me-0.5" fill="currentColor" />
+                                    {t("admin.mainImage")}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* X button: delete VTO result from Supabase */}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteVTOResult(r.modelKey); }}
+                                title={t("admin.vto.deleteResult")}
+                                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-surface border border-outline-variant text-secondary hover:bg-error hover:text-on-error hover:border-error flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10"
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {vtoPublishDone ? (
+                        <p className="text-xs text-on-tertiary-container font-semibold">{t("admin.vto.publishDone")}</p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handlePublishVTO}
+                          disabled={vtoPublishing || vtoOrder.length === 0}
+                          className="flex items-center gap-2 gold-shimmer text-on-tertiary-fixed text-sm font-semibold px-5 py-2.5 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-40"
+                        >
+                          {vtoPublishing ? (
+                            <><Loader2 size={14} className="animate-spin" /> {t("common.loading")}</>
+                          ) : (
+                            t("admin.vto.publishBtn")
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               )}
 

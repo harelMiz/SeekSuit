@@ -160,12 +160,22 @@ export async function updateVTOSelections(
   return data;
 }
 
-// Publish selected VTO images as ProductImage rows (they appear in product gallery)
+// Publish VTO images as ProductImage rows in the specified order (first = main image)
 export async function publishVTOImages(
-  jobId: string
+  jobId: string,
+  orderedKeys: string[]
 ): Promise<{ published: number; imageIds: string[] }> {
   const { data } = await axios.post<{ published: number; imageIds: string[] }>(
-    `${API_BASE}/api/vto/${jobId}/publish`
+    `${API_BASE}/api/vto/${jobId}/publish`,
+    { orderedKeys }
+  );
+  return data;
+}
+
+// Delete a VTO result image from storage and remove it from the job
+export async function deleteVTOResult(jobId: string, modelKey: string): Promise<VTOJob> {
+  const { data } = await axios.delete<VTOJob>(
+    `${API_BASE}/api/vto/${jobId}/result/${encodeURIComponent(modelKey)}`
   );
   return data;
 }

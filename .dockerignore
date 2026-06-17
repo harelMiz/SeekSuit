@@ -1,0 +1,32 @@
+# Application services — not needed in RunPod image
+Backend/
+Frontend/
+AIService/
+Management/
+
+# Large training data
+Products-raw-photos/
+
+# Test output and local results
+vto_results/
+scripts/test_results/
+scripts/training/
+scripts/data-prep/
+
+# Environment secrets
+.env
+**/.env
+
+# Git and IDE
+.git/
+.github/
+.vscode/
+.idea/
+
+# Claude Code artifacts
+.claude/
+skills-lock.json
+
+# OS
+.DS_Store
+Thumbs.db

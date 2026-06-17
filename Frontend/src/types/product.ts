@@ -27,9 +27,11 @@ export interface ProductImage {
 
 // A single model result inside a VTOJob
 export interface VTOResult {
-  modelKey: string;
-  url: string;
-  selected: boolean;
+  modelKey:          string;
+  url:               string;
+  selected:          boolean;
+  storagePath?:      string;  // Supabase path inside vto-results bucket
+  publishedImageId?: string;  // ProductImage.id if this result was published to gallery
 }
 
 export type VTOStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';

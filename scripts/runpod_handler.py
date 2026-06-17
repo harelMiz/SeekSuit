@@ -10,7 +10,7 @@ Input:
   }
 
 Output:
-  { "results": [{ "modelKey": "model_01", "url": "https://..." }, ...] }
+  { "results": [{ "modelKey": "model_01_0", "url": "https://...", "storagePath": "prod-id/model_01_0_ts.jpg" }, ...] }
 
 Required env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 """
@@ -59,8 +59,13 @@ def _get_fitdit():
         sys.path.insert(0, str(FITDIT_DIR))
         os.chdir(str(FITDIT_DIR))
         from gradio_sd3 import FitDiTGenerator
+        from huggingface_hub import try_to_load_from_cache
+        clip_cached = try_to_load_from_cache("laion/CLIP-ViT-bigG-14-laion2B-39B-b160k", "config.json")
+        print(f"[VTO] CLIP-bigG in cache: {clip_cached is not None} ({clip_cached})")
         print("[VTO] Loading FitDiT...")
         _fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
+        clip_cached_after = try_to_load_from_cache("laion/CLIP-ViT-bigG-14-laion2B-39B-b160k", "config.json")
+        print(f"[VTO] CLIP-bigG in cache after init: {clip_cached_after is not None} ({clip_cached_after})")
         print("[VTO] FitDiT ready")
     return _fitdit
 
@@ -175,8 +180,10 @@ def _collect_models():
     for model_dir in sorted(d for d in MODELS_DIR.iterdir() if d.is_dir()):
         photos = sorted(model_dir.glob("*.jpg")) + sorted(model_dir.glob("*.png"))
         photos = [p for p in photos if not p.stem.endswith(("_mask", "_auto_mask"))]
-        if photos:
-            result.append((model_dir.name, photos[0]))
+        for idx, photo in enumerate(photos):
+            # Unique key per photo: "model_04_0", "model_04_1", etc.
+            key = f"{model_dir.name}_{idx}" if len(photos) > 1 else model_dir.name
+            result.append((key, photo))
     return result
 
 
@@ -192,6 +199,7 @@ def handler(job):
     garment_type = job_input.get("garment_type", "JACKETS").upper()
     product_id   = job_input.get("product_id", "unknown")
     source_id    = job_input.get("source_image_id", "unknown")
+    seed         = int(job_input.get("seed", SEED))
 
     print(f"[VTO] product={product_id}  type={garment_type}  source={source_id}")
 
@@ -216,34 +224,26 @@ def handler(job):
 
             pre_mask, pose_img = fitdit.generate_mask(str(tmp_person), "Upper-body", 0, 0, 0, 0)
 
-            if garment_type == "JACKETS":
-                process_mask, mask_img = _make_jacket_atr_mask(person_pil, fitdit, pre_mask)
-            else:
-                process_mask = pre_mask
-                mask_img     = None
-
             result_img = fitdit.process(
                 vton_img=str(tmp_person),
                 garm_img=str(garment_path),
-                pre_mask=process_mask,
+                pre_mask=pre_mask,
                 pose_image=np.array(pose_img),
                 n_steps=STEPS,
                 image_scale=SCALE,
-                seed=SEED,
+                seed=seed,
                 num_images_per_prompt=1,
                 resolution=RESOLUTION,
             )[0]
 
             if garment_type == "VESTS":
                 result_img = _composite_vest_sam2(result_img, person_pil, fitdit)
-            elif mask_img is not None:
-                result_img = _composite_with_mask(result_img, person_pil, mask_img)
 
             ts            = int(time.time() * 1000)
             supabase_path = f"{product_id}/{model_key}_{ts}.jpg"
             url           = _upload_to_supabase(result_img, supabase_path)
 
-            results.append({"modelKey": model_key, "url": url})
+            results.append({"modelKey": model_key, "url": url, "storagePath": supabase_path})
             print(f"[VTO] {model_key} → ok")
 
         except Exception as e:

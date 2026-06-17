@@ -1,14 +1,24 @@
 import prisma from '../lib/prisma';
+import { createClient } from '@supabase/supabase-js';
 
 const RUNPOD_API_KEY     = process.env.RUNPOD_API_KEY     ?? '';
 const RUNPOD_ENDPOINT_ID = process.env.RUNPOD_ENDPOINT_ID ?? '';
 const RUNPOD_BASE        = `https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}`;
 
+const VTO_BUCKET = 'vto-results';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 // Shape stored in VTOJob.results
 export interface VTOResult {
-  modelKey: string;
-  url:      string;
-  selected: boolean;
+  modelKey:          string;
+  url:               string;
+  selected:          boolean;
+  storagePath?:      string;  // Supabase path inside vto-results bucket for deletion
+  publishedImageId?: string;  // ProductImage.id if this result was published
 }
 
 // ── RunPod Serverless helpers ─────────────────────────────────────────────────
@@ -93,11 +103,12 @@ export async function getVTOJobStatus(jobId: string) {
     const rp = await runpodStatus(job.runpodJobId);
 
     if (rp.status === 'COMPLETED') {
-      const output  = rp.output as { results: Array<{ modelKey: string; url: string }> };
+      const output  = rp.output as { results: Array<{ modelKey: string; url: string; storagePath?: string }> };
       const results: VTOResult[] = (output?.results ?? []).map((r) => ({
-        modelKey: r.modelKey,
-        url:      r.url,
-        selected: true,
+        modelKey:    r.modelKey,
+        url:         r.url,
+        selected:    true,
+        storagePath: r.storagePath,
       }));
       return prisma.vTOJob.update({
         where: { id: jobId },
@@ -142,13 +153,16 @@ export async function updateVTOSelections(jobId: string, selections: Record<stri
   });
 }
 
-// Publish selected VTO images as ProductImage rows so they appear in the product gallery.
-export async function publishVTOImages(jobId: string) {
+// Publish VTO images as ProductImage rows so they appear in the product gallery.
+// orderedKeys: modelKeys in desired display order — first item becomes the main image.
+export async function publishVTOImages(jobId: string, orderedKeys: string[]) {
+  if (!orderedKeys.length) throw new Error('No images selected for publishing');
+
   const job = await prisma.vTOJob.findUnique({ where: { id: jobId } });
   if (!job || job.status !== 'DONE' || !job.results) throw new Error('VTOJob not done');
 
-  const results  = job.results as unknown as VTOResult[];
-  const selected = results.filter((r) => r.selected);
+  const allResults = job.results as unknown as VTOResult[];
+  const byKey      = new Map(allResults.map((r) => [r.modelKey, r]));
 
   const existing = await prisma.productImage.findMany({
     where:   { productId: job.productId },
@@ -157,20 +171,63 @@ export async function publishVTOImages(jobId: string) {
   });
   let order = (existing[0]?.order ?? -1) + 1;
 
+  // Demote any existing main image so the first published VTO image can take over
+  await prisma.productImage.updateMany({
+    where: { productId: job.productId, isMain: true },
+    data:  { isMain: false },
+  });
+
   const created: string[] = [];
-  for (const r of selected) {
+  const updatedResults    = [...allResults];
+
+  for (let i = 0; i < orderedKeys.length; i++) {
+    const key = orderedKeys[i];
+    const r   = byKey.get(key);
+    if (!r) continue;
+
     const img = await prisma.productImage.create({
       data: {
         productId:    job.productId,
         processedUrl: r.url,
-        isMain:       false,
+        isMain:       i === 0,  // First in ordered list becomes main
         order:        order++,
       },
     });
     created.push(img.id);
+
+    // Record which ProductImage was created from this VTO result
+    const idx = updatedResults.findIndex((x) => x.modelKey === key);
+    if (idx !== -1) updatedResults[idx] = { ...updatedResults[idx], publishedImageId: img.id };
   }
 
+  // Persist the publishedImageId fields back to the job
+  await prisma.vTOJob.update({
+    where: { id: jobId },
+    data:  { results: updatedResults as unknown as import('@prisma/client').Prisma.JsonArray },
+  });
+
   return { published: created.length, imageIds: created };
+}
+
+// Delete a single VTO result: remove from Supabase storage + remove from job results JSON.
+export async function deleteVTOResult(jobId: string, modelKey: string) {
+  const job = await prisma.vTOJob.findUnique({ where: { id: jobId } });
+  if (!job || !job.results) throw new Error('VTOJob not found');
+
+  const results = job.results as unknown as VTOResult[];
+  const target  = results.find((r) => r.modelKey === modelKey);
+  if (!target) throw new Error(`Result ${modelKey} not found`);
+
+  // Delete from Supabase storage if we have the path
+  if (target.storagePath) {
+    await supabase.storage.from(VTO_BUCKET).remove([target.storagePath]);
+  }
+
+  const updated = results.filter((r) => r.modelKey !== modelKey);
+  return prisma.vTOJob.update({
+    where: { id: jobId },
+    data:  { results: updated as unknown as import('@prisma/client').Prisma.JsonArray },
+  });
 }
 
 // Toggle isFrontView on a ProductImage.

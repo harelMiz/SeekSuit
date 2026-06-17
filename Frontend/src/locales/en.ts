@@ -333,6 +333,17 @@ export const en: Record<string, string> = {
   "admin.vto.needProcessed": "Images must be processed (background removal) before model try-on",
   "admin.vto.alreadyRunning": "Try-on is already running in background",
   "admin.vto.retryBtn": "Retry",
+  "admin.vto.regenerateBtn": "Regenerate",
+  "admin.vto.orderHint": "Click images to set display order — first selected becomes main",
+  "admin.vto.deleteResult": "Delete result",
+
+  // Background processing
+  "admin.saveAndProcess": "Save & continue to processing →",
+  "admin.processBackgrounds": "Process backgrounds",
+  "admin.processingBackgrounds": "Sending to queue...",
+  "admin.processBackgroundsQueued": "Images sent to processing queue",
+  "admin.processing.sectionTitle": "Image Processing",
+  "admin.processing.unprocessedHint": "Some images have not been AI-processed yet",
 
   // VTO pod power control (dashboard)
   "admin.vto.pod.title": "AI Try-On GPU",

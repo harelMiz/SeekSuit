@@ -45,12 +45,31 @@ export const updateSelections = async (req: Request, res: Response) => {
 };
 
 // POST /api/vto/:jobId/publish
+// Body: { orderedKeys: string[] } — modelKeys in display order, first = main image
 export const publishVTO = async (req: Request, res: Response) => {
+  const { orderedKeys } = req.body;
+  if (!Array.isArray(orderedKeys) || orderedKeys.length === 0) {
+    res.status(400).json({ error: 'orderedKeys array is required' });
+    return;
+  }
   try {
-    const result = await vtoService.publishVTOImages(String(req.params.jobId));
+    const result = await vtoService.publishVTOImages(String(req.params.jobId), orderedKeys);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// DELETE /api/vto/:jobId/result/:modelKey
+export const deleteResult = async (req: Request, res: Response) => {
+  try {
+    const job = await vtoService.deleteVTOResult(
+      String(req.params.jobId),
+      String(req.params.modelKey)
+    );
+    res.json(job);
+  } catch (err: any) {
+    res.status(err.message.includes('not found') ? 404 : 500).json({ error: err.message });
   }
 };
 
