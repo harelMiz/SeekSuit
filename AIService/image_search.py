@@ -326,7 +326,7 @@ def embed_text(text: str) -> list[float]:
                 fixed = _apply_word_fixes(text)
                 result = GoogleTranslator(source="iw", target="en").translate(fixed)
                 if result:
-                    print(f"[embedder] Translated (fallback): '{text}' → '{result}'")
+                    print(f"[embedder] Translated (fallback): '{text}' -> '{result}'")
                     return _encode_texts_averaged([result])
             except Exception as e:
                 print(f"[embedder] Translation failed, using original: {e}")
@@ -349,7 +349,7 @@ def embed_text(text: str) -> list[float]:
         for extra_syn in phrase_synonym_sets[0][1:]:
             variants.append(base.replace(phrase_synonym_sets[0][0], extra_syn))
 
-    print(f"[embedder] Word-dict query: '{text}' → {variants}")
+    print(f"[embedder] Word-dict query: '{text}' -> {variants}")
     return _encode_texts_averaged(variants)
 
 
