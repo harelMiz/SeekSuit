@@ -59,6 +59,9 @@ def _get_fitdit():
         sys.path.insert(0, str(FITDIT_DIR))
         os.chdir(str(FITDIT_DIR))
         from gradio_sd3 import FitDiTGenerator
+        from huggingface_hub import try_to_load_from_cache
+        clip_cached = try_to_load_from_cache("laion/CLIP-ViT-bigG-14-laion2B-39B-b160k", "config.json")
+        print(f"[VTO] CLIP-bigG in cache: {clip_cached is not None} ({clip_cached})")
         print("[VTO] Loading FitDiT...")
         _fitdit = FitDiTGenerator(model_root=MODEL_ROOT, offload=True, device=DEVICE)
         print("[VTO] FitDiT ready")
