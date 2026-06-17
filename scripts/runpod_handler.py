@@ -29,7 +29,7 @@ MODEL_ROOT  = str(FITDIT_CKPT)
 DEVICE     = "cuda:0"
 STEPS      = 20
 SCALE      = 2.0
-SEED       = 1337
+SEED       = 42
 RESOLUTION = "768x1024"
 VTO_BUCKET = "vto-results"
 MODELS_DIR = Path(__file__).parent / "vto_models"
@@ -222,16 +222,10 @@ def handler(job):
 
             pre_mask, pose_img = fitdit.generate_mask(str(tmp_person), "Upper-body", 0, 0, 0, 0)
 
-            if garment_type == "JACKETS":
-                process_mask, mask_img = _make_jacket_atr_mask(person_pil, fitdit, pre_mask)
-            else:
-                process_mask = pre_mask
-                mask_img     = None
-
             result_img = fitdit.process(
                 vton_img=str(tmp_person),
                 garm_img=str(garment_path),
-                pre_mask=process_mask,
+                pre_mask=pre_mask,
                 pose_image=np.array(pose_img),
                 n_steps=STEPS,
                 image_scale=SCALE,
@@ -242,8 +236,6 @@ def handler(job):
 
             if garment_type == "VESTS":
                 result_img = _composite_vest_sam2(result_img, person_pil, fitdit)
-            elif mask_img is not None:
-                result_img = _composite_with_mask(result_img, person_pil, mask_img)
 
             ts            = int(time.time() * 1000)
             supabase_path = f"{product_id}/{model_key}_{ts}.jpg"
