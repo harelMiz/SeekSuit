@@ -12,6 +12,7 @@ vto_results/
 scripts/test_results/
 scripts/training/
 scripts/data-prep/
+scripts/vto_models/
 
 # Environment secrets
 .env

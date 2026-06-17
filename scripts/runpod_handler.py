@@ -31,15 +31,16 @@ STEPS      = 20
 SCALE      = 2.0
 SEED       = 42
 RESOLUTION = "768x1024"
-VTO_BUCKET = "vto-results"
-MODELS_DIR = Path(__file__).parent / "vto_models"
+VTO_BUCKET    = "vto-results"
+MODELS_BUCKET = "vto-models"
 
 SUPABASE_URL              = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 # Lazy singletons — initialized on first job, reused across warm invocations
-_fitdit    = None
-_supabase  = None
+_fitdit          = None
+_supabase        = None
+_models_local_dir = None
 
 
 def _get_supabase():
@@ -173,15 +174,41 @@ def _upload_to_supabase(img, path: str) -> str:
     return url
 
 
+def _get_models_local_dir() -> Path:
+    global _models_local_dir
+    if _models_local_dir is not None:
+        return _models_local_dir
+
+    tmp = Path("/tmp/vto_models")
+    sb  = _get_supabase()
+
+    print("[VTO] Downloading model photos from Supabase...")
+    folders = sb.storage.from_(MODELS_BUCKET).list("", {"limit": 200})
+    for folder in folders:
+        folder_name = folder["name"]
+        folder_path = tmp / folder_name
+        folder_path.mkdir(parents=True, exist_ok=True)
+        photos = sb.storage.from_(MODELS_BUCKET).list(folder_name, {"limit": 200})
+        for photo in photos:
+            name = photo.get("name")
+            if not name:
+                continue
+            data = sb.storage.from_(MODELS_BUCKET).download(f"{folder_name}/{name}")
+            (folder_path / name).write_bytes(data)
+            print(f"[VTO] {folder_name}/{name}")
+
+    _models_local_dir = tmp
+    print("[VTO] Model photos ready.")
+    return _models_local_dir
+
+
 def _collect_models():
-    if not MODELS_DIR.exists():
-        raise RuntimeError(f"Models directory not found: {MODELS_DIR}")
+    models_dir = _get_models_local_dir()
     result = []
-    for model_dir in sorted(d for d in MODELS_DIR.iterdir() if d.is_dir()):
+    for model_dir in sorted(d for d in models_dir.iterdir() if d.is_dir()):
         photos = sorted(model_dir.glob("*.jpg")) + sorted(model_dir.glob("*.png"))
         photos = [p for p in photos if not p.stem.endswith(("_mask", "_auto_mask"))]
         for idx, photo in enumerate(photos):
-            # Unique key per photo: "model_04_0", "model_04_1", etc.
             key = f"{model_dir.name}_{idx}" if len(photos) > 1 else model_dir.name
             result.append((key, photo))
     return result
