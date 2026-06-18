@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Upload, LogOut, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Package, Upload, Users, LogOut, Sun, Moon } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import type { Language } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: "/admin", label: "admin.dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/inventory", label: "admin.inventory", icon: Package, exact: false },
   { to: "/admin/uploads", label: "admin.uploads", icon: Upload, exact: false },
+  { to: "/admin/vto-models", label: "admin.vtoModels.navLabel", icon: Users, exact: false },
 ];
 
 // Admin layout: dark sidebar + main content area with sticky top bar
@@ -42,6 +43,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (location.pathname === "/admin") return t("admin.dashboard");
     if (location.pathname.startsWith("/admin/inventory")) return t("admin.inventory");
     if (location.pathname.startsWith("/admin/uploads")) return t("admin.uploads");
+    if (location.pathname.startsWith("/admin/vto-models")) return t("admin.vtoModels.title");
     return "Admin";
   })();
 

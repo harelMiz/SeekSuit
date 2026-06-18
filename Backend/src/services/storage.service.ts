@@ -6,7 +6,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const RAW_BUCKET = 'raw-images';
+const RAW_BUCKET        = 'raw-images';
+const VTO_MODELS_BUCKET = 'vto-models';
 
 // Upload a raw image buffer to Supabase Storage and return the storage path URL
 export async function uploadRawImage(
@@ -43,6 +44,55 @@ export async function deleteFileBySignedUrl(signedUrl: string, bucket: string): 
   } catch {
     // Non-critical — don't block product deletion
   }
+}
+
+// ── VTO model photos (vto-models bucket) ─────────────────────────────────────
+
+export interface VTOModelFile {
+  name: string;
+  url:  string;
+}
+
+export async function listVTOModels(): Promise<VTOModelFile[]> {
+  const { data, error } = await supabase.storage.from(VTO_MODELS_BUCKET).list('', { sortBy: { column: 'name', order: 'asc' } });
+  if (error) throw new Error(`Failed to list vto-models: ${error.message}`);
+
+  const files = (data ?? []).filter(f => /\.(jpe?g|png)$/i.test(f.name));
+
+  return Promise.all(
+    files.map(async (f) => {
+      const { data: signed, error: signErr } = await supabase.storage
+        .from(VTO_MODELS_BUCKET)
+        .createSignedUrl(f.name, 60 * 60 * 24 * 365 * 10);
+      if (signErr || !signed) throw new Error(`Failed to sign URL for ${f.name}`);
+      return { name: f.name, url: signed.signedUrl };
+    })
+  );
+}
+
+export async function uploadVTOModel(buffer: Buffer, originalName: string): Promise<VTOModelFile> {
+  // Sanitize filename — lowercase, spaces → underscores
+  const safe = originalName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9._-]/g, '');
+  const ext  = safe.match(/\.[^.]+$/)?.[0] ?? '.jpg';
+  const stem = safe.replace(/\.[^.]+$/, '');
+  const name = `${stem}_${Date.now()}${ext}`;
+
+  const { error } = await supabase.storage
+    .from(VTO_MODELS_BUCKET)
+    .upload(name, buffer, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw new Error(`VTO model upload failed: ${error.message}`);
+
+  const { data: signed, error: signErr } = await supabase.storage
+    .from(VTO_MODELS_BUCKET)
+    .createSignedUrl(name, 60 * 60 * 24 * 365 * 10);
+  if (signErr || !signed) throw new Error(`Failed to sign URL for ${name}`);
+
+  return { name, url: signed.signedUrl };
+}
+
+export async function deleteVTOModel(filename: string): Promise<void> {
+  const { error } = await supabase.storage.from(VTO_MODELS_BUCKET).remove([filename]);
+  if (error) throw new Error(`Failed to delete VTO model: ${error.message}`);
 }
 
 // Generate a short-lived signed URL for a raw image (used internally by the AI service)

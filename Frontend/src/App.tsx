@@ -18,6 +18,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminInventoryPage from "./pages/admin/AdminInventoryPage";
 import AdminProductFormPage from "./pages/admin/AdminProductFormPage";
 import AdminUploadsPage from "./pages/admin/AdminUploadsPage";
+import AdminVTOModelsPage from "./pages/admin/AdminVTOModelsPage";
 
 // Public routes:
 // /               → homepage with AI search hero
@@ -59,6 +60,7 @@ function App() {
             <Route path="/admin/inventory/new" element={<ProtectedRoute><AdminProductFormPage /></ProtectedRoute>} />
             <Route path="/admin/inventory/:id/edit" element={<ProtectedRoute><AdminProductFormPage /></ProtectedRoute>} />
             <Route path="/admin/uploads" element={<ProtectedRoute><AdminUploadsPage /></ProtectedRoute>} />
+            <Route path="/admin/vto-models" element={<ProtectedRoute><AdminVTOModelsPage /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

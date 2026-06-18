@@ -32,7 +32,8 @@ SCALE      = 2.0
 SEED       = 42
 RESOLUTION = "768x1024"
 VTO_BUCKET = "vto-results"
-MODELS_DIR = Path(__file__).parent / "vto_models"
+MODELS_DIR    = Path(__file__).parent / "vto_models"
+VTO_MODELS_BUCKET = "vto-models"
 
 SUPABASE_URL              = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -173,15 +174,60 @@ def _upload_to_supabase(img, path: str) -> str:
     return url
 
 
-def _collect_models():
+# Cache model photos per worker lifetime — downloaded once on first job
+_models_cache: list | None = None
+
+
+def _collect_models() -> list:
+    """Return (modelKey, path) pairs — downloads from Supabase vto-models bucket on first call."""
+    global _models_cache
+    if _models_cache is not None:
+        return _models_cache
+
+    _models_cache = _load_models_from_bucket()
+    return _models_cache
+
+
+def _load_models_from_bucket() -> list:
+    tmp_dir = Path("/tmp/vto_models")
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    sb = _get_supabase()
+    try:
+        files = sb.storage.from_(VTO_MODELS_BUCKET).list()
+    except Exception as e:
+        print(f"[VTO] Warning: failed to list {VTO_MODELS_BUCKET} bucket: {e}")
+        files = []
+
+    downloaded: list[Path] = []
+    for f in sorted(files, key=lambda x: x["name"]):
+        name = f["name"]
+        if not name.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
+        try:
+            data = sb.storage.from_(VTO_MODELS_BUCKET).download(name)
+            dest = tmp_dir / name
+            dest.write_bytes(data)
+            downloaded.append(dest)
+            print(f"[VTO] Downloaded model photo: {name}")
+        except Exception as e:
+            print(f"[VTO] Warning: failed to download {name}: {e}")
+
+    if not downloaded:
+        print("[VTO] vto-models bucket empty — falling back to local vto_models/")
+        return _load_models_local()
+
+    return [(p.stem, p) for p in downloaded]
+
+
+def _load_models_local() -> list:
     if not MODELS_DIR.exists():
-        raise RuntimeError(f"Models directory not found: {MODELS_DIR}")
+        raise RuntimeError(f"No models found: bucket empty and {MODELS_DIR} does not exist")
     result = []
     for model_dir in sorted(d for d in MODELS_DIR.iterdir() if d.is_dir()):
         photos = sorted(model_dir.glob("*.jpg")) + sorted(model_dir.glob("*.png"))
         photos = [p for p in photos if not p.stem.endswith(("_mask", "_auto_mask"))]
         for idx, photo in enumerate(photos):
-            # Unique key per photo: "model_04_0", "model_04_1", etc.
             key = f"{model_dir.name}_{idx}" if len(photos) > 1 else model_dir.name
             result.append((key, photo))
     return result

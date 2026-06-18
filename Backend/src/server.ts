@@ -8,6 +8,7 @@ import searchRoutes from './routes/search.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import insightsRoutes from './routes/insights.routes';
 import vtoRoutes from './routes/vto.routes';
+import vtoModelsRoutes from './routes/vtoModels.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { resetStaleProcessingJobs } from './services/job.service';
 
@@ -33,6 +34,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/vto', vtoRoutes);
+app.use('/api/vto-models', vtoModelsRoutes);
 
 // Global error handler — must be registered after all routes
 app.use(errorHandler);
