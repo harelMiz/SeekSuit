@@ -7,6 +7,8 @@ import {
   assignImagesToProduct,
   deleteImage,
   setMainImage,
+  reorderImages,
+  unpublishImage,
 } from '../controllers/upload.controller';
 
 // Store uploaded files in memory — buffer goes straight to Supabase, never written to disk
@@ -26,5 +28,7 @@ router.get('/unassigned', getUnassignedImages);
 router.post('/assign', assignImagesToProduct);
 router.delete('/image/:imageId', deleteImage);
 router.patch('/image/:imageId/main', setMainImage);
+router.patch('/image/:imageId/unpublish', unpublishImage);
+router.patch('/product/:productId/reorder', reorderImages);
 
 export default router;

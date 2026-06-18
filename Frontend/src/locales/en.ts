@@ -176,6 +176,14 @@ export const en: Record<string, string> = {
   "admin.imageUpload": "Upload Image",
   "admin.imageDisabled": "Image upload will be available after cloud storage setup",
   "admin.deleteConfirm": "Are you sure you want to delete this product?",
+  "admin.bulk.selected": "selected",
+  "admin.bulk.clear": "Clear",
+  "admin.bulk.delete": "Delete",
+  "admin.bulk.processBackgrounds": "Process backgrounds",
+  "admin.bulk.generateModels": "Generate models",
+  "admin.bulk.inStock": "In Stock",
+  "admin.bulk.outOfStock": "Out of Stock",
+  "admin.bulk.deleteConfirm": "Delete {count} products? This cannot be undone.",
   "admin.saving": "Saving...",
   "admin.saveSuccess": "Product saved successfully",
   "admin.saveError": "Error saving product",
@@ -345,6 +353,14 @@ export const en: Record<string, string> = {
   "admin.processing.sectionTitle": "Image Processing",
   "admin.processing.unprocessedHint": "Some images have not been AI-processed yet",
 
+  // Gallery
+  "admin.gallery.title": "Gallery",
+  "admin.gallery.unpublishBtn": "Remove from gallery",
+  "admin.gallery.orderHint": "Click images to set display order — first becomes main",
+  "admin.gallery.publishBtn": "Publish gallery",
+  "admin.gallery.publishDone": "Gallery published",
+  "admin.gallery.empty": "Process backgrounds to see images here",
+
   // VTO pod power control (dashboard)
   "admin.vto.pod.title": "AI Try-On GPU",
   "admin.vto.pod.subtitle": "Start the pod to dress jackets / vests on models",
@@ -356,6 +372,22 @@ export const en: Record<string, string> = {
   "admin.vto.pod.offline": "GPU offline",
   "admin.vto.pod.autoStop": "Auto-stops after 1 hour",
   "admin.vto.pod.notConfigured": "Not configured",
+
+  // VTO Models management
+  "admin.vtoModels.navLabel": "Models",
+  "admin.vtoModels.title": "VTO Models",
+  "admin.vtoModels.subtitle": "Model photos used for AI virtual try-on — changes take effect on the next VTO job",
+  "admin.vtoModels.upload": "Upload photos",
+  "admin.vtoModels.uploading": "Uploading...",
+  "admin.vtoModels.empty": "No model photos yet",
+  "admin.vtoModels.dropHint": "Drag & drop photos here, or click Upload",
+  "admin.vtoModels.dropRelease": "Drop to upload",
+  "admin.vtoModels.uploadSuccess": "{count} photo(s) uploaded",
+  "admin.vtoModels.uploadError": "Upload failed",
+  "admin.vtoModels.deleteConfirm": "Delete model photo \"{name}\"?",
+  "admin.vtoModels.deleteSuccess": "Photo deleted",
+  "admin.vtoModels.deleteError": "Delete failed",
+  "admin.vtoModels.loadError": "Failed to load model photos",
 
   // Common
   "common.loading": "Loading...",

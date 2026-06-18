@@ -138,6 +138,40 @@ export const deleteImage = async (req: Request, res: Response) => {
   }
 };
 
+// PATCH /api/uploads/product/:productId/reorder
+// Sets display order for the provided imageIds (0-based) and marks the first as isMain.
+export const reorderImages = async (req: Request, res: Response) => {
+  try {
+    const productId = String(req.params.productId);
+    const { imageIds } = req.body as { imageIds: string[] };
+    if (!imageIds?.length) {
+      res.status(400).json({ error: 'imageIds required' });
+      return;
+    }
+    await productService.reorderProductImages(productId, imageIds);
+    res.status(200).json({ ok: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message ?? 'Reorder failed' });
+  }
+};
+
+// PATCH /api/uploads/image/:imageId/unpublish
+// Removes an image from the public gallery without deleting it.
+export const unpublishImage = async (req: Request, res: Response) => {
+  try {
+    const imageId = String(req.params.imageId);
+    const image = await productService.getProductImageById(imageId);
+    if (!image) {
+      res.status(404).json({ error: 'Image not found' });
+      return;
+    }
+    const updated = await productService.unpublishImage(imageId);
+    res.status(200).json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message ?? 'Unpublish failed' });
+  }
+};
+
 // PATCH /api/uploads/image/:imageId/main
 // Sets this image as the main image for its product.
 export const setMainImage = async (req: Request, res: Response) => {

@@ -142,3 +142,31 @@ export const getProductImages = async (productId: string) => {
     orderBy: { order: 'asc' },
   });
 };
+
+// Reorder product images: set order 0..n-1 for provided IDs, first becomes isMain.
+// All other images for this product are unpublished.
+// Throws if any imageId does not belong to productId (prevents IDOR).
+export const reorderProductImages = async (productId: string, imageIds: string[]) => {
+  const owned = await prisma.productImage.findMany({
+    where: { id: { in: imageIds }, productId },
+    select: { id: true },
+  });
+  if (owned.length !== imageIds.length) {
+    throw new Error('One or more imageIds do not belong to this product');
+  }
+
+  await prisma.$transaction([
+    prisma.productImage.updateMany({ where: { productId }, data: { isMain: false, isPublished: false } }),
+    ...imageIds.map((id, idx) =>
+      prisma.productImage.update({ where: { id }, data: { order: idx, isMain: idx === 0, isPublished: true } })
+    ),
+  ]);
+};
+
+// Set isPublished=false on a single image (removes from public gallery without deleting).
+export const unpublishImage = async (imageId: string) => {
+  return prisma.productImage.update({
+    where: { id: imageId },
+    data: { isPublished: false },
+  });
+};

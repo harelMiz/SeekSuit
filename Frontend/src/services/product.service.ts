@@ -172,6 +172,16 @@ export async function publishVTOImages(
   return data;
 }
 
+// Reorder product images: set order 0..n-1 and isMain on first; unpublishes all others
+export async function reorderProductImages(productId: string, imageIds: string[]): Promise<void> {
+  await axios.patch(`${API_BASE}/api/uploads/product/${productId}/reorder`, { imageIds });
+}
+
+// Remove an image from the public gallery without deleting it from storage
+export async function unpublishImage(imageId: string): Promise<void> {
+  await axios.patch(`${API_BASE}/api/uploads/image/${imageId}/unpublish`);
+}
+
 // Delete a VTO result image from storage and remove it from the job
 export async function deleteVTOResult(jobId: string, modelKey: string): Promise<VTOJob> {
   const { data } = await axios.delete<VTOJob>(

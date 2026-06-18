@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { ArrowLeft, Pencil, Trash2, ImageOff, Sparkles, Phone, ChevronDown } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
@@ -63,12 +63,27 @@ export default function ProductDetailPage() {
   const [similarLoading, setSimilarLoading] = useState(false);
   const similarRef = useRef<HTMLDivElement>(null);
 
+  const [lensVisible, setLensVisible] = useState(false);
+  const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
+  const imgContainerRef = useRef<HTMLDivElement>(null);
+  const LENS_SIZE = 210;
+  const ZOOM = 3.8;
+
+  const handleImageMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!imgContainerRef.current) return;
+    const rect = imgContainerRef.current.getBoundingClientRect();
+    setLensPos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }, []);
+
   useEffect(() => {
     if (!id) return;
     getProduct(id)
       .then((p) => {
         setProduct(p);
-        const sorted = [...p.images].sort((a, b) => a.order - b.order);
+        const sorted = [...p.images].filter((img) => img.isPublished).sort((a, b) => a.order - b.order);
         const mainIdx = sorted.findIndex((img) => img.isMain);
         setActiveIdx(mainIdx >= 0 ? mainIdx : 0);
       })
@@ -122,7 +137,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const images = [...product.images].sort((a, b) => a.order - b.order);
+  const images = [...product.images].filter((img) => img.isPublished).sort((a, b) => a.order - b.order);
   const activeImage: ProductImage | undefined = images[activeIdx];
   const activeUrl = activeImage ? bestImageUrl(activeImage) : null;
 
@@ -157,16 +172,49 @@ export default function ProductDetailPage() {
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 max-w-7xl mx-auto w-full px-6 py-6">
 
           {/* ── LEFT: image gallery ── */}
-          <div className="lg:col-span-5 lg:pe-12 w-full h-full flex flex-col gap-3">
+          <div className="lg:col-span-5 lg:pe-12 w-full h-full min-h-0 overflow-hidden flex flex-col gap-3">
 
             {/* Main image — fills remaining height after thumbnails */}
-            <div className="flex-1 min-h-0 bg-white rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
+            <div
+              ref={imgContainerRef}
+              className="relative flex-1 min-h-0 rounded-2xl overflow-hidden border border-white/5 shadow-2xl"
+              onMouseEnter={() => setLensVisible(true)}
+              onMouseLeave={() => setLensVisible(false)}
+              onMouseMove={handleImageMouseMove}
+              style={{ cursor: lensVisible ? "none" : "default" }}
+            >
               {activeUrl ? (
-                <img
-                  src={activeUrl}
-                  alt={product.name}
-                  className="w-full h-full object-contain hover:scale-105 transition-transform duration-700 ease-out"
-                />
+                <>
+                  <img src={activeUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40" />
+                  <img
+                    src={activeUrl}
+                    alt={product.name}
+                    className="relative z-10 w-full h-full object-contain transition-transform duration-700 ease-out"
+                  />
+                  {/* Magnifier lens */}
+                  {lensVisible && (
+                    <div
+                      className="absolute z-30 rounded-full border-2 border-white/60 shadow-2xl pointer-events-none overflow-hidden"
+                      style={{
+                        width: LENS_SIZE,
+                        height: LENS_SIZE,
+                        left: lensPos.x - LENS_SIZE / 2,
+                        top: lensPos.y - LENS_SIZE / 2,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          backgroundImage: `url(${activeUrl})`,
+                          backgroundSize: `${ZOOM * 100}%`,
+                          backgroundPosition: `${(lensPos.x / (imgContainerRef.current?.offsetWidth ?? 1)) * 100}% ${(lensPos.y / (imgContainerRef.current?.offsetHeight ?? 1)) * 100}%`,
+                          backgroundRepeat: "no-repeat",
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-zinc-600">
                   <ImageOff size={48} />
@@ -191,7 +239,10 @@ export default function ProductDetailPage() {
                       }`}
                     >
                       {url ? (
-                        <img src={url} alt={`view ${idx + 1}`} className="w-full h-full object-cover" />
+                        <div className="relative w-full h-full">
+                          <img src={url} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md opacity-70" />
+                          <img src={url} alt={`view ${idx + 1}`} className="relative z-10 w-full h-full object-contain" />
+                        </div>
                       ) : (
                         <div className="w-full h-full bg-[#1c1c1c] flex items-center justify-center">
                           <ImageOff size={12} className="text-zinc-600" />

@@ -20,6 +20,7 @@ export interface ProductImage {
   processedUrl: string | null;
   isMain: boolean;
   isFrontView: boolean;
+  isPublished: boolean;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -87,11 +88,12 @@ export function bestImageUrl(image: ProductImage): string | null {
   return image.processedUrl ?? image.rawUrl;
 }
 
-// Helper: return the main image of a product, or the first image, or null
+// Helper: return the main published image of a product, or the first published, or null
 export function mainImage(product: Product): ProductImage | null {
+  const published = product.images.filter((img) => img.isPublished);
   return (
-    product.images.find((img) => img.isMain) ??
-    product.images[0] ??
+    published.find((img) => img.isMain) ??
+    published[0] ??
     null
   );
 }

@@ -196,6 +196,14 @@ export const he: Record<string, string> = {
   "admin.imageUpload": "העלאת תמונה",
   "admin.imageDisabled": "העלאת תמונות תהיה זמינה לאחר הגדרת אחסון הענן",
   "admin.deleteConfirm": "האם אתה בטוח שברצונך למחוק מוצר זה?",
+  "admin.bulk.selected": "נבחרו",
+  "admin.bulk.clear": "נקה",
+  "admin.bulk.delete": "מחק",
+  "admin.bulk.processBackgrounds": "עבד רקעים",
+  "admin.bulk.generateModels": "צור דוגמנים",
+  "admin.bulk.inStock": "במלאי",
+  "admin.bulk.outOfStock": "אזל מהמלאי",
+  "admin.bulk.deleteConfirm": "למחוק {count} מוצרים? לא ניתן לשחזר.",
   "admin.saving": "שומר...",
   "admin.saveSuccess": "המוצר נשמר בהצלחה",
   "admin.saveError": "שגיאה בשמירת המוצר",
@@ -345,6 +353,14 @@ export const he: Record<string, string> = {
   "admin.processing.sectionTitle": "עיבוד תמונות",
   "admin.processing.unprocessedHint": "יש תמונות שטרם עובדו עם AI",
 
+  // Gallery
+  "admin.gallery.title": "גלריה",
+  "admin.gallery.unpublishBtn": "הסר מהגלריה",
+  "admin.gallery.orderHint": "לחץ על תמונות להגדרת סדר תצוגה — ראשון יהיה ראשי",
+  "admin.gallery.publishBtn": "פרסם גלריה",
+  "admin.gallery.publishDone": "גלריה פורסמה",
+  "admin.gallery.empty": "עבד רקעים כדי לראות תמונות כאן",
+
   // VTO pod power control (dashboard)
   "admin.vto.pod.title": "GPU לדוגמנות AI",
   "admin.vto.pod.subtitle": "הפעל את הפוד כדי להלביש ג'קטים/וסטים על דוגמנים",
@@ -356,6 +372,22 @@ export const he: Record<string, string> = {
   "admin.vto.pod.offline": "GPU כבוי",
   "admin.vto.pod.autoStop": "נכבה אוטומטית אחרי שעה",
   "admin.vto.pod.notConfigured": "לא מוגדר",
+
+  // VTO Models management
+  "admin.vtoModels.navLabel": "דוגמנים",
+  "admin.vtoModels.title": "דוגמני VTO",
+  "admin.vtoModels.subtitle": "תמונות הדוגמנים לדוגמנות AI — שינויים יכנסו לתוקף בעבודת VTO הבאה",
+  "admin.vtoModels.upload": "העלה תמונות",
+  "admin.vtoModels.uploading": "מעלה...",
+  "admin.vtoModels.empty": "אין תמונות דוגמנים עדיין",
+  "admin.vtoModels.dropHint": "גרור תמונות לכאן, או לחץ על העלה",
+  "admin.vtoModels.dropRelease": "שחרר להעלאה",
+  "admin.vtoModels.uploadSuccess": "{count} תמונות הועלו",
+  "admin.vtoModels.uploadError": "ההעלאה נכשלה",
+  "admin.vtoModels.deleteConfirm": "למחוק את תמונת הדוגמן \"{name}\"?",
+  "admin.vtoModels.deleteSuccess": "התמונה נמחקה",
+  "admin.vtoModels.deleteError": "המחיקה נכשלה",
+  "admin.vtoModels.loadError": "טעינת תמונות הדוגמנים נכשלה",
 
   // Common
   "common.loading": "טוען...",

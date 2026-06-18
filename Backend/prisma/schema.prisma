@@ -69,6 +69,7 @@ model ProductImage {
   dominantColor  String?
   isMain         Boolean         @default(false)
   isFrontView    Boolean         @default(false)
+  isPublished    Boolean         @default(true)
   order          Int             @default(0)
   processingJobs ProcessingJob[]
   vtoJobs        VTOJob[]
