@@ -91,6 +91,9 @@ export async function uploadVTOModel(buffer: Buffer, originalName: string): Prom
 }
 
 export async function deleteVTOModel(filename: string): Promise<void> {
+  if (!/^[a-zA-Z0-9_.-]+\.(jpe?g|png)$/i.test(filename) || filename.includes('/') || filename.includes('..')) {
+    throw new Error('Invalid filename');
+  }
   const { error } = await supabase.storage.from(VTO_MODELS_BUCKET).remove([filename]);
   if (error) throw new Error(`Failed to delete VTO model: ${error.message}`);
 }
