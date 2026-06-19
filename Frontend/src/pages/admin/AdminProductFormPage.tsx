@@ -318,7 +318,16 @@ export default function AdminProductFormPage() {
 
       const p = await getProduct(id);
       setSavedImages(p.images.sort((a, b) => a.order - b.order));
-      setVtoJob(null);
+
+      // Keep non-published VTO results visible so the user can manage them;
+      // remove only the keys that were just published (now in the gallery).
+      setVtoJob((prev) => {
+        if (!prev) return null;
+        const remaining = (prev.results ?? []).filter(
+          (r: VTOResult) => !vtoKeysInOrder.includes(r.modelKey)
+        );
+        return remaining.length > 0 ? { ...prev, results: remaining } : null;
+      });
       setGalleryOrder([]);
       setGalleryPublishDone(true);
     } finally {

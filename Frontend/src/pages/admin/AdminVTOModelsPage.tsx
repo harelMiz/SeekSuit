@@ -19,21 +19,64 @@ function sanitizeFolderName(raw: string) {
 
 // ── sub-components ────────────────────────────────────────────────────────────
 
+function PhotoThumb({
+  photo,
+  onDelete,
+  onView,
+}: {
+  photo: VTOModelPhoto;
+  onDelete: () => void;
+  onView: (url: string) => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    setDeleting(true);
+    await onDelete();
+    setDeleting(false);
+  }
+
+  return (
+    <div
+      className="group/thumb relative w-20 aspect-[3/4] rounded-xl overflow-hidden border border-outline-variant cursor-zoom-in"
+      onClick={() => onView(photo.url)}
+    >
+      <img src={photo.url} alt={photo.name} className="absolute inset-0 w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 transition-colors" />
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="absolute top-1 right-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity p-1 rounded-lg bg-red-500/80 hover:bg-red-500 text-white cursor-pointer"
+      >
+        {deleting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+      </button>
+    </div>
+  );
+}
+
 function PhotoGrid({
   folder,
   onUpload,
   onDelete,
+  onView,
 }: {
   folder: VTOModelFolder;
   onUpload: (folder: string, files: FileList) => void;
   onDelete: (folder: string, photo: string) => void;
+  onView: (url: string) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex flex-wrap gap-2 mt-3">
       {folder.photos.map((p) => (
-        <PhotoThumb key={p.name} photo={p} onDelete={() => onDelete(folder.name, p.name)} />
+        <PhotoThumb
+          key={p.name}
+          photo={p}
+          onDelete={() => onDelete(folder.name, p.name)}
+          onView={onView}
+        />
       ))}
 
       {/* Upload tile */}
@@ -56,42 +99,20 @@ function PhotoGrid({
   );
 }
 
-function PhotoThumb({ photo, onDelete }: { photo: VTOModelPhoto; onDelete: () => void }) {
-  const [deleting, setDeleting] = useState(false);
-
-  async function handleDelete() {
-    setDeleting(true);
-    await onDelete();
-    setDeleting(false);
-  }
-
-  return (
-    <div className="group relative w-20 aspect-[3/4] rounded-xl overflow-hidden border border-outline-variant">
-      <img src={photo.url} alt={photo.name} className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors" />
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg bg-red-500/80 hover:bg-red-500 text-white cursor-pointer"
-      >
-        {deleting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
-      </button>
-    </div>
-  );
-}
-
 function ModelCard({
   folder,
   onUpload,
   onPhotoDelete,
   onRename,
   onDelete,
+  onView,
 }: {
   folder: VTOModelFolder;
   onUpload: (folder: string, files: FileList) => void;
   onPhotoDelete: (folder: string, photo: string) => void;
   onRename: (folder: string, newName: string) => Promise<void>;
   onDelete: (folder: string) => void;
+  onView: (url: string) => void;
 }) {
   const { t } = useLang();
   const [editing, setEditing]     = useState(false);
@@ -122,7 +143,7 @@ function ModelCard({
   }
 
   return (
-    <div className="rounded-2xl border border-outline-variant bg-surface p-5">
+    <div className="group/card rounded-2xl border border-outline-variant bg-surface p-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-1">
         {editing ? (
@@ -145,7 +166,7 @@ function ModelCard({
           <>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-on-surface">{folder.name}</span>
-              <button onClick={startEdit} className="p-1 rounded text-on-surface-variant hover:text-on-surface cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={startEdit} className="p-1 rounded text-on-surface-variant hover:text-on-surface cursor-pointer opacity-0 group-hover/card:opacity-100 transition-opacity">
                 <Pencil size={12} />
               </button>
             </div>
@@ -164,7 +185,7 @@ function ModelCard({
         )}
       </div>
 
-      <PhotoGrid folder={folder} onUpload={onUpload} onDelete={onPhotoDelete} />
+      <PhotoGrid folder={folder} onUpload={onUpload} onDelete={onPhotoDelete} onView={onView} />
     </div>
   );
 }
@@ -180,6 +201,7 @@ export default function AdminVTOModelsPage() {
   const [success, setSuccess]   = useState<string | null>(null);
   const [newName, setNewName]   = useState("");
   const [creating, setCreating] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -318,16 +340,37 @@ export default function AdminVTOModelsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {folders.map((folder) => (
-            <div key={folder.name} className="group">
-              <ModelCard
-                folder={folder}
-                onUpload={handleUpload}
-                onPhotoDelete={handlePhotoDelete}
-                onRename={handleRename}
-                onDelete={handleDeleteFolder}
-              />
-            </div>
+            <ModelCard
+              key={folder.name}
+              folder={folder}
+              onUpload={handleUpload}
+              onPhotoDelete={handlePhotoDelete}
+              onRename={handleRename}
+              onDelete={handleDeleteFolder}
+              onView={setLightboxUrl}
+            />
           ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="model photo"
+            className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </AdminLayout>

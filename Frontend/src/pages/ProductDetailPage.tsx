@@ -39,6 +39,7 @@ function toProduct(r: SearchResult): Product {
       rawUrl: null,
       processedUrl: r.processedUrl,
       isMain: true,
+      isPublished: true,
       order: 0,
       createdAt: "",
       updatedAt: "",
@@ -172,24 +173,25 @@ export default function ProductDetailPage() {
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 max-w-7xl mx-auto w-full px-6 py-6">
 
           {/* ── LEFT: image gallery ── */}
-          <div className="lg:col-span-5 lg:pe-12 w-full h-full min-h-0 overflow-hidden flex flex-col gap-3">
+          <div className="lg:col-span-5 lg:pe-12 w-full h-full min-h-0 flex flex-col gap-3">
 
-            {/* Main image — fills remaining height after thumbnails */}
+            {/* Main image — fixed 3:4 portrait ratio, max 70vh tall */}
+            <div className="flex-1 min-h-0 flex items-center justify-center p-1">
             <div
               ref={imgContainerRef}
-              className="relative flex-1 min-h-0 rounded-2xl overflow-hidden border border-white/5 shadow-2xl"
+              className="relative w-full bg-zinc-900 rounded-2xl overflow-hidden border-2 border-[#e9c176]/50 shadow-[0_0_30px_rgba(233,193,118,0.2)]"
+              style={{ aspectRatio: "3/4", maxHeight: "70vh", cursor: lensVisible ? "none" : "default" }}
               onMouseEnter={() => setLensVisible(true)}
               onMouseLeave={() => setLensVisible(false)}
               onMouseMove={handleImageMouseMove}
-              style={{ cursor: lensVisible ? "none" : "default" }}
             >
               {activeUrl ? (
                 <>
-                  <img src={activeUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40" />
+                  <img src={activeUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-90" />
                   <img
                     src={activeUrl}
                     alt={product.name}
-                    className="relative z-10 w-full h-full object-contain transition-transform duration-700 ease-out"
+                    className="relative z-10 w-full h-full object-cover transition-transform duration-700 ease-out"
                   />
                   {/* Magnifier lens */}
                   {lensVisible && (
@@ -222,6 +224,7 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
+            </div>{/* end centering wrapper */}
 
             {/* Thumbnail strip — shrink-0 so it never overflows */}
             {images.length > 1 && (
@@ -240,8 +243,8 @@ export default function ProductDetailPage() {
                     >
                       {url ? (
                         <div className="relative w-full h-full">
-                          <img src={url} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md opacity-70" />
-                          <img src={url} alt={`view ${idx + 1}`} className="relative z-10 w-full h-full object-contain" />
+                          <img src={url} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md opacity-90" />
+                          <img src={url} alt={`view ${idx + 1}`} className="relative z-10 w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-full h-full bg-[#1c1c1c] flex items-center justify-center">
