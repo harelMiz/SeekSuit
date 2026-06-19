@@ -345,6 +345,16 @@ export const en: Record<string, string> = {
   "admin.vto.orderHint": "Click images to set display order — first selected becomes main",
   "admin.vto.deleteResult": "Delete result",
 
+  // VTO model-selection dialog
+  "admin.vto.selectModels.title": "Select Models",
+  "admin.vto.selectModels.subtitle": "Choose which models to dress with AI",
+  "admin.vto.selectModels.selectAll": "Select all",
+  "admin.vto.selectModels.deselectAll": "Deselect all",
+  "admin.vto.selectModels.confirm": "Run VTO",
+  "admin.vto.selectModels.noModels": "No models configured — add photos in the Models page",
+  "admin.vto.selectModels.loading": "Loading models...",
+  "admin.vto.selectModels.photos": "photos",
+
   // Background processing
   "admin.saveAndProcess": "Save & continue to processing →",
   "admin.processBackgrounds": "Process backgrounds",
@@ -388,11 +398,19 @@ export const en: Record<string, string> = {
   "admin.vtoModels.deleteSuccess": "Photo deleted",
   "admin.vtoModels.deleteError": "Delete failed",
   "admin.vtoModels.loadError": "Failed to load model photos",
+  "admin.vtoModels.photos": "photos",
+  "admin.vtoModels.addModel": "Add model",
+  "admin.vtoModels.newFolderPlaceholder": "model name...",
+  "admin.vtoModels.folderExists": "A model with this name already exists",
+  "admin.vtoModels.deleteFolderConfirm": "Delete model \"{name}\" and all its photos?",
+  "admin.vtoModels.renameSuccess": "Model renamed",
+  "admin.vtoModels.renameError": "Rename failed",
 
   // Common
   "common.loading": "Loading...",
   "common.error": "An error occurred, please try again",
   "common.back": "Back",
+  "common.cancel": "Cancel",
   "common.comingSoon": "Coming Soon",
   "common.live": "Live",
 };

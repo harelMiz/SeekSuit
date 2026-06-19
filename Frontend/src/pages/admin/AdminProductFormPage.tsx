@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ImagePlus, X, Star, Wand2, Loader2, RefreshCw, Zap, Search, EyeOff } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
+import VTOModelSelectDialog from "../../components/admin/VTOModelSelectDialog";
 import {
   getProduct,
   createProduct,
@@ -89,6 +90,7 @@ export default function AdminProductFormPage() {
   // VTO state
   const [vtoJob, setVtoJob]               = useState<VTOJob | null>(null);
   const [vtoTriggering, setVtoTriggering] = useState(false);
+  const [vtoDialogOpen, setVtoDialogOpen] = useState(false);
   const [vtoPublishing, setVtoPublishing] = useState(false);
 
   // Library selection: keys are `saved:${imageId}` or `vto:${modelKey}`, index 0 = main
@@ -253,7 +255,11 @@ export default function AdminProductFormPage() {
     }
   }
 
-  async function handleTriggerVTO() {
+  function handleTriggerVTO() {
+    setVtoDialogOpen(true);
+  }
+
+  async function handleVTOConfirm(selectedModels: string[]) {
     if (!id) return;
     const sourceImg =
       savedImages.find((img) => img.isMain && img.processedUrl) ??
@@ -261,7 +267,7 @@ export default function AdminProductFormPage() {
     if (!sourceImg) return;
     setVtoTriggering(true);
     try {
-      const job = await triggerVTO(id, sourceImg.id);
+      const job = await triggerVTO(id, sourceImg.id, selectedModels);
       setVtoJob(job);
     } finally {
       setVtoTriggering(false);
@@ -867,6 +873,11 @@ export default function AdminProductFormPage() {
         </div>
       )}
 
+      <VTOModelSelectDialog
+        open={vtoDialogOpen}
+        onClose={() => setVtoDialogOpen(false)}
+        onConfirm={handleVTOConfirm}
+      />
     </AdminLayout>
   );
 }

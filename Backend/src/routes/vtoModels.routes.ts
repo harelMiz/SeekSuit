@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { listModels, uploadModel, deleteModel } from '../controllers/vtoModels.controller';
+import { listModels, uploadPhoto, deleteFolder, deletePhoto, renameFolder } from '../controllers/vtoModels.controller';
 import { requireAdmin } from '../middleware/requireAdmin';
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB max
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (/^image\/(jpeg|jpg|png)$/.test(file.mimetype)) cb(null, true);
     else cb(new Error('Only JPEG/PNG images are allowed'));
@@ -13,15 +13,17 @@ const upload = multer({
 });
 
 const router = Router();
-
-// All VTO model management endpoints require admin auth
 router.use(requireAdmin);
 
-// GET    /api/vto-models              — list all model photos
-// POST   /api/vto-models              — upload a new model photo
-// DELETE /api/vto-models/:filename    — delete a model photo
+// GET    /api/vto-models                              — list all folders + photos
+// POST   /api/vto-models/:folderName/photos           — upload photo to folder
+// DELETE /api/vto-models/:folderName                  — delete entire model folder
+// DELETE /api/vto-models/:folderName/photos/:filename — delete single photo
+// PATCH  /api/vto-models/:folderName/rename           — rename folder { newName }
 router.get('/', listModels);
-router.post('/', upload.single('file'), uploadModel);
-router.delete('/:filename', deleteModel);
+router.post('/:folderName/photos', upload.single('file'), uploadPhoto);
+router.delete('/:folderName/photos/:filename', deletePhoto);
+router.delete('/:folderName', deleteFolder);
+router.patch('/:folderName/rename', renameFolder);
 
 export default router;

@@ -345,6 +345,16 @@ export const he: Record<string, string> = {
   "admin.vto.orderHint": "לחץ על תמונה לבחירת הסדר — הראשון יהיה הראשי",
   "admin.vto.deleteResult": "מחק תוצאה",
 
+  // VTO model-selection dialog
+  "admin.vto.selectModels.title": "בחר דוגמנים",
+  "admin.vto.selectModels.subtitle": "בחר על אילו דוגמנים להלביש את הבגד",
+  "admin.vto.selectModels.selectAll": "בחר הכל",
+  "admin.vto.selectModels.deselectAll": "בטל בחירה",
+  "admin.vto.selectModels.confirm": "הפעל VTO",
+  "admin.vto.selectModels.noModels": "אין דוגמנים מוגדרים — הוסף תמונות בעמוד הדוגמנים",
+  "admin.vto.selectModels.loading": "טוען דוגמנים...",
+  "admin.vto.selectModels.photos": "תמונות",
+
   // Background processing
   "admin.saveAndProcess": "שמור וקדם לעיבוד ←",
   "admin.processBackgrounds": "עבד רקעים",
@@ -388,11 +398,19 @@ export const he: Record<string, string> = {
   "admin.vtoModels.deleteSuccess": "התמונה נמחקה",
   "admin.vtoModels.deleteError": "המחיקה נכשלה",
   "admin.vtoModels.loadError": "טעינת תמונות הדוגמנים נכשלה",
+  "admin.vtoModels.photos": "תמונות",
+  "admin.vtoModels.addModel": "הוסף דוגמן",
+  "admin.vtoModels.newFolderPlaceholder": "שם הדוגמן...",
+  "admin.vtoModels.folderExists": "דוגמן עם שם זה כבר קיים",
+  "admin.vtoModels.deleteFolderConfirm": "למחוק את הדוגמן \"{name}\" וכל תמונותיו?",
+  "admin.vtoModels.renameSuccess": "הדוגמן שונה שם",
+  "admin.vtoModels.renameError": "שינוי השם נכשל",
 
   // Common
   "common.loading": "טוען...",
   "common.error": "אירעה שגיאה, נסה שנית",
   "common.back": "חזרה",
+  "common.cancel": "ביטול",
   "common.comingSoon": "בקרוב",
   "common.live": "פעיל",
 };

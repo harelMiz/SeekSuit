@@ -3,13 +3,18 @@ import * as vtoService from '../services/vto.service';
 
 // POST /api/vto/trigger
 export const triggerVTO = async (req: Request, res: Response) => {
-  const { productId, sourceImageId, seed } = req.body;
+  const { productId, sourceImageId, seed, selectedModels } = req.body;
   if (!productId || !sourceImageId) {
     res.status(400).json({ error: 'productId and sourceImageId are required' });
     return;
   }
   try {
-    const job = await vtoService.triggerVTOJob(String(productId), String(sourceImageId), seed !== undefined ? Number(seed) : undefined);
+    const job = await vtoService.triggerVTOJob(
+      String(productId),
+      String(sourceImageId),
+      seed !== undefined ? Number(seed) : undefined,
+      Array.isArray(selectedModels) ? selectedModels.map(String) : undefined,
+    );
     res.status(201).json(job);
   } catch (err: any) {
     res.status(500).json({ error: err.message ?? 'Failed to start VTO job' });

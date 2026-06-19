@@ -5,6 +5,7 @@ import axios from "axios";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { getProducts, deleteProduct, processAllImages, triggerVTO, updateProduct } from "../../services/product.service";
+import VTOModelSelectDialog from "../../components/admin/VTOModelSelectDialog";
 import type { Product, ProductType, ProductStatus } from "../../types/product";
 import { mainImage, bestImageUrl } from "../../types/product";
 import { colorDisplay } from "../../lib/colorMap";
@@ -41,6 +42,7 @@ export default function AdminInventoryPage() {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
+  const [vtoDialogOpen, setVtoDialogOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("filter") === "missing-images") {
@@ -220,7 +222,11 @@ export default function AdminInventoryPage() {
     }
   }
 
-  async function handleBulkVTO() {
+  function handleBulkVTO() {
+    setVtoDialogOpen(true);
+  }
+
+  async function handleBulkVTOConfirm(selectedModels: string[]) {
     setBulkWorking(true);
     try {
       const eligible = selectedProducts.filter(
@@ -229,7 +235,7 @@ export default function AdminInventoryPage() {
       await Promise.all(eligible.map((p) => {
         const src = p.images.find((img) => img.isMain && img.processedUrl) ?? p.images.find((img) => img.processedUrl);
         if (!src) return Promise.resolve();
-        return triggerVTO(p.id, src.id);
+        return triggerVTO(p.id, src.id, selectedModels);
       }));
     } finally {
       setBulkWorking(false);
@@ -608,6 +614,11 @@ export default function AdminInventoryPage() {
           </div>
         </div>
       )}
+      <VTOModelSelectDialog
+        open={vtoDialogOpen}
+        onClose={() => setVtoDialogOpen(false)}
+        onConfirm={handleBulkVTOConfirm}
+      />
     </AdminLayout>
   );
 }

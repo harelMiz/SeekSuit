@@ -128,11 +128,13 @@ export async function setFrontView(imageId: string, isFrontView: boolean): Promi
   await axios.patch(`${API_BASE}/api/vto/image/${imageId}/front-view`, { isFrontView });
 }
 
-// Trigger a VTO generation job for a given product + source image
-export async function triggerVTO(productId: string, sourceImageId: string): Promise<VTOJob> {
+// Trigger a VTO generation job for a given product + source image.
+// selectedModels: folder names to restrict VTO to; omit or empty = all models.
+export async function triggerVTO(productId: string, sourceImageId: string, selectedModels?: string[]): Promise<VTOJob> {
   const { data } = await axios.post<VTOJob>(`${API_BASE}/api/vto/trigger`, {
     productId,
     sourceImageId,
+    ...(selectedModels && selectedModels.length > 0 && { selectedModels }),
   });
   return data;
 }

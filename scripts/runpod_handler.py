@@ -210,10 +210,13 @@ def _get_models_local_dir() -> Path:
     return _models_local_dir
 
 
-def _collect_models():
+def _collect_models(selected: list | None = None):
+    """Return (modelKey, photo_path) pairs. If selected is provided, only include those folders."""
     models_dir = _get_models_local_dir()
     result = []
     for model_dir in sorted(d for d in models_dir.iterdir() if d.is_dir()):
+        if selected and model_dir.name not in selected:
+            continue
         photos = sorted(model_dir.glob("*.jpg")) + sorted(model_dir.glob("*.png"))
         photos = [p for p in photos if not p.stem.endswith(("_mask", "_auto_mask"))]
         for idx, photo in enumerate(photos):
@@ -234,9 +237,10 @@ def handler(job):
     garment_type = job_input.get("garment_type", "JACKETS").upper()
     product_id   = job_input.get("product_id", "unknown")
     source_id    = job_input.get("source_image_id", "unknown")
-    seed         = int(job_input.get("seed", SEED))
+    seed            = int(job_input.get("seed", SEED))
+    selected_models = job_input.get("selected_models") or None  # list of folder names, or None = all
 
-    print(f"[VTO] product={product_id}  type={garment_type}  source={source_id}")
+    print(f"[VTO] product={product_id}  type={garment_type}  source={source_id}  selected={selected_models}")
 
     resp = requests.get(garment_url, timeout=30)
     resp.raise_for_status()
@@ -244,7 +248,7 @@ def handler(job):
     garment_path.write_bytes(resp.content)
 
     fitdit = _get_fitdit()
-    models = _collect_models()
+    models = _collect_models(selected=selected_models)
     if not models:
         return {"error": "No model photos found in vto_models/"}
 

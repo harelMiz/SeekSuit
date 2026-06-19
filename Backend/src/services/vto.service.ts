@@ -48,7 +48,8 @@ async function runpodStatus(runpodJobId: string): Promise<{ status: string; outp
 // ── VTO service ──────────────────────────────────────────────────────────────
 
 // Trigger a new VTO generation job.
-export async function triggerVTOJob(productId: string, sourceImageId: string, seed?: number) {
+// selectedModels: optional list of model folder names to restrict VTO to (empty = all models).
+export async function triggerVTOJob(productId: string, sourceImageId: string, seed?: number, selectedModels?: string[]) {
   // Prevent duplicate PENDING/RUNNING jobs for the same source image
   const existing = await prisma.vTOJob.findFirst({
     where: { sourceImageId, status: { in: ['PENDING', 'RUNNING'] } },
@@ -79,6 +80,7 @@ export async function triggerVTOJob(productId: string, sourceImageId: string, se
       product_id:      productId,
       source_image_id: sourceImageId,
       ...(seed !== undefined && { seed }),
+      ...(selectedModels && selectedModels.length > 0 && { selected_models: selectedModels }),
     });
     return prisma.vTOJob.update({
       where: { id: job.id },
