@@ -47,20 +47,71 @@ async function runpodStatus(runpodJobId: string): Promise<{ status: string; outp
 
 // ── VTO service ──────────────────────────────────────────────────────────────
 
-// Trigger a new VTO generation job.
-// selectedModels: optional list of model folder names to restrict VTO to (empty = all models).
+// Trigger a VTO job.
+// If a DONE job already exists for this sourceImageId, the new run is merged into it:
+// only models not already covered are sent to RunPod; existing results are preserved.
 export async function triggerVTOJob(productId: string, sourceImageId: string, seed?: number, selectedModels?: string[]) {
-  // Prevent duplicate PENDING/RUNNING jobs for the same source image
-  const existing = await prisma.vTOJob.findFirst({
+  // Block if a job is already in-flight
+  const inFlight = await prisma.vTOJob.findFirst({
     where: { sourceImageId, status: { in: ['PENDING', 'RUNNING'] } },
   });
-  if (existing) return existing;
+  if (inFlight) return inFlight;
 
   const sourceImage = await prisma.productImage.findUnique({ where: { id: sourceImageId } });
   if (!sourceImage?.processedUrl) {
     throw new Error('Source image must have a processedUrl before VTO');
   }
 
+  // Check for an existing DONE job to merge into
+  const doneJob = await prisma.vTOJob.findFirst({
+    where: { sourceImageId, status: 'DONE' },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (doneJob) {
+    const existingResults = (doneJob.results ?? []) as unknown as VTOResult[];
+    // modelKey format is "folderName_photoIndex" (e.g. "model_04_0") — extract folder prefix
+    const coveredFolders  = new Set(existingResults.map((r) => r.modelKey.replace(/_\d+$/, '')));
+
+    // Determine which models still need to run
+    const modelsToRun = selectedModels
+      ? selectedModels.filter((m) => !coveredFolders.has(m))
+      : null; // null = all models (handler decides)
+
+    // Nothing new to generate — return existing job as-is
+    if (modelsToRun !== null && modelsToRun.length === 0) return doneJob;
+
+    if (!RUNPOD_API_KEY || !RUNPOD_ENDPOINT_ID) {
+      return prisma.vTOJob.update({
+        where: { id: doneJob.id },
+        data:  { status: 'FAILED', errorMsg: 'RUNPOD_API_KEY / RUNPOD_ENDPOINT_ID not configured in .env' },
+      });
+    }
+
+    try {
+      const runpodJobId = await runpodRun({
+        garment_url:     sourceImage.processedUrl,
+        garment_type:    'JACKETS',
+        product_id:      productId,
+        source_image_id: sourceImageId,
+        ...(seed !== undefined && { seed }),
+        ...(modelsToRun && modelsToRun.length > 0 && { selected_models: modelsToRun }),
+      });
+      // Reuse the existing VTOJob record — keep existing results, update status to RUNNING
+      return prisma.vTOJob.update({
+        where: { id: doneJob.id },
+        data:  { runpodJobId, status: 'RUNNING', errorMsg: null },
+      });
+    } catch (err: any) {
+      await prisma.vTOJob.update({
+        where: { id: doneJob.id },
+        data:  { status: 'FAILED', errorMsg: String(err.message) },
+      });
+      throw err;
+    }
+  }
+
+  // No existing job — create a fresh one
   const job = await prisma.vTOJob.create({
     data: { productId, sourceImageId, status: 'PENDING' },
   });
@@ -106,16 +157,23 @@ export async function getVTOJobStatus(jobId: string) {
     const rp = await runpodStatus(job.runpodJobId);
 
     if (rp.status === 'COMPLETED') {
-      const output  = rp.output as { results: Array<{ modelKey: string; url: string; storagePath?: string }> };
-      const results: VTOResult[] = (output?.results ?? []).map((r) => ({
+      const output     = rp.output as { results: Array<{ modelKey: string; url: string; storagePath?: string }> };
+      const newResults = (output?.results ?? []).map((r): VTOResult => ({
         modelKey:    r.modelKey,
         url:         r.url,
         selected:    true,
         storagePath: r.storagePath,
       }));
+
+      // Merge with existing results — new results override existing ones with the same modelKey
+      const existing  = (job.results ?? []) as unknown as VTOResult[];
+      const byKey     = new Map(existing.map((r) => [r.modelKey, r]));
+      for (const nr of newResults) byKey.set(nr.modelKey, nr);
+      const merged    = [...byKey.values()];
+
       return prisma.vTOJob.update({
         where: { id: jobId },
-        data:  { status: 'DONE', results: results as unknown as import('@prisma/client').Prisma.JsonArray },
+        data:  { status: 'DONE', results: merged as unknown as import('@prisma/client').Prisma.JsonArray },
       });
     }
 
