@@ -232,7 +232,7 @@ export async function getVTOJobStatus(jobId: string) {
 
   // If job has been RUNNING for over 30 minutes, RunPod results have likely expired.
   // Fall back to recovering results directly from Supabase storage.
-  const ageMs = Date.now() - new Date(job.createdAt).getTime();
+  const ageMs = Date.now() - new Date(job.updatedAt).getTime();
   if (ageMs > 30 * 60 * 1000) {
     return recoverFromStorage(job);
   }
