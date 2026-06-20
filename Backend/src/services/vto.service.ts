@@ -158,7 +158,7 @@ export async function triggerVTOJob(productId: string, sourceImageId: string, se
   try {
     const runpodJobId = await runpodRun({
       garment_url:     sourceImage.processedUrl,
-      garment_type:    'JACKETS',
+      garment_type:    garmentType,
       product_id:      productId,
       source_image_id: sourceImageId,
       ...(seed !== undefined && { seed }),
