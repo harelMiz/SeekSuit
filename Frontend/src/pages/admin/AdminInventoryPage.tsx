@@ -25,15 +25,37 @@ export default function AdminInventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
   const [jobStatuses, setJobStatuses] = useState<Record<string, JobStatus>>({});
-  const [sortBy, setSortBy] = useState<SortField>("createdAt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [filterType, setFilterType] = useState<ProductType | "">("");
-  const [filterColor, setFilterColor] = useState("");
-  const [filterStatus, setFilterStatus] = useState<ProductStatus | "">("");
-  const [filterMissingImages, setFilterMissingImages] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<"type" | "color" | "status" | null>(null);
+
+  // All filter/sort/page state lives in the URL so browser back/forward works correctly.
+  const filterType          = (searchParams.get("type")   as ProductType)   || "";
+  const filterColor         = searchParams.get("color")   || "";
+  const filterStatus        = (searchParams.get("status") as ProductStatus) || "";
+  const filterMissingImages = searchParams.get("missing")  === "1";
+  const filterVTOReady      = searchParams.get("vtoReady") === "1";
+  const page                = parseInt(searchParams.get("page") || "1", 10);
+  const sortBy              = (searchParams.get("sort") as SortField) || "createdAt";
+  const sortDir             = (searchParams.get("dir")  as SortDir)   || "desc";
+
+  function setFilter(updates: Record<string, string | null>) {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      for (const [key, val] of Object.entries(updates)) {
+        val ? next.set(key, val) : next.delete(key);
+      }
+      next.delete("page");
+      return next;
+    }, { replace: true });
+  }
+
+  function gotoPage(n: number) {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      n === 1 ? next.delete("page") : next.set("page", String(n));
+      return next;
+    }, { replace: true });
+  }
   const barRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const jobStatusesRef = useRef<Record<string, JobStatus>>({});
@@ -44,9 +66,10 @@ export default function AdminInventoryPage() {
   const [bulkWorking, setBulkWorking] = useState(false);
   const [vtoDialogOpen, setVtoDialogOpen] = useState(false);
 
+  // Legacy: ?filter=missing-images redirect → new URL param format
   useEffect(() => {
     if (searchParams.get("filter") === "missing-images") {
-      setFilterMissingImages(true);
+      setFilter({ missing: "1", filter: null });
     }
   }, []);
 
@@ -148,8 +171,11 @@ export default function AdminInventoryPage() {
   );
 
   function toggleSort(field: SortField) {
-    if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortBy(field); setSortDir("asc"); }
+    if (sortBy === field) {
+      setFilter({ sort: field, dir: sortDir === "asc" ? "desc" : "asc" });
+    } else {
+      setFilter({ sort: field, dir: "asc" });
+    }
   }
 
   // ── Single-row actions ──
@@ -259,6 +285,7 @@ export default function AdminInventoryPage() {
     if (filterColor && p.color.toLowerCase() !== filterColor.toLowerCase()) return false;
     if (filterStatus && p.status !== filterStatus) return false;
     if (filterMissingImages && !p.images.some((img) => img.rawUrl && !img.processedUrl)) return false;
+    if (filterVTOReady && !(p.vtoJobs && p.vtoJobs.length > 0)) return false;
     return true;
   });
   const sorted = [...filtered].sort((a, b) => {
@@ -270,7 +297,7 @@ export default function AdminInventoryPage() {
     }
     return sortDir === "asc" ? cmp : -cmp;
   });
-  const activeFilters = [filterType, filterColor, filterStatus, filterMissingImages || ""].filter(Boolean).length;
+  const activeFilters = [filterType, filterColor, filterStatus, filterMissingImages || "", filterVTOReady || ""].filter(Boolean).length;
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -339,7 +366,7 @@ export default function AdminInventoryPage() {
               { field: "sku" as SortField, labelKey: "SKU" },
               { field: "createdAt" as SortField, labelKey: "admin.sortByDate" },
             ]).map(({ field, labelKey }) => (
-              <button key={field} onClick={() => { toggleSort(field); setPage(1); }}
+              <button key={field} onClick={() => toggleSort(field)}
                 className={`flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${sortBy === field ? "bg-on-tertiary-container/15 text-on-tertiary-container" : "text-secondary hover:text-on-surface hover:bg-surface-container-high"}`}>
                 {labelKey.startsWith("admin.") ? t(labelKey) : labelKey}
                 {sortBy === field ? sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} /> : <ArrowUpDown size={11} className="opacity-25" />}
@@ -357,9 +384,9 @@ export default function AdminInventoryPage() {
               </button>
               {openDropdown === "type" && (
                 <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]`}>
-                  <button onClick={() => { setFilterType(""); setOpenDropdown(null); setPage(1); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterType ? "text-on-surface font-semibold" : "text-secondary"}`}>{t("shop.allTypes")}</button>
+                  <button onClick={() => { setFilter({ type: null }); setOpenDropdown(null); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterType ? "text-on-surface font-semibold" : "text-secondary"}`}>{t("shop.allTypes")}</button>
                   {availableTypes.map((type) => (
-                    <button key={type} onClick={() => { setFilterType(type); setOpenDropdown(null); setPage(1); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterType === type ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}>{t(`type.${type}`)}</button>
+                    <button key={type} onClick={() => { setFilter({ type }); setOpenDropdown(null); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterType === type ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}>{t(`type.${type}`)}</button>
                   ))}
                 </div>
               )}
@@ -374,9 +401,9 @@ export default function AdminInventoryPage() {
               </button>
               {openDropdown === "color" && (
                 <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[120px] max-h-56 overflow-y-auto`}>
-                  <button onClick={() => { setFilterColor(""); setOpenDropdown(null); setPage(1); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterColor ? "text-on-surface font-semibold" : "text-secondary"}`}>{t("shop.allColors")}</button>
+                  <button onClick={() => { setFilter({ color: null }); setOpenDropdown(null); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterColor ? "text-on-surface font-semibold" : "text-secondary"}`}>{t("shop.allColors")}</button>
                   {availableColors.map((color) => (
-                    <button key={color} onClick={() => { setFilterColor(color); setOpenDropdown(null); setPage(1); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterColor === color ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}>{colorDisplay(color, lang)}</button>
+                    <button key={color} onClick={() => { setFilter({ color }); setOpenDropdown(null); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterColor === color ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}>{colorDisplay(color, lang)}</button>
                   ))}
                 </div>
               )}
@@ -391,23 +418,30 @@ export default function AdminInventoryPage() {
               </button>
               {openDropdown === "status" && (
                 <div className={`absolute top-full ${lang === "he" ? "right-0" : "left-0"} mt-1 z-30 bg-surface border border-outline-variant rounded-xl shadow-xl py-1 min-w-[130px]`}>
-                  <button onClick={() => { setFilterStatus(""); setOpenDropdown(null); setPage(1); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterStatus ? "text-on-surface font-semibold" : "text-secondary"}`}>{t("shop.allStatuses")}</button>
+                  <button onClick={() => { setFilter({ status: null }); setOpenDropdown(null); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${!filterStatus ? "text-on-surface font-semibold" : "text-secondary"}`}>{t("shop.allStatuses")}</button>
                   {(["IN_STOCK", "OUT_OF_STOCK"] as ProductStatus[]).map((s) => (
-                    <button key={s} onClick={() => { setFilterStatus(s); setOpenDropdown(null); setPage(1); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterStatus === s ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}>{t(`status.${s.toLowerCase()}`)}</button>
+                    <button key={s} onClick={() => { setFilter({ status: s }); setOpenDropdown(null); }} className={`w-full ${lang === "he" ? "text-right" : "text-left"} px-3 py-2 text-xs transition-colors hover:bg-surface-container-high rounded-lg ${filterStatus === s ? "text-on-tertiary-container font-semibold" : "text-on-surface-variant"}`}>{t(`status.${s.toLowerCase()}`)}</button>
                   ))}
                 </div>
               )}
             </div>
 
             {/* Missing images toggle */}
-            <button onClick={() => { setFilterMissingImages((v) => !v); setPage(1); }}
+            <button onClick={() => setFilter({ missing: filterMissingImages ? null : "1" })}
               className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${filterMissingImages ? "bg-error/15 text-error" : "text-secondary hover:text-on-surface hover:bg-surface-container-high"}`}>
               <ImageOff size={11} />
               {t("insights.missingImages")}
             </button>
 
+            {/* VTO ready toggle */}
+            <button onClick={() => setFilter({ vtoReady: filterVTOReady ? null : "1" })}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${filterVTOReady ? "bg-on-tertiary-container/15 text-on-tertiary-container" : "text-secondary hover:text-on-surface hover:bg-surface-container-high"}`}>
+              <Wand2 size={11} />
+              {lang === "he" ? "דוגמנים מוכנים" : "Models Ready"}
+            </button>
+
             {activeFilters > 0 && (
-              <button onClick={() => { setFilterType(""); setFilterColor(""); setFilterStatus(""); setFilterMissingImages(false); setSearchParams({}); setPage(1); }}
+              <button onClick={() => setSearchParams(new URLSearchParams(), { replace: true })}
                 className="flex items-center gap-1 text-xs font-semibold text-error hover:opacity-70 transition-opacity ml-1 px-2 py-1.5 rounded-lg">
                 <X size={11} />
                 Clear ({activeFilters})
@@ -582,11 +616,11 @@ export default function AdminInventoryPage() {
               {t("admin.showing")} {Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)} {t("admin.of")} {sorted.length}{activeFilters > 0 ? ` (${t("admin.filteredFrom")}${products.length})` : ""} {t("admin.items")}
             </p>
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              <button onClick={() => gotoPage(Math.max(1, page - 1))} disabled={page === 1}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs text-on-surface-variant border border-outline-variant rounded-lg disabled:opacity-40 hover:bg-surface-container-high transition-colors">
                 <ChevronLeft size={13} /> Previous
               </button>
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0}
+              <button onClick={() => gotoPage(Math.min(totalPages, page + 1))} disabled={page === totalPages || totalPages === 0}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs text-on-surface-variant border border-outline-variant rounded-lg disabled:opacity-40 hover:bg-surface-container-high transition-colors">
                 Next <ChevronRight size={13} />
               </button>

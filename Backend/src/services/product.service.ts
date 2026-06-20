@@ -1,9 +1,11 @@
 import prisma from '../lib/prisma';
 import { CreateProductInput, UpdateProductInput, ProductFilters } from '../types/product.types';
 
-// Always include images sorted by order when returning a product
+// Always include images sorted by order when returning a product.
+// vtoJobs: at most 1 DONE job per product — used by the inventory page VTO-ready filter.
 const includeImages = {
-  images: { orderBy: { order: 'asc' as const } },
+  images:   { orderBy: { order: 'asc' as const } },
+  vtoJobs:  { where: { status: 'DONE' as const }, select: { id: true }, take: 1 },
 };
 
 // Insert a new product row into the database.
