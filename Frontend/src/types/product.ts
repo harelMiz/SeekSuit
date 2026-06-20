@@ -59,6 +59,8 @@ export interface Product {
   status: ProductStatus;
   attributes: Record<string, unknown> | null;
   images: ProductImage[];
+  // Populated by the list endpoint only: at most 1 element when a DONE VTOJob exists
+  vtoJobs?: { id: string }[];
   createdAt: string;
   updatedAt: string;
 }

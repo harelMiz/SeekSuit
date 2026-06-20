@@ -146,12 +146,63 @@ export async function triggerVTOJob(productId: string, sourceImageId: string, se
   }
 }
 
+// Recover a stuck RUNNING job by scanning Supabase storage for existing results.
+// Called when RunPod can no longer provide status (expired job or server downtime).
+async function recoverFromStorage(job: { id: string; productId: string; results: unknown }) {
+  const { data: files } = await supabase.storage
+    .from(VTO_BUCKET)
+    .list(job.productId, { limit: 200 });
+
+  if (!files || files.length === 0) {
+    return prisma.vTOJob.update({
+      where: { id: job.id },
+      data:  { status: 'FAILED', errorMsg: 'Processing was interrupted and no results were found in storage' },
+    });
+  }
+
+  const recovered: VTOResult[] = [];
+  for (const file of files) {
+    const storagePath = `${job.productId}/${file.name}`;
+    const match = file.name.match(/^(.+)_(\d{13})\.jpg$/);
+    if (!match) continue;
+    const modelKey = match[1];
+    const { data: signed } = await supabase.storage
+      .from(VTO_BUCKET)
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365 * 10);
+    if (!signed?.signedUrl) continue;
+    recovered.push({ modelKey, url: signed.signedUrl, selected: true, storagePath });
+  }
+
+  if (recovered.length === 0) {
+    return prisma.vTOJob.update({
+      where: { id: job.id },
+      data:  { status: 'FAILED', errorMsg: 'Processing was interrupted and results could not be reconstructed' },
+    });
+  }
+
+  const existing = (job.results ?? []) as unknown as VTOResult[];
+  const byKey    = new Map(existing.map((r) => [r.modelKey, r]));
+  for (const r of recovered) byKey.set(r.modelKey, r);
+
+  return prisma.vTOJob.update({
+    where: { id: job.id },
+    data:  { status: 'DONE', results: [...byKey.values()] as unknown as import('@prisma/client').Prisma.JsonArray },
+  });
+}
+
 // Poll RunPod for updates — "lazy pull" pattern called by the status endpoint.
 export async function getVTOJobStatus(jobId: string) {
   const job = await prisma.vTOJob.findUnique({ where: { id: jobId } });
   if (!job) return null;
 
   if (job.status === 'DONE' || job.status === 'FAILED' || !job.runpodJobId) return job;
+
+  // If job has been RUNNING for over 30 minutes, RunPod results have likely expired.
+  // Fall back to recovering results directly from Supabase storage.
+  const ageMs = Date.now() - new Date(job.createdAt).getTime();
+  if (ageMs > 30 * 60 * 1000) {
+    return recoverFromStorage(job);
+  }
 
   try {
     const rp = await runpodStatus(job.runpodJobId);
