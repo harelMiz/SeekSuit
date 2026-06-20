@@ -88,6 +88,9 @@ export async function triggerVTOJob(productId: string, sourceImageId: string, se
     throw new Error('Source image must have a processedUrl before VTO');
   }
 
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  const garmentType = product?.type === 'VEST' ? 'VESTS' : 'JACKETS';
+
   // Check for an existing DONE job to merge into
   const doneJob = await prisma.vTOJob.findFirst({
     where: { sourceImageId, status: 'DONE' },
@@ -117,7 +120,7 @@ export async function triggerVTOJob(productId: string, sourceImageId: string, se
     try {
       const runpodJobId = await runpodRun({
         garment_url:     sourceImage.processedUrl,
-        garment_type:    'JACKETS',
+        garment_type:    garmentType,
         product_id:      productId,
         source_image_id: sourceImageId,
         ...(seed !== undefined && { seed }),
