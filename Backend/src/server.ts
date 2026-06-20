@@ -11,6 +11,7 @@ import vtoRoutes from './routes/vto.routes';
 import vtoModelsRoutes from './routes/vtoModels.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { resetStaleProcessingJobs } from './services/job.service';
+import { startVTOPoller } from './services/vto.service';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -46,4 +47,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   await resetStaleProcessingJobs();
+  // Resume polling if any VTO jobs were in-flight when the server last stopped
+  startVTOPoller();
 });

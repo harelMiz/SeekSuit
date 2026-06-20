@@ -45,6 +45,32 @@ async function runpodStatus(runpodJobId: string): Promise<{ status: string; outp
   return res.json() as Promise<{ status: string; output?: unknown }>;
 }
 
+// ── Background poller ────────────────────────────────────────────────────────
+
+let pollerInterval: NodeJS.Timeout | null = null;
+
+// Start polling RunPod for all in-flight VTO jobs.
+// No-ops if already running; stops itself when no more RUNNING/PENDING jobs exist.
+export async function startVTOPoller() {
+  if (pollerInterval) return;
+  pollerInterval = setInterval(async () => {
+    try {
+      const running = await prisma.vTOJob.findMany({
+        where: { status: { in: ['PENDING', 'RUNNING'] } },
+        select: { id: true },
+      });
+      if (running.length === 0) {
+        clearInterval(pollerInterval!);
+        pollerInterval = null;
+        return;
+      }
+      await Promise.all(running.map((j) => getVTOJobStatus(j.id)));
+    } catch (_) {
+      // Network blip — keep polling
+    }
+  }, 30_000);
+}
+
 // ── VTO service ──────────────────────────────────────────────────────────────
 
 // Trigger a VTO job.
@@ -98,10 +124,12 @@ export async function triggerVTOJob(productId: string, sourceImageId: string, se
         ...(modelsToRun && modelsToRun.length > 0 && { selected_models: modelsToRun }),
       });
       // Reuse the existing VTOJob record — keep existing results, update status to RUNNING
-      return prisma.vTOJob.update({
+      const updated = await prisma.vTOJob.update({
         where: { id: doneJob.id },
         data:  { runpodJobId, status: 'RUNNING', errorMsg: null },
       });
+      startVTOPoller();
+      return updated;
     } catch (err: any) {
       await prisma.vTOJob.update({
         where: { id: doneJob.id },
@@ -133,10 +161,12 @@ export async function triggerVTOJob(productId: string, sourceImageId: string, se
       ...(seed !== undefined && { seed }),
       ...(selectedModels && selectedModels.length > 0 && { selected_models: selectedModels }),
     });
-    return prisma.vTOJob.update({
+    const updated = await prisma.vTOJob.update({
       where: { id: job.id },
       data:  { runpodJobId, status: 'RUNNING' },
     });
+    startVTOPoller();
+    return updated;
   } catch (err: any) {
     await prisma.vTOJob.update({
       where: { id: job.id },
