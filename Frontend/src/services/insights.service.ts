@@ -60,12 +60,14 @@ export interface SearchLogEntry {
   queryType: "TEXT" | "IMAGE" | "DETECT";
   resultCount: number;
   detectedColor: string | null;
+  detectedType: string | null;
   createdAt: string;
 }
 
-export async function fetchSearchHistory(limit = 50): Promise<SearchLogEntry[]> {
+export async function fetchSearchHistory(days = 7): Promise<SearchLogEntry[]> {
   const headers = await adminHeaders();
-  const { data } = await api.get<SearchLogEntry[]>(`/analytics/searches?limit=${limit}`, { headers });
+  const params = new URLSearchParams({ limit: "2000", days: String(days) });
+  const { data } = await api.get<SearchLogEntry[]>(`/analytics/searches?${params}`, { headers });
   return data;
 }
 

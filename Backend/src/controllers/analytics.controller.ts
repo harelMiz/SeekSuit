@@ -3,11 +3,15 @@ import prisma from '../lib/prisma';
 
 const VALID_SOURCES = ['BROWSE', 'SEARCH_RESULT', 'SIMILAR'] as const;
 
-// GET /api/analytics/searches?limit=50
+// GET /api/analytics/searches?limit=500&days=7
+// days=0 or omitted → return all history
 export const getSearchHistory = async (req: Request, res: Response) => {
-  const limit = Math.min(parseInt(String(req.query.limit ?? 50), 10) || 50, 200);
+  const limit = Math.min(parseInt(String(req.query.limit ?? 500), 10) || 500, 2000);
+  const days = parseInt(String(req.query.days ?? 0), 10) || 0;
+  const since = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
 
   const logs = await prisma.searchLog.findMany({
+    where: since ? { createdAt: { gte: since } } : undefined,
     orderBy: { createdAt: 'desc' },
     take: limit,
     select: {
@@ -16,6 +20,7 @@ export const getSearchHistory = async (req: Request, res: Response) => {
       queryType: true,
       resultCount: true,
       detectedColor: true,
+      detectedType: true,
       createdAt: true,
     },
   });

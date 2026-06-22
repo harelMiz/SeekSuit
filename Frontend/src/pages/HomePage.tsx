@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, DragEvent } from "react";
+import { Link } from "react-router-dom";
 import { ArrowLeft, Search, Camera, ChevronDown, X } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import Layout from "../components/layout/Layout";
@@ -425,10 +426,10 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="mt-12 flex flex-col items-start gap-2 text-white/25 animate-bounce-slow">
+          <Link to="/shop" className="mt-12 flex flex-col items-start gap-2 text-white/25 animate-bounce-slow hover:text-white/50 transition-colors">
             <span className="text-xs tracking-[0.3em] uppercase">{t("home.browseCatalog")}</span>
             <ChevronDown size={18} />
-          </div>
+          </Link>
         </div>
       </section>
 

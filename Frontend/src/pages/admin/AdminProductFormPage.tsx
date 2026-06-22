@@ -20,7 +20,8 @@ import {
   reorderProductImages,
   unpublishImage,
 } from "../../services/product.service";
-import { COLOR_OPTIONS, colorDisplay } from "../../lib/colorMap";
+import { useColors } from "../../context/ColorContext";
+import AddColorModal from "../../components/admin/AddColorModal";
 import type { ProductType, ProductStatus, ProductImage, VTOJob, VTOResult } from "../../types/product";
 
 const VTO_TYPES: ProductType[] = ["JACKET", "VEST"];
@@ -68,11 +69,13 @@ export default function AdminProductFormPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError]           = useState("");
 
+  const { allColorKeys, colorDisplay } = useColors();
   const [colorSearch, setColorSearch] = useState("");
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
+  const [addColorOpen, setAddColorOpen] = useState(false);
   const colorRef = useRef<HTMLDivElement>(null);
 
-  const filteredColors = COLOR_OPTIONS.filter((key) =>
+  const filteredColors = allColorKeys.filter((key) =>
     colorDisplay(key, lang).toLowerCase().includes(colorSearch.toLowerCase()) ||
     key.toLowerCase().includes(colorSearch.toLowerCase())
   );
@@ -495,7 +498,7 @@ export default function AdminProductFormPage() {
                 className={inputClass}
                 autoComplete="off"
               />
-              {colorDropdownOpen && filteredColors.length > 0 && (
+              {colorDropdownOpen && (
                 <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-surface-container-low border border-outline-variant rounded-lg shadow-lg text-sm">
                   {filteredColors.map((key) => (
                     <li
@@ -506,6 +509,12 @@ export default function AdminProductFormPage() {
                       {colorDisplay(key, lang)}
                     </li>
                   ))}
+                  <li
+                    onMouseDown={(e) => { e.preventDefault(); setColorDropdownOpen(false); setAddColorOpen(true); }}
+                    className="px-3 py-2 cursor-pointer hover:bg-surface-container text-on-tertiary-container font-semibold border-t border-outline-variant/60 flex items-center gap-1.5"
+                  >
+                    + הוסף צבע חדש
+                  </li>
                 </ul>
               )}
             </div>
@@ -882,6 +891,11 @@ export default function AdminProductFormPage() {
         </div>
       )}
 
+      <AddColorModal
+        open={addColorOpen}
+        onClose={() => setAddColorOpen(false)}
+        onAdded={(key) => handleChange("color", key)}
+      />
       <VTOModelSelectDialog
         open={vtoDialogOpen}
         onClose={() => setVtoDialogOpen(false)}

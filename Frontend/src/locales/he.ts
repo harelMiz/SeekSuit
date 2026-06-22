@@ -43,6 +43,7 @@ export const he: Record<string, string> = {
   "shop.allStatuses": "כל הסטטוסים",
   "shop.loading": "טוען מוצרים...",
   "shop.error": "שגיאה בטעינת המוצרים",
+  "shop.loadMore": "טען עוד",
 
   // Product types
   "type.JACKET": "ז'קט",
@@ -139,6 +140,9 @@ export const he: Record<string, string> = {
   "contact.hoursLabel": "שעות",
   "contact.hoursSummary": "א׳–ה׳ 10:00–19:00",
   "contact.hoursFri": "ו׳ 10:00–14:30",
+  "contact.phone": "מספר טלפון",
+  "contact.sending": "שולח...",
+  "contact.sendError": "שליחה נכשלה. נסה שוב או צור קשר טלפונית.",
 
   // Admin general
   "admin.dashboard": "לוח בקרה",
@@ -413,4 +417,15 @@ export const he: Record<string, string> = {
   "common.cancel": "ביטול",
   "common.comingSoon": "בקרוב",
   "common.live": "פעיל",
+
+  // Add Color Modal
+  "addColor.title": "הוסף צבע חדש",
+  "addColor.labelHe": "שם בעברית",
+  "addColor.placeholderHe": "כחול כהה",
+  "addColor.labelEn": "שם באנגלית",
+  "addColor.placeholderEn": "Dark Navy",
+  "addColor.keyPrefix": "מפתח:",
+  "addColor.saving": "שומר...",
+  "addColor.submit": "הוסף צבע",
+  "addColor.errorSave": "שגיאה בשמירה",
 };

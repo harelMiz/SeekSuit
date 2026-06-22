@@ -122,6 +122,7 @@ model SearchLog {
   queryType     QueryType
   resultCount   Int
   detectedColor String?
+  detectedType  String?
   createdAt     DateTime  @default(now())
 }
 
@@ -140,6 +141,16 @@ model VTOJob {
   results       Json?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+}
+
+// Custom colors added by admin at runtime (supplements the static colorMap on the frontend).
+model Color {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  labelHe   String
+  labelEn   String
+  hex       String
+  createdAt DateTime @default(now())
 }
 
 // Records product page views from public users (skipped when admin is logged in).

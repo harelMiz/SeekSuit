@@ -18,4 +18,16 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// On 401, force a sign-out and redirect to login so stale sessions are cleared
+api.interceptors.response.use(
+  (res) => res,
+  async (err) => {
+    if (err?.response?.status === 401 && window.location.pathname.startsWith("/admin")) {
+      await supabase.auth.signOut();
+      window.location.href = "/admin/login";
+    }
+    return Promise.reject(err);
+  },
+);
+
 export default api;

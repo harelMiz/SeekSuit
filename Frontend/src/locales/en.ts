@@ -43,6 +43,7 @@ export const en: Record<string, string> = {
   "shop.allStatuses": "All statuses",
   "shop.loading": "Loading products...",
   "shop.error": "Error loading products",
+  "shop.loadMore": "Load more",
 
   // Product types
   "type.JACKET": "Jacket",
@@ -119,6 +120,9 @@ export const en: Record<string, string> = {
   "contact.hoursLabel": "Hours",
   "contact.hoursSummary": "Sun–Thu 10:00–19:00",
   "contact.hoursFri": "Fri 10:00–14:30",
+  "contact.phone": "Phone Number",
+  "contact.sending": "Sending...",
+  "contact.sendError": "Failed to send. Please try again or contact us by phone.",
 
   // Admin general
   "admin.dashboard": "Dashboard",
@@ -413,4 +417,15 @@ export const en: Record<string, string> = {
   "common.cancel": "Cancel",
   "common.comingSoon": "Coming Soon",
   "common.live": "Live",
+
+  // Add Color Modal
+  "addColor.title": "Add New Color",
+  "addColor.labelHe": "Hebrew Name",
+  "addColor.placeholderHe": "כחול כהה",
+  "addColor.labelEn": "English Name",
+  "addColor.placeholderEn": "Dark Navy",
+  "addColor.keyPrefix": "Key:",
+  "addColor.saving": "Saving...",
+  "addColor.submit": "Add Color",
+  "addColor.errorSave": "Failed to save",
 };

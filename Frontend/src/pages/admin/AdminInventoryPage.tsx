@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, ImageOff, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUpDown, X, Sparkles, Loader2, Wand2, CheckSquare, Square, MinusSquare, PackageCheck, PackageX } from "lucide-react";
-import axios from "axios";
+import api from "../../services/api";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { getProducts, deleteProduct, processAllImages, triggerVTO, updateProduct } from "../../services/product.service";
 import VTOModelSelectDialog from "../../components/admin/VTOModelSelectDialog";
 import type { Product, ProductType, ProductStatus } from "../../types/product";
 import { mainImage, bestImageUrl } from "../../types/product";
-import { colorDisplay } from "../../lib/colorMap";
+import { useColors } from "../../context/ColorContext";
 
 const PAGE_SIZE = 10;
 const VTO_TYPES: ProductType[] = ["JACKET", "VEST"];
@@ -17,10 +17,10 @@ type JobStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 type SortField = "name" | "sku" | "createdAt";
 type SortDir = "asc" | "desc";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export default function AdminInventoryPage() {
   const { t, lang } = useLang();
+  const { colorDisplay } = useColors();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -105,8 +105,8 @@ export default function AdminInventoryPage() {
   useEffect(() => { jobStatusesRef.current = jobStatuses; }, [jobStatuses]);
 
   useEffect(() => {
-    axios
-      .get<{ id: string; status: JobStatus; image: { productId: string } }[]>(`${API_BASE}/api/jobs`)
+    api
+      .get<{ id: string; status: JobStatus; image: { productId: string } }[]>("/jobs")
       .then(({ data }) => {
         const active: Record<string, JobStatus> = {};
         for (const job of data) {
@@ -124,7 +124,7 @@ export default function AdminInventoryPage() {
     if (hasActive && !pollingRef.current) {
       pollingRef.current = setInterval(async () => {
         try {
-          const { data } = await axios.get<{ id: string; status: JobStatus; image: { productId: string } }[]>(`${API_BASE}/api/jobs`);
+          const { data } = await api.get<{ id: string; status: JobStatus; image: { productId: string } }[]>("/jobs");
           const current = jobStatusesRef.current;
           const jobsByProduct = new Map<string, JobStatus[]>();
           for (const job of data) {
@@ -167,7 +167,7 @@ export default function AdminInventoryPage() {
     () => [...new Set(products.map((p) => p.color).filter(Boolean))].sort((a, b) =>
       colorDisplay(a, lang).localeCompare(colorDisplay(b, lang), lang === "he" ? "he" : "en")
     ),
-    [products, lang]
+    [products, lang, colorDisplay]
   );
 
   function toggleSort(field: SortField) {
@@ -347,17 +347,8 @@ export default function AdminInventoryPage() {
         <div className="flex items-center justify-center h-48 text-secondary mt-8">{t("common.loading")}</div>
       ) : products.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-secondary mt-8">{t("shop.noProducts")}</div>
-      ) : sorted.length === 0 ? (
-        <div className="mt-8 bg-surface-container-low p-1 rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-center h-32 text-secondary text-sm">
-            {t("admin.noProductsFiltered")}{" "}
-            <button onClick={() => { setFilterType(""); setFilterColor(""); setFilterStatus(""); }} className="ml-1 text-on-tertiary-container font-semibold hover:opacity-70 transition-opacity">
-              {t("shop.clearFilters")}
-            </button>
-          </div>
-        </div>
       ) : (
-        <div className="mt-8 bg-surface-container-low p-1 rounded-2xl overflow-hidden">
+        <div className="mt-8 bg-surface-container-low p-1 rounded-2xl">
 
           {/* Sort + filter bar */}
           <div ref={barRef} className="flex items-center gap-1 px-4 py-2.5 border-b border-outline-variant/60 flex-wrap">
@@ -501,7 +492,13 @@ export default function AdminInventoryPage() {
             </div>
           )}
 
-          <table className="w-full">
+          {sorted.length === 0 && (
+            <div className="flex items-center justify-center h-32 text-secondary text-sm">
+              {t("admin.noProductsFiltered")}
+            </div>
+          )}
+
+          {sorted.length > 0 && (<><div className="overflow-hidden rounded-b-xl"><table className="w-full">
             <thead>
               <tr className="border-b border-outline-variant">
                 {/* Select all on page */}
@@ -608,7 +605,7 @@ export default function AdminInventoryPage() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between px-5 py-4 border-t border-outline-variant">
@@ -626,6 +623,7 @@ export default function AdminInventoryPage() {
               </button>
             </div>
           </div>
+        </>)}
         </div>
       )}
 

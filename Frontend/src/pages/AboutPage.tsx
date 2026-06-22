@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { MapPin, Phone, Clock } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import Layout from "../components/layout/Layout";
@@ -108,7 +109,7 @@ export default function AboutPage() {
                     <p className="text-xs text-secondary mb-0.5">{t("about.phone")}</p>
                     <a
                       href="tel:036887788"
-                      className="text-sm font-semibold text-on-surface hover:text-on-tertiary-container transition-colors"
+                      className="text-sm font-semibold text-on-surface"
                     >
                       03-688-7788
                     </a>
@@ -116,13 +117,13 @@ export default function AboutPage() {
                 </div>
               </div>
 
-              <a
-                href="tel:036887788"
+              <Link
+                to="/contact"
                 className="gold-shimmer inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-on-tertiary-fixed hover:opacity-90 transition-opacity"
               >
                 <Phone size={14} />
                 {t("about.bookAppointment")}
-              </a>
+              </Link>
             </div>
 
             {/* Card 2: Operating Hours */}

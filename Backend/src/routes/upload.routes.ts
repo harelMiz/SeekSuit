@@ -10,11 +10,15 @@ import {
   reorderImages,
   unpublishImage,
 } from '../controllers/upload.controller';
+import { requireAdmin } from '../middleware/requireAdmin';
 
 // Store uploaded files in memory — buffer goes straight to Supabase, never written to disk
 const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
+
+// All upload routes are admin-only
+router.use(requireAdmin);
 
 // POST   /api/uploads/raw                   — upload a single raw image (optional productId)
 // POST   /api/uploads/bulk                  — upload multiple images at once, all unassigned

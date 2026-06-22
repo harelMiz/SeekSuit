@@ -16,6 +16,7 @@ async function logSearchAsync(req: Request, data: {
   queryType: 'TEXT' | 'IMAGE' | 'DETECT';
   resultCount: number;
   detectedColor?: string | null;
+  detectedType?: string | null;
 }): Promise<void> {
   const auth = req.headers.authorization;
   if (auth?.startsWith('Bearer ')) {
@@ -28,6 +29,7 @@ async function logSearchAsync(req: Request, data: {
     queryType: data.queryType,
     resultCount: data.resultCount,
     detectedColor: data.detectedColor ?? null,
+    detectedType: data.detectedType ?? null,
   }});
 }
 
@@ -36,6 +38,7 @@ function logSearch(req: Request, data: {
   queryType: 'TEXT' | 'IMAGE' | 'DETECT';
   resultCount: number;
   detectedColor?: string | null;
+  detectedType?: string | null;
 }): void {
   logSearchAsync(req, data).catch(() => {});
 }
@@ -525,6 +528,6 @@ export const searchByImage = async (req: Request, res: Response) => {
     if (colorFiltered.length >= 1) results = colorFiltered;
   }
 
-  logSearch(req, { queryType: 'IMAGE', resultCount: results.length, detectedColor: dominantColor });
+  logSearch(req, { queryType: 'IMAGE', resultCount: results.length, detectedColor: dominantColor, detectedType: productType ?? null });
   res.json({ results, dominantColor });
 };

@@ -201,3 +201,21 @@ export async function getStockGapFromSearch(days: number = 30) {
 
   return { colorGaps, unmetDemand };
 }
+
+// Patterns that can read secrets or filesystem even in a SELECT context.
+const BLOCKED_SQL_PATTERNS = /\b(pg_read_file|pg_ls_dir|pg_stat_file|lo_import|lo_export|copy\s|current_setting|set_config|information_schema|pg_catalog|pg_class|pg_namespace|pg_authid|pg_shadow|pg_hba_file_rules)\b/i;
+
+// Executes a read-only SQL query. Only SELECT statements against application tables are permitted.
+export async function runReadOnlyQuery(sql: string): Promise<unknown> {
+  const normalized = sql.trim().toUpperCase();
+  if (!normalized.startsWith('SELECT')) {
+    throw new Error('Only SELECT queries are allowed.');
+  }
+  if (sql.includes(';') && sql.trim().indexOf(';') < sql.trim().length - 1) {
+    throw new Error('Multiple SQL statements are not allowed.');
+  }
+  if (BLOCKED_SQL_PATTERNS.test(sql)) {
+    throw new Error('Query references restricted system objects.');
+  }
+  return prisma.$queryRawUnsafe(sql);
+}

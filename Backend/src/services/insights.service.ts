@@ -7,7 +7,7 @@ export interface Insight {
   body: { he: string; en: string };
 }
 
-// Tools exposed to the LLM — each maps to a function in insights.tools.ts
+// Tools for auto-insights — fixed set, no dynamic queries
 const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'getInventoryOverview',
@@ -62,6 +62,21 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
 ];
 
+// Additional tool available only in chat — allows arbitrary SELECT queries
+const RUN_QUERY_TOOL: ToolDefinition = {
+  name: 'runQuery',
+  description: 'Execute a custom read-only SQL SELECT query against the database. Use this ONLY when the specific tools above cannot answer the question. Always prefer the specific tools when they cover the question.',
+  parameters: {
+    type: 'object',
+    properties: {
+      sql: { type: 'string', description: 'A valid PostgreSQL SELECT statement.' },
+    },
+    required: ['sql'],
+  },
+};
+
+const CHAT_TOOL_DEFINITIONS: ToolDefinition[] = [...TOOL_DEFINITIONS, RUN_QUERY_TOOL];
+
 async function handleToolCall(call: ToolCall): Promise<unknown> {
   const args = call.args as any;
   switch (call.name) {
@@ -72,6 +87,7 @@ async function handleToolCall(call: ToolCall): Promise<unknown> {
     case 'getSearchTrends':         return tools.getSearchTrends(args.days);
     case 'getProductViewTrends':    return tools.getProductViewTrends(args.days);
     case 'getStockGapFromSearch':   return tools.getStockGapFromSearch(args.days);
+    case 'runQuery':                return tools.runReadOnlyQuery(args.sql as string);
     default: return { error: `Unknown tool: ${call.name}` };
   }
 }
@@ -124,7 +140,13 @@ export async function chatWithAgent(
 
   const systemPrompt = `
 You are a helpful business analyst assistant for a suit and formal wear store.
-You have tools to query inventory, product views, and search trends.
+You have specific tools to query inventory, product views, and search trends.
+You also have a runQuery tool for custom SQL SELECT queries.
+
+Tool usage priority:
+1. Always prefer the specific tools (getInventoryOverview, getStockDetails, getColorDistribution, getImageCoverage, getSearchTrends, getProductViewTrends, getStockGapFromSearch) when they can answer the question.
+2. Only use runQuery if no specific tool covers the question.
+
 Answer the store owner's questions clearly and concisely using the available data.
 ${langInstruction}
 `;
@@ -135,5 +157,5 @@ ${langInstruction}
     : message;
 
   const llm = createLLMProvider();
-  return llm.runWithTools(systemPrompt, context, TOOL_DEFINITIONS, handleToolCall);
+  return llm.runWithTools(systemPrompt, context, CHAT_TOOL_DEFINITIONS, handleToolCall);
 }

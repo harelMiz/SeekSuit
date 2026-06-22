@@ -8,7 +8,8 @@ import type {
   VTOJob,
 } from "../types/product";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+// Only used for the AI service (port 8001), which is a separate Docker container
+const AI_BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:5000").replace(":5000", ":8001");
 
 // Fetch all products (each includes images array)
 export async function getProducts(filters?: ProductFilters): Promise<Product[]> {
@@ -56,21 +57,20 @@ export async function uploadRawImage(
   formData.append("isMain", String(isMain));
   formData.append("order", String(order));
 
-  const { data } = await axios.post<{ imageId: string; rawUrl: string }>(
-    `${API_BASE}/api/uploads/raw`,
-    formData
-  );
+  const { data } = await api.post<{ imageId: string; rawUrl: string }>("/uploads/raw", formData, {
+    headers: { "Content-Type": undefined },
+  });
   return data;
 }
 
 // Delete a specific product image (Storage + DB row)
 export async function deleteProductImage(imageId: string): Promise<void> {
-  await axios.delete(`${API_BASE}/api/uploads/image/${imageId}`);
+  await api.delete(`/uploads/image/${imageId}`);
 }
 
 // Set a specific image as the main image for its product
 export async function setMainImage(imageId: string): Promise<void> {
-  await axios.patch(`${API_BASE}/api/uploads/image/${imageId}/main`);
+  await api.patch(`/uploads/image/${imageId}/main`);
 }
 
 // Upload multiple files at once — all unassigned (bulk upload flow)
@@ -78,18 +78,15 @@ export async function setMainImage(imageId: string): Promise<void> {
 export async function uploadBulkImages(files: File[]): Promise<import("../types/product").ProductImage[]> {
   const formData = new FormData();
   files.forEach((f) => formData.append("files", f));
-  const { data } = await axios.post<import("../types/product").ProductImage[]>(
-    `${API_BASE}/api/uploads/bulk`,
-    formData
-  );
+  const { data } = await api.post<import("../types/product").ProductImage[]>("/uploads/bulk", formData, {
+    headers: { "Content-Type": undefined },
+  });
   return data;
 }
 
 // Fetch all images that have no product yet
 export async function getUnassignedImages(): Promise<import("../types/product").ProductImage[]> {
-  const { data } = await axios.get<import("../types/product").ProductImage[]>(
-    `${API_BASE}/api/uploads/unassigned`
-  );
+  const { data } = await api.get<import("../types/product").ProductImage[]>("/uploads/unassigned");
   return data;
 }
 
@@ -98,26 +95,23 @@ export async function assignImagesToProduct(
   imageIds: string[],
   product: import("../types/product").CreateProductInput
 ): Promise<Product> {
-  const { data } = await axios.post<Product>(`${API_BASE}/api/uploads/assign`, {
-    imageIds,
-    product,
-  });
+  const { data } = await api.post<Product>("/uploads/assign", { imageIds, product });
   return data;
 }
 
 // Trigger AI background removal for ALL unprocessed images of a product
 export async function processAllImages(productId: string): Promise<void> {
-  await axios.post(`${API_BASE}/api/jobs/product/${productId}`);
+  await api.post(`/jobs/product/${productId}`);
 }
 
 // Trigger AI background removal for a single image
 export async function processImage(imageId: string): Promise<void> {
-  await axios.post(`${API_BASE}/api/jobs/image/${imageId}`);
+  await api.post(`/jobs/image/${imageId}`);
 }
 
 // Queue AI background removal for every image that still lacks a processedUrl
 export async function processAllUnprocessed(): Promise<{ queued: number }> {
-  const { data } = await axios.post<{ queued: number }>(`${API_BASE}/api/jobs/process-all`);
+  const { data } = await api.post<{ queued: number }>("/jobs/process-all");
   return data;
 }
 
@@ -125,13 +119,13 @@ export async function processAllUnprocessed(): Promise<{ queued: number }> {
 
 // Mark / unmark a processed image as the front-view source for VTO
 export async function setFrontView(imageId: string, isFrontView: boolean): Promise<void> {
-  await axios.patch(`${API_BASE}/api/vto/image/${imageId}/front-view`, { isFrontView });
+  await api.patch(`/vto/image/${imageId}/front-view`, { isFrontView });
 }
 
 // Trigger a VTO generation job for a given product + source image.
 // selectedModels: folder names to restrict VTO to; omit or empty = all models.
 export async function triggerVTO(productId: string, sourceImageId: string, selectedModels?: string[]): Promise<VTOJob> {
-  const { data } = await axios.post<VTOJob>(`${API_BASE}/api/vto/trigger`, {
+  const { data } = await api.post<VTOJob>("/vto/trigger", {
     productId,
     sourceImageId,
     ...(selectedModels && selectedModels.length > 0 && { selectedModels }),
@@ -141,13 +135,13 @@ export async function triggerVTO(productId: string, sourceImageId: string, selec
 
 // Get current status of a VTO job (also triggers RunPod poll on the backend)
 export async function getVTOStatus(jobId: string): Promise<VTOJob> {
-  const { data } = await axios.get<VTOJob>(`${API_BASE}/api/vto/status/${jobId}`);
+  const { data } = await api.get<VTOJob>(`/vto/status/${jobId}`);
   return data;
 }
 
 // Get all VTO jobs for a product
 export async function getProductVTOJobs(productId: string): Promise<VTOJob[]> {
-  const { data } = await axios.get<VTOJob[]>(`${API_BASE}/api/vto/product/${productId}`);
+  const { data } = await api.get<VTOJob[]>(`/vto/product/${productId}`);
   return data;
 }
 
@@ -156,9 +150,7 @@ export async function updateVTOSelections(
   jobId: string,
   selections: Record<string, boolean>
 ): Promise<VTOJob> {
-  const { data } = await axios.patch<VTOJob>(`${API_BASE}/api/vto/${jobId}/selections`, {
-    selections,
-  });
+  const { data } = await api.patch<VTOJob>(`/vto/${jobId}/selections`, { selections });
   return data;
 }
 
@@ -167,8 +159,8 @@ export async function publishVTOImages(
   jobId: string,
   orderedKeys: string[]
 ): Promise<{ published: number; imageIds: string[] }> {
-  const { data } = await axios.post<{ published: number; imageIds: string[] }>(
-    `${API_BASE}/api/vto/${jobId}/publish`,
+  const { data } = await api.post<{ published: number; imageIds: string[] }>(
+    `/vto/${jobId}/publish`,
     { orderedKeys }
   );
   return data;
@@ -176,19 +168,17 @@ export async function publishVTOImages(
 
 // Reorder product images: set order 0..n-1 and isMain on first; unpublishes all others
 export async function reorderProductImages(productId: string, imageIds: string[]): Promise<void> {
-  await axios.patch(`${API_BASE}/api/uploads/product/${productId}/reorder`, { imageIds });
+  await api.patch(`/uploads/product/${productId}/reorder`, { imageIds });
 }
 
 // Remove an image from the public gallery without deleting it from storage
 export async function unpublishImage(imageId: string): Promise<void> {
-  await axios.patch(`${API_BASE}/api/uploads/image/${imageId}/unpublish`);
+  await api.patch(`/uploads/image/${imageId}/unpublish`);
 }
 
 // Delete a VTO result image from storage and remove it from the job
 export async function deleteVTOResult(jobId: string, modelKey: string): Promise<VTOJob> {
-  const { data } = await axios.delete<VTOJob>(
-    `${API_BASE}/api/vto/${jobId}/result/${encodeURIComponent(modelKey)}`
-  );
+  const { data } = await api.delete<VTOJob>(`/vto/${jobId}/result/${encodeURIComponent(modelKey)}`);
   return data;
 }
 
@@ -201,7 +191,7 @@ export async function detectFrontView(
   formData.append("file", file);
   formData.append("garment_type", garmentType);
   const { data } = await axios.post<{ isFront: boolean; confidence: number }>(
-    `${API_BASE.replace(":5000", ":8001")}/front-detect`,
+    `${AI_BASE}/front-detect`,
     formData
   );
   return data;
