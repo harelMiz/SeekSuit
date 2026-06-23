@@ -62,6 +62,7 @@ export async function embedText(text: string): Promise<EmbedTextResult> {
 export interface EmbedResult {
   embedding: number[];
   dominantColor: string | null;
+  dominantColorFamily: string[] | null;
 }
 
 export interface DetectedItem {
@@ -79,12 +80,22 @@ export interface DetectResult {
 
 // Send an arbitrary image to the AI service and get its CLIP embedding
 // plus the detected dominant color category (e.g. "BEIGE", "BLACK").
-// Used for query-time visual search — no background removal is applied.
-export async function embedImage(imageBuffer: Buffer, filename: string): Promise<EmbedResult> {
+// clean=true triggers BiRefNet background removal before embedding — use when
+// the image is a contextual crop (e.g. item picker selection from a full outfit photo).
+export async function embedImage(
+  imageBuffer: Buffer,
+  filename: string,
+  options: { clean?: boolean; productType?: string } = {}
+): Promise<EmbedResult> {
   const form = new FormData();
   form.append('file', imageBuffer, { filename, contentType: 'image/jpeg' });
 
-  const response = await fetch(`${AI_SERVICE_URL}/embed`, {
+  const qs = new URLSearchParams();
+  if (options.clean) qs.set('clean', 'true');
+  if (options.productType) qs.set('product_type', options.productType);
+  const url = `${AI_SERVICE_URL}/embed${qs.toString() ? '?' + qs.toString() : ''}`;
+
+  const response = await fetch(url, {
     method: 'POST',
     body: form,
     headers: form.getHeaders(),

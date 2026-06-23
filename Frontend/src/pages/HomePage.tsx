@@ -38,6 +38,8 @@ function toProduct(r: SearchResult): Product {
       rawUrl: null,
       processedUrl: r.processedUrl,
       isMain: true,
+      isFrontView: false,
+      isPublished: true,
       order: 0,
       createdAt: "",
       updatedAt: "",

@@ -1,12 +1,12 @@
 import os
 import time
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.responses import Response
 from supabase import create_client
 
 from bg_removal import process_image
-from image_search import embed_image, embed_text, detect_dominant_color
+from image_search import embed_image, embed_text, detect_dominant_color, classify_item_color
 from clothing_detector import detect_items
 
 load_dotenv()
@@ -92,18 +92,35 @@ async def process_preview(
 
 
 @app.post("/embed")
-async def embed(file: UploadFile = File(...)):
+async def embed(
+    file: UploadFile = File(...),
+    clean: bool = Query(False),
+    product_type: str | None = Query(None),
+):
     """
-    Accepts any image (e.g. a customer query photo) and returns its CLIP embedding
-    plus the detected dominant color category (e.g. "BEIGE", "BLACK").
-    Used by the backend for visual similarity search — no background removal applied.
+    Accepts any image and returns its CLIP embedding plus dominant color.
+    clean=true: runs BiRefNet background removal first (for item-picker crops
+    from contextual photos) so color detection sees a white background.
     """
-    image_bytes = await file.read()
+    original_bytes = await file.read()
+    image_bytes = original_bytes
+    if clean:
+        try:
+            image_bytes = process_image(original_bytes, filename=file.filename or "crop.jpg", product_type=product_type)
+        except Exception as e:
+            print(f"[embed] bg removal failed, using original: {e}")
     try:
         embedding = embed_image(image_bytes)
-        dominant_color = detect_dominant_color(image_bytes)
+        # For picker crops (product_type known): use CLIP zero-shot classification
+        # against color-labeled prompts — more robust than pixel analysis for items
+        # surrounded by other garments (e.g. a tie inside a full outfit photo).
+        if product_type:
+            dominant_color = classify_item_color(original_bytes, product_type)
+        else:
+            dominant_color = detect_dominant_color(image_bytes)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Embedding failed: {e}")
+    print(f"[embed] product_type={product_type} dominantColor={dominant_color}")
     return {"embedding": embedding, "dominantColor": dominant_color}
 
 
