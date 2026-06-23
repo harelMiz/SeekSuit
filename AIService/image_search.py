@@ -297,9 +297,7 @@ FASHION_SYNONYMS: dict[str, list[str]] = {
     'חליפה':    ['suit jacket', "men's blazer", 'formal jacket'],
     'חליפות':   ['suit jackets', "men's blazers", 'formal jackets'],
     "ג'קט":     ['jacket', 'blazer', 'suit jacket'],
-    "ז'קט":     ['jacket', 'blazer', 'suit jacket'],
     "ג'קטים":   ['jackets', 'blazers'],
-    "ז'קטים":   ['jackets', 'blazers'],
     # Vests
     'ווסט':     ['suit vest', 'waistcoat', "men's vest"],
     'וסט':      ['suit vest', 'waistcoat', "men's vest"],
@@ -315,6 +313,8 @@ FASHION_SYNONYMS: dict[str, list[str]] = {
     'עניבה':    ['necktie', 'tie', "men's dress tie"],
     'עניבות':   ['neckties', 'ties'],
     # Bow ties (single-word forms; two-word phrase handled by _PHRASE_SUBS)
+    'פפיון':    ['bow tie', 'bowtie', "men's bow tie"],
+    'פפיונים':  ['bow ties', 'bowties'],
     'פרפרית':   ['bow tie', 'bowtie'],
     # Belts
     'חגורה':    ['belt', 'dress belt', 'leather belt'],

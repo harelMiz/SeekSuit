@@ -45,15 +45,25 @@ export const he: Record<string, string> = {
   "shop.error": "שגיאה בטעינת המוצרים",
   "shop.loadMore": "טען עוד",
 
-  // Product types
-  "type.JACKET": "ז'קט",
+  // Product types (singular — used in admin forms)
+  "type.JACKET": "ג'קט",
   "type.PANTS": "מכנסיים",
   "type.SHIRT": "חולצה",
   "type.VEST": "וסט",
   "type.SHOES": "נעליים",
   "type.TIE": "עניבה",
-  "type.BOW_TIE": "פרפר",
+  "type.BOW_TIE": "פפיון",
   "type.BELT": "חגורה",
+
+  // Product types plural — used in shop category filter
+  "type.JACKET_plural": "ג'קטים",
+  "type.PANTS_plural": "מכנסיים",
+  "type.SHIRT_plural": "חולצות",
+  "type.VEST_plural": "וסטים",
+  "type.SHOES_plural": "נעליים",
+  "type.TIE_plural": "עניבות",
+  "type.BOW_TIE_plural": "פפיונים",
+  "type.BELT_plural": "חגורות",
 
   // Product status
   "status.in_stock": "במלאי",

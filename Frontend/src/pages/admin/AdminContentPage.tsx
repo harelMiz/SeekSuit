@@ -31,6 +31,8 @@ const TABS: { id: string; labelHe: string; labelEn: string; keys: string[] }[] =
       "product.backToShop", "product.visitStore", "product.noImage",
       "product.readyToShip", "product.similar", "product.similarNote",
       "status.out_of_stock",
+      "type.JACKET_plural", "type.PANTS_plural", "type.SHIRT_plural", "type.VEST_plural",
+      "type.SHOES_plural", "type.TIE_plural", "type.BOW_TIE_plural", "type.BELT_plural",
     ],
   },
   {

@@ -24,7 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   VEST: "וסט",
   SHOES: "נעליים",
   TIE: "עניבה",
-  BOW_TIE: "פרפר",
+  BOW_TIE: "פפיון",
   BELT: "חגורה",
 };
 

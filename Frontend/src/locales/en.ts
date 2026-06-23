@@ -45,7 +45,7 @@ export const en: Record<string, string> = {
   "shop.error": "Error loading products",
   "shop.loadMore": "Load more",
 
-  // Product types
+  // Product types (singular — used in admin forms)
   "type.JACKET": "Jacket",
   "type.PANTS": "Pants",
   "type.SHIRT": "Shirt",
@@ -54,6 +54,16 @@ export const en: Record<string, string> = {
   "type.TIE": "Tie",
   "type.BOW_TIE": "Bow Tie",
   "type.BELT": "Belt",
+
+  // Product types plural — used in shop category filter
+  "type.JACKET_plural": "Jackets",
+  "type.PANTS_plural": "Pants",
+  "type.SHIRT_plural": "Shirts",
+  "type.VEST_plural": "Vests",
+  "type.SHOES_plural": "Shoes",
+  "type.TIE_plural": "Ties",
+  "type.BOW_TIE_plural": "Bow Ties",
+  "type.BELT_plural": "Belts",
 
   // Product status
   "status.in_stock": "In Stock",

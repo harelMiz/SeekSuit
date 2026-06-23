@@ -152,7 +152,7 @@ export default function ShopPage() {
                       }`}
                     >
                       {typeFilter === type && <span className="w-1 h-1 rounded-full bg-[#e9c176] shrink-0" />}
-                      {t(`type.${type}`)}
+                      {t(`type.${type}_plural`)}
                     </button>
                   ))}
                 </div>
