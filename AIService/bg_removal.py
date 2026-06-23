@@ -66,9 +66,9 @@ def _load_model(key: str) -> tuple:
 
     if local.is_absolute():
         if not (local / 'config.json').exists():
-            print(f"[pipeline] Fine-tuned model not found at {model_id}, falling back to portrait")
+            print(f"[pipeline] Fine-tuned model not found at {model_id}, falling back to default")
             model = AutoModelForImageSegmentation.from_pretrained(
-                _MODEL_IDS['portrait'], trust_remote_code=True
+                _MODEL_IDS['default'], trust_remote_code=True
             )
         else:
             # Treat model directory as a Python package so relative imports work

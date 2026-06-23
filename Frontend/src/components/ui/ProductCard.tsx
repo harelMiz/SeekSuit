@@ -85,7 +85,7 @@ export default function ProductCard({ product, matchPercentage, source = "BROWSE
             <span className={`text-[10px] font-medium tracking-wider uppercase ${
               product.status === "OUT_OF_STOCK" ? "text-red-400/55" : "text-emerald-400/65"
             }`}>
-              {t(`status.${product.status}`)}
+              {t(`status.${product.status.toLowerCase()}`)}
             </span>
           </div>
         </div>

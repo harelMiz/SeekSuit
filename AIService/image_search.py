@@ -25,6 +25,109 @@ def _get_clip() -> tuple[CLIPModel, CLIPProcessor]:
     return _model, _processor
 
 
+# Item label used in color-classification prompts, keyed by ProductType enum value.
+_TYPE_LABELS: dict[str, str] = {
+    'JACKET':  'suit jacket',
+    'VEST':    'vest',
+    'PANTS':   'dress pants',
+    'SHIRT':   'dress shirt',
+    'TIE':     'necktie',
+    'BOW_TIE': 'bow tie',
+    'BELT':    'leather belt',
+    'SHOES':   'dress shoes',
+}
+
+# (color_code, CLIP phrase word) pairs — must stay in sync with COLOR_FILTER_FAMILY in backend.
+_COLOR_CANDIDATES: list[tuple[str, str]] = [
+    ('BLACK',     'black'),
+    ('WHITE',     'white'),
+    ('BROWN',     'brown'),
+    ('GRAY',      'gray'),
+    ('NAVY',      'navy blue'),
+    ('RED',       'red'),
+    ('BURGUNDY',  'burgundy'),
+    ('GREEN',     'green'),
+    ('OLIVE',     'olive'),
+    ('YELLOW',    'yellow'),
+    ('ORANGE',    'orange'),
+    ('PINK',      'pink'),
+    ('PURPLE',    'purple'),
+    ('SKY_BLUE',  'light blue'),
+    ('TURQUOISE', 'turquoise'),
+    ('CREAM',     'cream'),
+    ('IVORY',     'ivory'),
+    ('BEIGE',     'beige'),
+]
+
+# Pre-encoded text embeddings cached per item label (built on first use).
+_color_text_cache: dict[str, tuple[list[str], torch.Tensor]] = {}
+
+
+def _get_color_text_features(item_label: str) -> tuple[list[str], torch.Tensor]:
+    if item_label not in _color_text_cache:
+        model, processor = _get_clip()
+        phrases = [f"a {word} {item_label}" for _, word in _COLOR_CANDIDATES]
+        codes = [code for code, _ in _COLOR_CANDIDATES]
+        inputs = processor(text=phrases, return_tensors="pt", padding=True, truncation=True)
+        with torch.no_grad():
+            feats = model.get_text_features(**inputs)
+            feats = feats / feats.norm(dim=-1, keepdim=True)
+        _color_text_cache[item_label] = (codes, feats)
+        print(f"[embedder] Cached color text embeddings for: {item_label}")
+    return _color_text_cache[item_label]
+
+
+def get_clip_color_family(color_code: str, item_label: str, threshold: float = 0.905) -> list[str]:
+    """
+    Returns color codes whose CLIP text embedding is within `threshold` cosine
+    similarity of `color_code` for the given item type.
+    E.g. for color_code='BROWN', item_label='necktie', threshold=0.905 might return
+    ['BROWN', 'BEIGE', 'CREAM', 'ORANGE'] because those prompts are closest in CLIP
+    text space — no manual family definitions needed.
+    """
+    codes, text_feats = _get_color_text_features(item_label)
+    if color_code not in codes:
+        return [color_code]
+
+    idx = codes.index(color_code)
+    sims = (text_feats[idx] @ text_feats.T).tolist()
+
+    pairs = sorted(zip(codes, sims), key=lambda x: -x[1])
+    print(f"[embedder] color family for '{color_code} {item_label}' (threshold={threshold}):")
+    for c, s in pairs[:8]:
+        marker = " ✓" if s >= threshold else ""
+        print(f"  {c}: {s:.4f}{marker}")
+
+    return [c for c, s in zip(codes, sims) if s >= threshold]
+
+
+def classify_item_color(image_bytes: bytes, product_type: str) -> str | None:
+    """
+    CLIP zero-shot color classification for a contextual crop (e.g. a tie inside
+    an outfit photo). Compares the image against prompts like "a yellow necktie",
+    "a red necktie", etc. and returns the highest-scoring color code.
+    More robust than pixel analysis for items surrounded by other garments.
+    """
+    item_label = _TYPE_LABELS.get(product_type.upper())
+    if not item_label:
+        return None
+
+    codes, text_feats = _get_color_text_features(item_label)
+
+    model, processor = _get_clip()
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    inputs = processor(images=image, return_tensors="pt")
+    with torch.no_grad():
+        img_feat = model.get_image_features(**inputs)
+        img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
+
+    sims = (img_feat @ text_feats.T)[0]
+    best_idx = int(sims.argmax())
+    best_color = codes[best_idx]
+    print(f"[embedder] classify_item_color product_type={product_type} → {best_color} (score={sims[best_idx]:.3f})")
+    return best_color
+
+
 # Base color reference points in RGB space — one entry per base color (English key).
 # Variants (LIGHT_, DARK_, _DOTTED, _STRIPED) are handled by prefix extraction in the backend.
 # RGB values calibrated for center-cropped garment photos.
@@ -50,7 +153,7 @@ _COLOR_REFS: dict[str, tuple[int, int, int]] = {
 }
 
 
-def detect_dominant_color(image_bytes: bytes) -> str | None:
+def detect_dominant_color(image_bytes: bytes, tight: bool = False) -> str | None:
     """
     Returns the dominant color name for a garment image using HSV classification.
 
@@ -59,14 +162,17 @@ def detect_dominant_color(image_bytes: bytes) -> str | None:
     dark navy pixel and a bright navy pixel share the same hue even though their
     RGB values are far apart in Euclidean space.
 
-    The old near-black RGB filter has been removed: it incorrectly discarded dark
-    garment pixels (e.g. very dark burgundy with all channels < 35), leaving only
-    neutral gray pixels which then matched BLACK.
+    tight=True uses a narrower center crop for thin items (ties, belts) where the
+    garment occupies only the center of the bounding-box crop.
     """
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     w, h = image.size
-    # Crop to center — where the main garment sits in AI-processed portrait images
-    image = image.crop((int(w * 0.2), int(h * 0.17), int(w * 0.8), int(h * 0.82)))
+    if tight:
+        # Narrow slice: targets the item itself, avoids surrounding fabric
+        image = image.crop((int(w * 0.35), int(h * 0.30), int(w * 0.65), int(h * 0.70)))
+    else:
+        # Standard crop — where the main garment sits in AI-processed portrait images
+        image = image.crop((int(w * 0.2), int(h * 0.17), int(w * 0.8), int(h * 0.82)))
 
     pixels = np.array(image).reshape(-1, 3).astype(np.float32)
 

@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import { createClient } from '@supabase/supabase-js';
+import * as aiService from './ai.service';
 
 const RUNPOD_API_KEY     = process.env.RUNPOD_API_KEY     ?? '';
 const RUNPOD_ENDPOINT_ID = process.env.RUNPOD_ENDPOINT_ID ?? '';
@@ -298,6 +299,26 @@ export async function updateVTOSelections(jobId: string, selections: Record<stri
   });
 }
 
+// Download a VTO image by URL and store its CLIP embedding in the DB.
+// Called fire-and-forget after publishing — failures are logged but do not surface.
+async function embedVTOImage(imageId: string, imageUrl: string): Promise<void> {
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const { embedding, dominantColor } = await aiService.embedImage(buffer, `${imageId}.jpg`);
+    const pgVector = `[${embedding.join(',')}]`;
+    await prisma.$executeRaw`
+      UPDATE "ProductImage"
+      SET embedding = ${pgVector}::vector,
+          "dominantColor" = COALESCE("dominantColor", ${dominantColor})
+      WHERE id = ${imageId}
+    `;
+  } catch (err: any) {
+    console.error(`[VTO] Failed to embed image ${imageId}: ${err.message}`);
+  }
+}
+
 // Publish VTO images as ProductImage rows so they appear in the product gallery.
 // orderedKeys: modelKeys in desired display order — first item becomes the main image.
 export async function publishVTOImages(jobId: string, orderedKeys: string[]) {
@@ -339,6 +360,10 @@ export async function publishVTOImages(jobId: string, orderedKeys: string[]) {
       },
     });
     created.push(img.id);
+
+    // Generate CLIP embedding for the published VTO image (fire-and-forget so it
+    // doesn't block the publish response if the AI service is slow or down)
+    embedVTOImage(img.id, r.url);
 
     // Record which ProductImage was created from this VTO result
     const idx = updatedResults.findIndex((x) => x.modelKey === key);

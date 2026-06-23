@@ -81,24 +81,30 @@ const QUERY_COLOR_WORDS: Record<string, string> = {
 
 // When filtering by a detected color, include visually adjacent color families.
 const COLOR_FILTER_FAMILY: Record<string, string[]> = {
+  // Achromatics
   BLACK:     ['BLACK'],
   WHITE:     ['WHITE', 'IVORY', 'CREAM'],
-  BROWN:     ['BROWN'],
-  RED:       ['RED', 'BURGUNDY'],
   GRAY:      ['GRAY'],
-  SKY_BLUE:  ['SKY_BLUE', 'TURQUOISE'],
-  YELLOW:    ['YELLOW'],
-  CREAM:     ['CREAM', 'IVORY', 'BEIGE'],
+  // Warm neutrals — all adjacent to each other (CLIP often confuses them)
+  BROWN:     ['BROWN', 'BEIGE', 'CREAM', 'IVORY', 'ORANGE'],
+  BEIGE:     ['BEIGE', 'CREAM', 'IVORY', 'BROWN', 'YELLOW'],
+  CREAM:     ['CREAM', 'IVORY', 'BEIGE', 'BROWN', 'YELLOW'],
   IVORY:     ['IVORY', 'CREAM', 'WHITE', 'BEIGE'],
-  PURPLE:    ['PURPLE'],
-  NAVY:      ['NAVY'],
-  ORANGE:    ['ORANGE'],
-  GREEN:     ['GREEN', 'OLIVE'],
-  OLIVE:     ['OLIVE', 'GREEN'],
-  PINK:      ['PINK'],
-  BURGUNDY:  ['BURGUNDY', 'RED'],
-  TURQUOISE: ['TURQUOISE', 'SKY_BLUE'],
-  BEIGE:     ['BEIGE', 'CREAM', 'IVORY'],
+  YELLOW:    ['YELLOW', 'BEIGE', 'CREAM', 'ORANGE'],
+  ORANGE:    ['ORANGE', 'BROWN', 'YELLOW', 'BEIGE'],
+  // Reds and pinks
+  RED:       ['RED', 'BURGUNDY', 'ORANGE', 'PINK'],
+  BURGUNDY:  ['BURGUNDY', 'RED', 'BROWN', 'PURPLE', 'ORANGE'],
+  PINK:      ['PINK', 'RED', 'PURPLE'],
+  // Blues
+  NAVY:      ['NAVY', 'SKY_BLUE', 'PURPLE'],
+  SKY_BLUE:  ['SKY_BLUE', 'NAVY', 'TURQUOISE'],
+  TURQUOISE: ['TURQUOISE', 'SKY_BLUE', 'GREEN'],
+  // Greens
+  GREEN:     ['GREEN', 'OLIVE', 'TURQUOISE'],
+  OLIVE:     ['OLIVE', 'GREEN', 'BROWN'],
+  // Purple
+  PURPLE:    ['PURPLE', 'NAVY', 'BURGUNDY', 'PINK'],
 };
 
 function detectQueryColor(query: string): string | null {
@@ -123,10 +129,7 @@ function productMatchesColorFamily(
 
   if (dominantColor && family.includes(extractBaseColor(dominantColor))) return true;
 
-  if (manualColor) {
-    const code = QUERY_COLOR_WORDS[manualColor] ?? QUERY_COLOR_WORDS[manualColor.toLowerCase()];
-    if (code && family.includes(extractBaseColor(code))) return true;
-  }
+  if (manualColor && family.includes(extractBaseColor(manualColor))) return true;
 
   return false;
 }
@@ -179,6 +182,7 @@ const COLOR_RGB_REFS: Record<string, [number, number, number]> = {
 };
 
 // Extracts the base color from a stored color key (e.g. "LIGHT_NAVY" → "NAVY", "GRAY_STRIPED" → "GRAY").
+// Also handles Hebrew color names (e.g. "כתום מפוספס" → "ORANGE") via QUERY_COLOR_WORDS.
 function extractBaseColor(color: string): string {
   const upper = color.toUpperCase();
   for (const base of BASE_COLORS) {
@@ -186,6 +190,11 @@ function extractBaseColor(color: string): string {
         upper === `${base}_DOTTED` || upper === `${base}_STRIPED`) {
       return base;
     }
+  }
+  const words = color.trim().split(/[\s_,]+/);
+  for (const word of words) {
+    const code = QUERY_COLOR_WORDS[word] ?? QUERY_COLOR_WORDS[word.toLowerCase()];
+    if (code) return code;
   }
   return upper;
 }
@@ -417,8 +426,13 @@ export const searchByImage = async (req: Request, res: Response) => {
 
   let embedding: number[];
   let dominantColor: string | null = null;
+  let dominantColorFamily: string[] | null = null;
   try {
-    ({ embedding, dominantColor } = await aiService.embedImage(file.buffer, file.originalname || 'query.jpg'));
+    ({ embedding, dominantColor, dominantColorFamily } = await aiService.embedImage(
+      file.buffer,
+      file.originalname || 'query.jpg',
+      productType ? { clean: true, productType } : {}
+    ));
   } catch (err: any) {
     res.status(502).json({ error: `Embedding failed: ${err.message}` });
     return;
@@ -503,9 +517,13 @@ export const searchByImage = async (req: Request, res: Response) => {
         LIMIT ${limit}
       `;
 
+  // For picker crops (productType set), color detection from a contextual crop is
+  // unreliable — skip the boost and rely on CLIP similarity alone.
+  const queryColor = productType ? null : dominantColor;
+
   // Apply proximity-based color boost and re-sort (boost may change ranking)
   const boosted = rows.map(r => {
-    const boost = dominantColor ? colorProximityBoost(dominantColor, r.dominantColor) : 0;
+    const boost = queryColor ? colorProximityBoost(queryColor, r.dominantColor) : 0;
     return { ...r, similarity: boost > 0 ? Math.min(Number(r.similarity) + boost, 1) : Number(r.similarity) };
   });
   boosted.sort((a, b) => b.similarity - a.similarity);
@@ -515,14 +533,14 @@ export const searchByImage = async (req: Request, res: Response) => {
 
   let results = boosted.filter(r => r.similarity >= minThreshold);
 
-  // Hard color family filter — same strategy as text search.
-  // Only applied when dominantColor is detected and we're not already type-filtered to a very
-  // small set (keeps at least 2 results, otherwise falls back to no color filter).
-  if (dominantColor && results.length > 0) {
-    const colorFiltered = results.filter(r =>
-      productMatchesColorFamily(dominantColor!, r.dominantColor, r.color)
-    );
-    if (colorFiltered.length >= 1) results = colorFiltered;
+  // For picker searches: apply a color hard-filter when BiRefNet detected a specific
+  // chromatic color. Skip when BLACK is detected — it often misidentifies dark-toned
+  // items (e.g. brown shoes with dark soles), and CLIP handles black items correctly anyway.
+  console.log(`[search] productType=${productType} dominantColor=${dominantColor} results=${results.length}`);
+  if (productType && dominantColor && dominantColor !== 'BLACK') {
+    const colorFiltered = results.filter(r => productMatchesColorFamily(dominantColor, r.dominantColor, r.color));
+    console.log(`[search] color family filter ${dominantColor} → ${colorFiltered.length} results`);
+    if (colorFiltered.length > 0) results = colorFiltered;
   }
 
   logSearch(req, { queryType: 'IMAGE', resultCount: results.length, detectedColor: dominantColor });
