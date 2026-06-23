@@ -9,6 +9,10 @@ import analyticsRoutes from './routes/analytics.routes';
 import insightsRoutes from './routes/insights.routes';
 import vtoRoutes from './routes/vto.routes';
 import vtoModelsRoutes from './routes/vtoModels.routes';
+import colorRoutes from './routes/color.routes';
+import contactRoutes from './routes/contact.routes';
+import galleryRoutes from './routes/gallery.routes';
+import contentRoutes from './routes/content.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { resetStaleProcessingJobs } from './services/job.service';
 import { startVTOPoller } from './services/vto.service';
@@ -36,6 +40,10 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/vto', vtoRoutes);
 app.use('/api/vto-models', vtoModelsRoutes);
+app.use('/api/colors', colorRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/gallery', galleryRoutes);
+app.use('/api/content', contentRoutes);
 
 // Global error handler — must be registered after all routes
 app.use(errorHandler);

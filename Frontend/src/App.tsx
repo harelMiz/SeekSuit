@@ -1,6 +1,14 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "./context/AuthContext";
+import { ColorProvider } from "./context/ColorContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Public pages
@@ -9,6 +17,7 @@ import ShopPage from "./pages/ShopPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import GalleryPage from "./pages/GalleryPage";
 
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 
@@ -19,6 +28,8 @@ import AdminInventoryPage from "./pages/admin/AdminInventoryPage";
 import AdminProductFormPage from "./pages/admin/AdminProductFormPage";
 import AdminUploadsPage from "./pages/admin/AdminUploadsPage";
 import AdminVTOModelsPage from "./pages/admin/AdminVTOModelsPage";
+import AdminGalleryPage from "./pages/admin/AdminGalleryPage";
+import AdminContentPage from "./pages/admin/AdminContentPage";
 
 // Public routes:
 // /               → homepage with AI search hero
@@ -39,7 +50,9 @@ function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
+        <ColorProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             {/* Public */}
             <Route path="/" element={<HomePage />} />
@@ -47,6 +60,7 @@ function App() {
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/gallery" element={<GalleryPage />} />
 
             {/* Auth callback — handles password reset and invite acceptance */}
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -61,8 +75,11 @@ function App() {
             <Route path="/admin/inventory/:id/edit" element={<ProtectedRoute><AdminProductFormPage /></ProtectedRoute>} />
             <Route path="/admin/uploads" element={<ProtectedRoute><AdminUploadsPage /></ProtectedRoute>} />
             <Route path="/admin/vto-models" element={<ProtectedRoute><AdminVTOModelsPage /></ProtectedRoute>} />
+            <Route path="/admin/gallery" element={<ProtectedRoute><AdminGalleryPage /></ProtectedRoute>} />
+            <Route path="/admin/content" element={<ProtectedRoute><AdminContentPage /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
+        </ColorProvider>
       </AuthProvider>
     </LanguageProvider>
   );

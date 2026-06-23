@@ -8,8 +8,12 @@ import {
   setFrontView,
   deleteResult,
 } from '../controllers/vto.controller';
+import { requireAdmin } from '../middleware/requireAdmin';
 
 const router = Router();
+
+// All VTO routes are admin-only
+router.use(requireAdmin);
 
 // POST   /api/vto/trigger                   — start a VTO generation job
 router.post('/trigger', triggerVTO);

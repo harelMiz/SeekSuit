@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import api from "../../services/api";
 import { Upload, X, Check, Loader2, Sparkles, Star, ChevronRight, RefreshCw, ZoomIn } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import AdminLayout from "../../components/layout/AdminLayout";
@@ -9,7 +10,8 @@ import {
   processAllImages,
   deleteProductImage,
 } from "../../services/product.service";
-import { COLOR_OPTIONS, colorDisplay } from "../../lib/colorMap";
+import { useColors } from "../../context/ColorContext";
+import AddColorModal from "../../components/admin/AddColorModal";
 import type { ProductImage, ProductType, ProductStatus, CreateProductInput } from "../../types/product";
 
 const PRODUCT_TYPES: ProductType[] = ["JACKET", "PANTS", "SHIRT", "VEST", "SHOES", "TIE", "BOW_TIE", "BELT"];
@@ -64,11 +66,13 @@ export default function AdminUploadsPage() {
   const [nameEn, setNameEn] = useState("");
 
   // Color combobox state for the assignment panel
+  const { allColorKeys, colorDisplay } = useColors();
   const [colorSearch, setColorSearch] = useState("");
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
+  const [addColorOpen, setAddColorOpen] = useState(false);
   const colorRef = useRef<HTMLDivElement>(null);
 
-  const filteredColors = COLOR_OPTIONS.filter((key) =>
+  const filteredColors = allColorKeys.filter((key) =>
     colorDisplay(key, lang).toLowerCase().includes(colorSearch.toLowerCase()) ||
     key.toLowerCase().includes(colorSearch.toLowerCase())
   );
@@ -98,8 +102,7 @@ export default function AdminUploadsPage() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/jobs`);
-        const jobs: { id: string; status: JobStatus; image: { id: string; processedUrl?: string } }[] = await res.json();
+        const { data: jobs } = await api.get<{ id: string; status: JobStatus; image: { id: string; processedUrl?: string } }[]>("/jobs");
         setImageStates((prev) =>
           prev.map((s) => {
             const job = jobs.find((j) => j.image?.id === s.image.id);
@@ -126,7 +129,7 @@ export default function AdminUploadsPage() {
   async function loadUnassigned() {
     const [images, jobsRes] = await Promise.all([
       getUnassignedImages(),
-      fetch(`${API_BASE}/api/jobs`).then((r) => r.json()).catch(() => []),
+      api.get<{ status: JobStatus; image: { id: string; processedUrl?: string } }[]>("/jobs").then((r) => r.data).catch(() => []),
     ]);
     const jobs: { status: JobStatus; image: { id: string; processedUrl?: string } }[] = jobsRes;
     setImageStates(
@@ -159,11 +162,7 @@ export default function AdminUploadsPage() {
 
       // Fire AI jobs — pass product type so the pipeline picks the right model
       for (const img of newImages) {
-        fetch(`${API_BASE}/api/jobs/image/${img.id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productType: uploadProductType || null }),
-        }).catch(() => {});
+        api.post(`/jobs/image/${img.id}`, { productType: uploadProductType || null }).catch(() => {});
       }
 
       setUploadStatus("done");
@@ -212,11 +211,7 @@ export default function AdminUploadsPage() {
     setImageStates((prev) =>
       prev.map((s) => s.image.id === imageId ? { ...s, jobStatus: "PENDING" } : s)
     );
-    await fetch(`${API_BASE}/api/jobs/image/${imageId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productType: state?.productType || null }),
-    }).catch(() => {});
+    await api.post(`/jobs/image/${imageId}`, { productType: state?.productType || null }).catch(() => {});
   }
 
   function openAssignForm() {
@@ -638,7 +633,7 @@ export default function AdminUploadsPage() {
                     className={inputClass}
                     autoComplete="off"
                   />
-                  {colorDropdownOpen && filteredColors.length > 0 && (
+                  {colorDropdownOpen && (
                     <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-surface-container-low border border-outline-variant rounded-lg shadow-lg text-sm">
                       {filteredColors.map((key) => (
                         <li
@@ -653,6 +648,12 @@ export default function AdminUploadsPage() {
                           {colorDisplay(key, lang)}
                         </li>
                       ))}
+                      <li
+                        onMouseDown={(e) => { e.preventDefault(); setColorDropdownOpen(false); setAddColorOpen(true); }}
+                        className="px-3 py-2 cursor-pointer hover:bg-surface-container text-on-tertiary-container font-semibold border-t border-outline-variant/60 flex items-center gap-1.5"
+                      >
+                        + הוסף צבע חדש
+                      </li>
                     </ul>
                   )}
                 </div>
@@ -721,6 +722,11 @@ export default function AdminUploadsPage() {
           />
         </div>
       )}
+      <AddColorModal
+        open={addColorOpen}
+        onClose={() => setAddColorOpen(false)}
+        onAdded={(key) => setForm((p) => ({ ...p, color: key }))}
+      />
     </AdminLayout>
   );
 }

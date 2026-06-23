@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Upload, Users, LogOut, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Package, Upload, Users, LogOut, Home, Images, FileText } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import type { Language } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { to: "/admin/inventory", label: "admin.inventory", icon: Package, exact: false },
   { to: "/admin/uploads", label: "admin.uploads", icon: Upload, exact: false },
   { to: "/admin/vto-models", label: "admin.vtoModels.navLabel", icon: Users, exact: false },
+  { to: "/admin/gallery", label: "admin.customerGallery.navLabel", icon: Images, exact: false },
+  { to: "/admin/content", label: "admin.content.navLabel", icon: FileText, exact: false },
 ];
 
 // Admin layout: dark sidebar + main content area with sticky top bar
@@ -19,16 +21,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-
-  const [isDark, setIsDark] = useState(() =>
-    localStorage.getItem("seeksuit_admin_theme") !== "light"
-  );
-
-  function toggleTheme() {
-    const next = !isDark;
-    setIsDark(next);
-    localStorage.setItem("seeksuit_admin_theme", next ? "dark" : "light");
-  }
 
   async function handleLogout() {
     await signOut();
@@ -44,6 +36,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (location.pathname.startsWith("/admin/inventory")) return t("admin.inventory");
     if (location.pathname.startsWith("/admin/uploads")) return t("admin.uploads");
     if (location.pathname.startsWith("/admin/vto-models")) return t("admin.vtoModels.title");
+    if (location.pathname.startsWith("/admin/gallery")) return t("admin.customerGallery.navLabel");
+    if (location.pathname.startsWith("/admin/content")) return t("admin.content.navLabel");
     return "Admin";
   })();
 
@@ -56,7 +50,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="px-8 py-7 border-b border-neutral-800">
             <img src="/logo.svg" alt="SeekSuit" className="h-8 w-auto" />
             <div className="text-[10px] tracking-widest uppercase text-neutral-500 mt-1.5">
-              אופנת ג׳נודי
+              {t("nav.brandSubtitle")}
             </div>
           </div>
 
@@ -95,7 +89,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* ── Main area (dark/light theme via CSS variable overrides) ── */}
-      <div className={`ml-64 flex-1 min-h-screen flex flex-col ${isDark ? "admin-dark" : ""}`}>
+      <div className="ml-64 flex-1 min-h-screen flex flex-col admin-dark">
         {/* Sticky top bar — uses surface variables so it adapts to theme */}
         <header className="bg-surface sticky top-0 z-40 px-12 py-4 border-b-2 border-outline-variant flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -106,21 +100,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Back to website */}
+            <Link
+              to="/"
+              title="חזרה לאתר"
+              className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface hover:border-on-surface/40 transition-colors"
+            >
+              <Home size={16} />
+            </Link>
+
             {/* Language toggle */}
             <button
               onClick={() => setLang(otherLang)}
               className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-xs font-bold text-secondary hover:text-on-surface hover:border-on-surface/40 transition-colors"
             >
               {otherLang === "en" ? "EN" : "עב"}
-            </button>
-
-            {/* Dark/light toggle */}
-            <button
-              onClick={toggleTheme}
-              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-secondary hover:text-on-surface hover:border-on-surface/40 transition-colors"
-            >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>
         </header>

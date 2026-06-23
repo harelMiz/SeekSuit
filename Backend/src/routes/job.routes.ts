@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { createJobForImage, createJobsForProduct, createJobsForAll, getAllJobs } from '../controllers/job.controller';
+import { requireAdmin } from '../middleware/requireAdmin';
 
 const router = Router();
+
+// All job routes are admin-only
+router.use(requireAdmin);
 
 // GET  /api/jobs                          — list all jobs (polled by frontend)
 // POST /api/jobs/process-all             — queue jobs for every unprocessed image

@@ -10,9 +10,10 @@ interface ProductCardProps {
   matchPercentage?: number;
   source?: "BROWSE" | "SEARCH_RESULT" | "SIMILAR";
   searchQuery?: string;
+  showStatus?: boolean;
 }
 
-export default function ProductCard({ product, matchPercentage, source = "BROWSE", searchQuery }: ProductCardProps) {
+export default function ProductCard({ product, matchPercentage, source = "BROWSE", searchQuery, showStatus = false }: ProductCardProps) {
   const { t, lang } = useLang();
   const displayName = lang === "en" && product.attributes?.nameEn
     ? String(product.attributes.nameEn)
@@ -77,17 +78,19 @@ export default function ProductCard({ product, matchPercentage, source = "BROWSE
             <p className="text-xs text-white/35 font-light mt-0.5">{colorDisplay(product.color, lang)}</p>
           </div>
 
-          {/* Status — subtle dot indicator */}
-          <div className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-              product.status === "OUT_OF_STOCK" ? "bg-red-500/60" : "bg-emerald-400/80"
-            }`} />
-            <span className={`text-[10px] font-medium tracking-wider uppercase ${
-              product.status === "OUT_OF_STOCK" ? "text-red-400/55" : "text-emerald-400/65"
-            }`}>
-              {t(`status.${product.status}`)}
-            </span>
-          </div>
+          {/* Status — visible only to admins */}
+          {showStatus && (
+            <div className="flex items-center gap-2">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                product.status === "OUT_OF_STOCK" ? "bg-red-500/60" : "bg-emerald-400/80"
+              }`} />
+              <span className={`text-[10px] font-medium tracking-wider uppercase ${
+                product.status === "OUT_OF_STOCK" ? "text-red-400/55" : "text-emerald-400/65"
+              }`}>
+                {t(`status.${product.status}`)}
+              </span>
+            </div>
+          )}
         </div>
 
       </article>

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, DragEvent } from "react";
+import { Link } from "react-router-dom";
 import { ArrowLeft, Search, Camera, ChevronDown, X } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import Layout from "../components/layout/Layout";
@@ -301,7 +302,7 @@ export default function HomePage() {
       <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-zinc-950">
         {/* Hero background image — replace gradient once real photo arrives */}
         <img
-          src="/placeholders/hero-bg.png"
+          src={t("image.hero-bg")}
           alt=""
           className="absolute inset-0 w-full h-full object-cover object-top"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -425,10 +426,10 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="mt-12 flex flex-col items-start gap-2 text-white/25 animate-bounce-slow">
+          <Link to="/shop" className="mt-12 flex flex-col items-start gap-2 text-white/25 animate-bounce-slow hover:text-white/50 transition-colors">
             <span className="text-xs tracking-[0.3em] uppercase">{t("home.browseCatalog")}</span>
             <ChevronDown size={18} />
-          </div>
+          </Link>
         </div>
       </section>
 
@@ -527,7 +528,7 @@ export default function HomePage() {
                 {/* Large tile: Bespoke Tailoring */}
                 <div className="col-span-12 md:col-span-8 row-span-2 relative overflow-hidden group cursor-pointer">
                   <img
-                    src="/placeholders/bento-collection.png"
+                    src={t("image.bento-collection")}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover object-center"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -568,7 +569,7 @@ export default function HomePage() {
                 {/* Accessories tile */}
                 <div className="col-span-12 md:col-span-4 relative overflow-hidden">
                   <img
-                    src="/placeholders/bento-accessories.png"
+                    src={t("image.bento-accessories")}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover object-center"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -613,7 +614,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="aspect-[3/4] relative overflow-hidden">
                     <img
-                      src="/placeholders/experience-1.png"
+                      src={t("image.experience-1")}
                       alt=""
                       className="absolute inset-0 w-full h-full object-cover object-top"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -624,7 +625,7 @@ export default function HomePage() {
                   </div>
                   <div className="aspect-[3/4] relative overflow-hidden mt-8">
                     <img
-                      src="/placeholders/experience-2.png"
+                      src={t("image.experience-2")}
                       alt=""
                       className="absolute inset-0 w-full h-full object-cover object-top"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}

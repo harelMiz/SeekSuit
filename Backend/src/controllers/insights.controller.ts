@@ -36,7 +36,8 @@ function classifyLLMError(err: unknown): { status: number; error: string } {
     return { status: 503, error: 'שרת ה-AI עמוס כעת. אנא נסה שוב במועד מאוחר יותר.' };
   }
   if (msg.includes('API_KEY') || msg.includes('403') || msg.includes('401')) {
-    return { status: 401, error: 'Gemini API key is invalid. Get a key from ai.google.dev.' };
+    // Return 503, NOT 401 — a 401 would trigger the frontend admin auth interceptor and sign the user out
+    return { status: 503, error: 'Gemini API key is invalid or missing quota. Check your key at ai.google.dev.' };
   }
   return { status: 500, error: msg };
 }

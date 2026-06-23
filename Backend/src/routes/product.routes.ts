@@ -6,21 +6,22 @@ import {
   updateProduct,
   deleteProduct,
 } from '../controllers/product.controller';
+import { requireAdmin } from '../middleware/requireAdmin';
 
 const router = Router();
 
-// POST   /api/products        — create a new product
-// GET    /api/products        — get all products (supports ?type=, ?status=, ?color= filters)
+// POST   /api/products        — create a new product (admin only)
+// GET    /api/products        — get all products (public)
 router.route('/')
-      .post(createProduct)
+      .post(requireAdmin, createProduct)
       .get(getAllProducts);
 
-// GET    /api/products/:id    — get a single product by ID
-// PATCH  /api/products/:id    — update a product's fields
-// DELETE /api/products/:id    — delete a product
+// GET    /api/products/:id    — get a single product by ID (public)
+// PATCH  /api/products/:id    — update a product's fields (admin only)
+// DELETE /api/products/:id    — delete a product (admin only)
 router.route('/:id')
       .get(getProductById)
-      .patch(updateProduct)
-      .delete(deleteProduct);
+      .patch(requireAdmin, updateProduct)
+      .delete(requireAdmin, deleteProduct);
 
 export default router;

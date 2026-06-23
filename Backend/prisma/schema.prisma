@@ -122,6 +122,7 @@ model SearchLog {
   queryType     QueryType
   resultCount   Int
   detectedColor String?
+  detectedType  String?
   createdAt     DateTime  @default(now())
 }
 
@@ -140,6 +141,42 @@ model VTOJob {
   results       Json?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+}
+
+// Custom colors added by admin at runtime (supplements the static colorMap on the frontend).
+model Color {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  labelHe   String
+  labelEn   String
+  hex       String
+  createdAt DateTime @default(now())
+}
+
+// Single-row site settings stored under the fixed id "singleton".
+model SiteSettings {
+  id           String   @id @default("singleton")
+  currentTheme String   @default("black-gold")
+  updatedAt    DateTime @updatedAt
+}
+
+// Stores admin overrides for public page text. Only edited keys are stored here;
+// defaults come from the static he.ts / en.ts locale files.
+model SiteContent {
+  key       String   @id
+  he        String
+  en        String
+  updatedAt DateTime @updatedAt
+}
+
+// Customer event photos displayed on the public /gallery page.
+// order controls display sequence (0 = first).
+model GalleryImage {
+  id        String   @id @default(uuid())
+  url       String
+  caption   String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 // Records product page views from public users (skipped when admin is logged in).

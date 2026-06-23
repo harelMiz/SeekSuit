@@ -8,6 +8,8 @@ const supabase = createClient(
 
 const RAW_BUCKET        = 'raw-images';
 const VTO_MODELS_BUCKET = 'vto-models';
+const GALLERY_BUCKET    = 'gallery-images';
+const SITE_IMAGES_BUCKET = 'site-images';
 
 // Upload a raw image buffer to Supabase Storage and return the storage path URL
 export async function uploadRawImage(
@@ -27,6 +29,24 @@ export async function uploadRawImage(
     .from(RAW_BUCKET)
     .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
 
+  if (signError || !data) throw new Error(`Failed to create signed URL: ${signError?.message}`);
+  return data.signedUrl;
+}
+
+// Upload a site image (hero, bento, etc.) and return a signed URL
+export async function uploadSiteImage(buffer: Buffer, filename: string): Promise<string> {
+  // Ensure the bucket exists (public: false — images served via signed URLs)
+  await supabase.storage.createBucket(SITE_IMAGES_BUCKET, { public: false }).catch(() => {});
+
+  const path = `site/${Date.now()}_${filename}`;
+  const { error } = await supabase.storage
+    .from(SITE_IMAGES_BUCKET)
+    .upload(path, buffer, { upsert: false });
+  if (error) throw new Error(`Site image upload failed: ${error.message}`);
+
+  const { data, error: signError } = await supabase.storage
+    .from(SITE_IMAGES_BUCKET)
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
   if (signError || !data) throw new Error(`Failed to create signed URL: ${signError?.message}`);
   return data.signedUrl;
 }
@@ -144,6 +164,29 @@ export async function renameVTOModelFolder(oldName: string, newName: string): Pr
 
   // Remove originals
   await supabase.storage.from(VTO_MODELS_BUCKET).remove(files.map(f => `${oldName}/${f.name}`));
+}
+
+// ── Customer gallery photos (gallery-images bucket) ──────────────────────────
+
+export async function uploadGalleryImage(buffer: Buffer, filename: string): Promise<string> {
+  const path = `gallery/${Date.now()}_${filename}`;
+
+  const { error } = await supabase.storage
+    .from(GALLERY_BUCKET)
+    .upload(path, buffer, { contentType: 'image/jpeg', upsert: false });
+
+  if (error) throw new Error(`Gallery upload failed: ${error.message}`);
+
+  const { data, error: signError } = await supabase.storage
+    .from(GALLERY_BUCKET)
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+
+  if (signError || !data) throw new Error(`Failed to create signed URL: ${signError?.message}`);
+  return data.signedUrl;
+}
+
+export async function deleteGalleryFile(signedUrl: string): Promise<void> {
+  await deleteFileBySignedUrl(signedUrl, GALLERY_BUCKET);
 }
 
 // Generate a short-lived signed URL for a raw image (used internally by the AI service)
