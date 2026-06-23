@@ -65,7 +65,16 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
 // Additional tool available only in chat — allows arbitrary SELECT queries
 const RUN_QUERY_TOOL: ToolDefinition = {
   name: 'runQuery',
-  description: 'Execute a custom read-only SQL SELECT query against the database. Use this ONLY when the specific tools above cannot answer the question. Always prefer the specific tools when they cover the question.',
+  description: `Execute a custom read-only SQL SELECT query against the database. Use this ONLY when the specific tools above cannot answer the question. Always prefer the specific tools when they cover the question.
+
+Available tables and key columns (PostgreSQL — use double-quoted names exactly as shown):
+- "Product": id, name, sku, type (JACKET/PANTS/SHIRT/VEST/SHOES/TIE/BOW_TIE/BELT), color, status (IN_STOCK/OUT_OF_STOCK), "createdAt"
+- "ProductImage": id, "productId", "rawUrl", "processedUrl", "isMain", "isFrontView", "order", "createdAt"
+- "VTOJob": id, "productId", "sourceImageId", "runpodJobId", status (PENDING/RUNNING/DONE/FAILED), results (JSON array of {modelKey, url, selected}), "createdAt"
+- "ProcessingJob": id, "productImageId", status (PENDING/PROCESSING/DONE/FAILED), "createdAt"
+- "SearchLog": id, query, "queryType" (TEXT/IMAGE), "resultCount", "detectedColor", "createdAt"
+- "ProductView": id, "productId", source (SEARCH_RESULT/BROWSE/SIMILAR), "createdAt"
+- "GalleryImage": id, url, caption, "order", "createdAt"`,
   parameters: {
     type: 'object',
     properties: {
@@ -79,6 +88,7 @@ const CHAT_TOOL_DEFINITIONS: ToolDefinition[] = [...TOOL_DEFINITIONS, RUN_QUERY_
 
 async function handleToolCall(call: ToolCall): Promise<unknown> {
   const args = call.args as any;
+  console.log(`[insights] tool called: ${call.name}`, args);
   switch (call.name) {
     case 'getInventoryOverview':    return tools.getInventoryOverview();
     case 'getStockDetails':         return tools.getStockDetails(args.type);

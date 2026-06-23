@@ -38,7 +38,7 @@ export async function sendContactEmail(req: Request, res: Response) {
   });
 
   await transporter.sendMail({
-    from: `"SeekSuit" <${process.env.CONTACT_EMAIL}>`,
+    from: `"Jenudi Fashion" <${process.env.CONTACT_EMAIL}>`,
     to: process.env.CONTACT_EMAIL,
     subject: `פנייה חדשה מהאתר — ${safeHeader(name)}`,
     html: `

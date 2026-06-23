@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Upload, Users, LogOut, Home } from "lucide-react";
+import { LayoutDashboard, Package, Upload, Users, LogOut, Home, Images, FileText } from "lucide-react";
 import { useLang } from "../../context/LanguageContext";
 import type { Language } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { to: "/admin/inventory", label: "admin.inventory", icon: Package, exact: false },
   { to: "/admin/uploads", label: "admin.uploads", icon: Upload, exact: false },
   { to: "/admin/vto-models", label: "admin.vtoModels.navLabel", icon: Users, exact: false },
+  { to: "/admin/gallery", label: "admin.customerGallery.navLabel", icon: Images, exact: false },
+  { to: "/admin/content", label: "admin.content.navLabel", icon: FileText, exact: false },
 ];
 
 // Admin layout: dark sidebar + main content area with sticky top bar
@@ -34,6 +36,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (location.pathname.startsWith("/admin/inventory")) return t("admin.inventory");
     if (location.pathname.startsWith("/admin/uploads")) return t("admin.uploads");
     if (location.pathname.startsWith("/admin/vto-models")) return t("admin.vtoModels.title");
+    if (location.pathname.startsWith("/admin/gallery")) return t("admin.customerGallery.navLabel");
+    if (location.pathname.startsWith("/admin/content")) return t("admin.content.navLabel");
     return "Admin";
   })();
 
@@ -46,7 +50,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="px-8 py-7 border-b border-neutral-800">
             <img src="/logo.svg" alt="SeekSuit" className="h-8 w-auto" />
             <div className="text-[10px] tracking-widest uppercase text-neutral-500 mt-1.5">
-              אופנת ג׳נודי
+              {t("nav.brandSubtitle")}
             </div>
           </div>
 

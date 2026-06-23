@@ -108,7 +108,8 @@ export const en: Record<string, string> = {
   "contact.email": "Email Address",
   "contact.message": "Message",
   "contact.messagePlaceholder": "Write your message here...",
-  "contact.send": "Send Message",
+  "contact.send": "Send via Email",
+  "contact.sendWhatsapp": "Send via WhatsApp",
   "contact.sent": "Message Sent!",
   "contact.sentNote": "We'll get back to you as soon as possible.",
   "contact.tagline": "Reach Out",
@@ -409,6 +410,53 @@ export const en: Record<string, string> = {
   "admin.vtoModels.deleteFolderConfirm": "Delete model \"{name}\" and all its photos?",
   "admin.vtoModels.renameSuccess": "Model renamed",
   "admin.vtoModels.renameError": "Rename failed",
+
+  // Content editor (mini-CMS)
+  "admin.content.navLabel": "Content Editor",
+  "admin.content.subtitle": "Edit text across public pages. Changes are saved immediately for all visitors.",
+  "admin.content.colKey": "Key",
+  "admin.content.colHe": "Hebrew",
+  "admin.content.colEn": "English",
+  "admin.content.save": "Save",
+  "admin.content.saving": "Saving",
+  "admin.content.saved": "Saved",
+  "admin.content.replaceImage": "Replace image",
+  "admin.content.uploading": "Uploading...",
+  "admin.content.uploaded": "Uploaded",
+  "admin.content.reset": "Reset",
+  "admin.content.customImage": "Custom image",
+
+  // Site images — defaults point to local placeholders, overrides stored in DB as Supabase URLs
+  "image.hero-bg": "/placeholders/hero-bg.png",
+  "image.bento-collection": "/placeholders/bento-collection.png",
+  "image.bento-accessories": "/placeholders/bento-accessories.png",
+  "image.experience-1": "/placeholders/experience-1.png",
+  "image.experience-2": "/placeholders/experience-2.png",
+  "image.about-owner": "/placeholders/about-owner.png",
+  "image.store-pic": "/placeholders/store-pic.png",
+
+  // Public gallery page
+  "nav.gallery": "Gallery",
+  "gallery.tagline": "Gallery",
+  "gallery.title": "Gallery",
+  "gallery.subtitle": "Special moments in Jenudi Fashion",
+  "gallery.loading": "Loading gallery...",
+  "gallery.error": "Error loading gallery",
+  "gallery.empty": "The gallery is empty for now — check back soon",
+
+  // Admin customer gallery
+  "admin.customerGallery.navLabel": "Gallery",
+  "admin.customerGallery.upload": "Upload Photo",
+  "admin.customerGallery.uploading": "Uploading...",
+  "admin.customerGallery.captionPlaceholder": "Caption (optional)",
+  "admin.customerGallery.dropHint": "Drag a photo here, or click Upload Photo",
+  "admin.customerGallery.uploadSuccess": "Photo uploaded",
+  "admin.customerGallery.uploadError": "Upload failed",
+  "admin.customerGallery.deleteConfirm": "Delete this photo?",
+  "admin.customerGallery.deleteSuccess": "Photo deleted",
+  "admin.customerGallery.deleteError": "Delete failed",
+  "admin.customerGallery.empty": "No photos in the gallery yet",
+  "admin.customerGallery.reorderHint": "Use the arrows to change display order",
 
   // Common
   "common.loading": "Loading...",

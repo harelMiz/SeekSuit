@@ -37,7 +37,7 @@ export default function AboutPage() {
           {/* Image placeholder */}
           <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-800">
             <img
-              src="/placeholders/about-owner.png"
+              src={t("image.about-owner")}
               alt="Jenudi Fashion atelier"
               className="w-full h-full object-cover"
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}

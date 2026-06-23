@@ -21,6 +21,7 @@ export default function Navbar() {
 
   const links = [
     { to: "/shop", label: t("nav.shop") },
+    { to: "/gallery", label: t("nav.gallery") },
     { to: "/about", label: t("nav.about") },
     { to: "/contact", label: t("nav.contact") },
   ];

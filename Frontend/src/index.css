@@ -76,12 +76,12 @@ html {
 
 body {
   font-family: var(--font-body);
-  background-color: #fcf9f8;
-  color: #1c1b1b;
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
   min-height: 100vh;
   /* Light scrollbar */
   scrollbar-width: thin;
-  scrollbar-color: #c4c7c7 #fcf9f8;
+  scrollbar-color: var(--color-outline-variant) var(--color-surface);
 }
 
 /* Hebrew font override */
@@ -95,10 +95,10 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #fcf9f8;
+  background: var(--color-surface);
 }
 ::-webkit-scrollbar-thumb {
-  background: #c4c7c7;
+  background: var(--color-outline-variant);
   border-radius: 3px;
 }
 
