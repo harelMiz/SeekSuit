@@ -134,7 +134,7 @@ All services are managed via a single script from the project root:
 |--------|------|-------------|
 | GET | `/api/search/text?q=` | Text search with Hebrew support + type/color hard filters |
 | POST | `/api/search/image` | CLIP image search (multipart image upload) |
-| POST | `/api/search/detect` | OWL-ViT clothing item detection in image |
+| POST | `/api/search/detect` | YOLOS fine-tuned clothing item detection on Fashionpedia dataset |
 
 ### AI
 
@@ -198,7 +198,7 @@ Tracks background-removal jobs: `PENDING → PROCESSING → DONE / FAILED`.
 BiRefNet model removes backgrounds from raw product photos and applies canvas normalization: auto-crop, 8% padding, 1200×1600 portrait canvas, white background.
 
 ### Hybrid Image Search
-Upload a photo or crop a garment — CLIP (ViT-L/14) encodes the image and queries pgvector for cosine similarity against all product embeddings. Results filtered by detected garment type and sorted by similarity.
+Upload a photo or crop a garment — CLIP (ViT-L/14) encodes the image and queries pgvector for cosine similarity against all product embeddings. When multiple garments are detected via YOLOS (fine-tuned on Fashionpedia), the user picks a specific item before searching. Results are filtered by garment type and sorted by similarity.
 
 ### Text Search (Hebrew + English)
 Full-text search with synonym expansion and hard filters for product type (Hebrew grammatical variants supported) and color.
