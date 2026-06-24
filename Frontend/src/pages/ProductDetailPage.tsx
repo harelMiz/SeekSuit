@@ -376,7 +376,6 @@ export default function ProductDetailPage() {
                 <ProductCard
                   key={r.id}
                   product={toProduct(r)}
-                  matchPercentage={Math.round(r.similarity * 100)}
                   source="SIMILAR"
                 />
               ))}
