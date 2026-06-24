@@ -21,7 +21,7 @@ SeekSuit is a fashion display website for an existing brick-and-mortar suit stor
 | Frontend | React 19 + Vite 6 + TypeScript + Tailwind CSS 4 |
 | Backend | Node.js + Express 5 + TypeScript + Prisma 7 |
 | Database | PostgreSQL + pgvector via Supabase (cloud) |
-| AI Service | Python 3.11 + FastAPI + BiRefNet + CLIP (ViT-L/14) |
+| AI Service | Python 3.11 + FastAPI + BiRefNet + CLIP (ViT-B/32) |
 | Auth | Supabase Auth (admin only — no public registration) |
 | Runtime | Docker (all services containerized) |
 | CI/CD | GitHub Actions + GHCR (Virtual Try-On model builds) |
@@ -43,8 +43,11 @@ SeekSuit/
 │       ├── components/   # Shared UI components
 │       └── api/          # API client
 ├── AIService/            # Python microservice (port 8001)
-│   └── background_removal/
-│       └── app/          # FastAPI app + BiRefNet pipeline
+│   ├── main.py           # FastAPI app
+│   ├── bg_removal.py     # BiRefNet background removal pipeline
+│   ├── image_search.py   # CLIP embeddings + color detection
+│   ├── clothing_detector.py  # YOLOS clothing item detection
+│   └── finetuned_models/ # Fine-tuned BiRefNet weights (gitignored)
 └── Management/           # Project documentation
     └── Architecture/     # Architecture document + diagrams
 ```
@@ -132,7 +135,7 @@ All services are managed via a single script from the project root:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/search/text?q=` | Text search with Hebrew support + type/color hard filters |
+| POST | `/api/search/text` | Text search with Hebrew support + type/color hard filters |
 | POST | `/api/search/image` | CLIP image search (multipart image upload) |
 | POST | `/api/search/detect` | YOLOS fine-tuned clothing item detection on Fashionpedia dataset |
 
@@ -175,7 +178,6 @@ All services are managed via a single script from the project root:
 | color | string | |
 | status | enum | `IN_STOCK` `OUT_OF_STOCK` |
 | attributes | JSON? | Type-specific metadata (material, fit, etc.) |
-| clipEmbedding | vector(512)? | CLIP embedding for image search |
 
 ### ProductImage
 | Field | Type | Notes |
@@ -186,6 +188,7 @@ All services are managed via a single script from the project root:
 | processedUrl | string? | Supabase `processed-images` bucket (post-AI) |
 | isMain | bool | Primary display image |
 | order | int | Display order within product |
+| embedding | vector(512)? | CLIP embedding for image search |
 
 ### ProcessingJob
 Tracks background-removal jobs: `PENDING → PROCESSING → DONE / FAILED`.
@@ -198,7 +201,7 @@ Tracks background-removal jobs: `PENDING → PROCESSING → DONE / FAILED`.
 BiRefNet model removes backgrounds from raw product photos and applies canvas normalization: auto-crop, 8% padding, 1200×1600 portrait canvas, white background.
 
 ### Hybrid Image Search
-Upload a photo or crop a garment — CLIP (ViT-L/14) encodes the image and queries pgvector for cosine similarity against all product embeddings. When multiple garments are detected via YOLOS (fine-tuned on Fashionpedia), the user picks a specific item before searching. Results are filtered by garment type and sorted by similarity.
+Upload a photo or crop a garment — CLIP (ViT-B/32) encodes the image and queries pgvector for cosine similarity against all product embeddings. When multiple garments are detected via YOLOS (fine-tuned on Fashionpedia), the user picks a specific item before searching. Results are filtered by garment type and sorted by similarity.
 
 ### Text Search (Hebrew + English)
 Full-text search with synonym expansion and hard filters for product type (Hebrew grammatical variants supported) and color.
