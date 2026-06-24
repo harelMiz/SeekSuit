@@ -2,6 +2,8 @@
 
 SeekSuit is a fashion display website for an existing brick-and-mortar suit store. Customers browse the catalog online and visit the store to try on items. The platform includes AI-powered features: image background removal, hybrid visual+text product search, virtual try-on, and a business insight agent.
 
+> **Architecture document:** see [`Management/Architecture/SeekSuit_Architecture_Document.docx`](Management/Architecture/SeekSuit_Architecture_Document.docx) for a full system design overview.
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -35,6 +37,41 @@ SeekSuit/
 │       └── app/          # FastAPI app + BiRefNet pipeline
 └── Management/           # Project documentation
     └── Architecture/     # Architecture document + diagrams
+```
+
+## Prerequisites
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | 24+ | Runs Backend + AI Service containers |
+| [Node.js](https://nodejs.org/) | 20+ | Frontend dev server + Prisma CLI |
+| [Python](https://www.python.org/) | 3.11+ | AI Service (if running outside Docker) |
+
+## First-time Setup
+
+**1. Clone and install frontend dependencies:**
+```bash
+git clone https://github.com/danieljenudi/SeekSuit.git
+cd SeekSuit/Frontend
+npm install
+```
+
+**2. Configure environment variables:**
+```bash
+cp .env.example Backend/.env
+# Edit Backend/.env and fill in all values (Supabase, Gemini, RunPod, etc.)
+```
+
+**3. Apply database migrations:**
+```bash
+cd Backend
+npm install
+npx prisma migrate deploy
+```
+
+**4. Build Docker images (first time only):**
+```bash
+.\dev.ps1 --rebuild
 ```
 
 ## Quick Start
@@ -173,5 +210,5 @@ LLM agent reads live inventory data and generates natural-language business insi
 - [x] Text search (Hebrew/English + type + color filtering)
 - [x] Virtual try-on admin UX (FitDiT on RunPod)
 - [x] Business insight agent (LLM on admin dashboard)
-- [ ] Testing & QA
-- [ ] Deploy (backend → Render, frontend → Vercel)
+- [x] Testing & QA
+- [ ] Production deploy — planned in coordination with store owner after academic submission
