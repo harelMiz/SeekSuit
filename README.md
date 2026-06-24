@@ -4,6 +4,16 @@ SeekSuit is a fashion display website for an existing brick-and-mortar suit stor
 
 > **Architecture document:** see [`Management/Architecture/SeekSuit_Architecture_Document.docx`](Management/Architecture/SeekSuit_Architecture_Document.docx) for a full system design overview.
 
+## Screenshots
+
+| Home & Search | Product Catalog |
+|:---:|:---:|
+| ![Home](docs/screenshots/home_screen.png) | ![Shop](docs/screenshots/shop_screen.png) |
+
+| AI Image Search Results | Admin Dashboard |
+|:---:|:---:|
+| ![Search](docs/screenshots/search_2.png) | ![Admin](docs/screenshots/admin_desh_screen.png) |
+
 ## Tech Stack
 
 | Layer | Technology |
