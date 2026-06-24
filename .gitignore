@@ -57,3 +57,14 @@ Products-raw-photos/
 *.zip
 AIService/raw-photos/
 scripts/data-prep/raw-photos/
+
+# ── Architecture docs (screenshots + helper files, not source) ──────
+Management/Architecture/web_screenshots/
+Management/Architecture/project_entry_diagram.png
+Management/Architecture/architecture_diagram.svg
+Management/Architecture/architecture_update.md
+
+# ── Word temp/lock files ─────────────────────────────────────────────
+~$*.docx
+~$*.doc
+~WRL*.tmp

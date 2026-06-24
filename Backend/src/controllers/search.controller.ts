@@ -54,6 +54,54 @@ const ABSOLUTE_FLOOR = 0.65;
 const TEXT_RELATIVE_WINDOW = 0.04;
 const TEXT_ABSOLUTE_FLOOR = 0.25;
 
+// Hebrew and English product type words → ProductType enum value.
+// Covers grammatical variants common in Hebrew queries.
+const QUERY_TYPE_WORDS: Record<string, string> = {
+  // Hebrew — jackets / suits
+  'חליפה': 'JACKET',   'חליפות': 'JACKET',
+  "ג'קט":  'JACKET',  "ג'קטים": 'JACKET',
+  'בלייזר': 'JACKET',
+  // Hebrew — vests
+  'ווסט':   'VEST',    'וסט':    'VEST',
+  'ווסטים': 'VEST',    'וסטים':  'VEST',
+  // Hebrew — pants
+  'מכנסיים': 'PANTS',  'מכנס': 'PANTS',
+  // Hebrew — shirts
+  'חולצה':  'SHIRT',   'חולצות': 'SHIRT',
+  // Hebrew — ties
+  'עניבה':  'TIE',     'עניבות': 'TIE',
+  // Hebrew — bow ties (two-word phrase handled in detectQueryType)
+  'פפיון':  'BOW_TIE', 'פפיונים': 'BOW_TIE',
+  'פרפרית': 'BOW_TIE',
+  // Hebrew — belts
+  'חגורה':  'BELT',    'חגורות': 'BELT',
+  // Hebrew — shoes
+  'נעליים': 'SHOES',   'נעל': 'SHOES',
+  // English
+  'jacket': 'JACKET',  'jackets': 'JACKET',
+  'blazer': 'JACKET',  'blazers': 'JACKET',
+  'suit':   'JACKET',  'suits':   'JACKET',
+  'vest':   'VEST',    'vests':   'VEST',    'waistcoat': 'VEST',
+  'pants':  'PANTS',   'trousers': 'PANTS',
+  'shirt':  'SHIRT',   'shirts':  'SHIRT',
+  'tie':    'TIE',     'ties':    'TIE',     'necktie': 'TIE',
+  'bowtie': 'BOW_TIE', 'bowties': 'BOW_TIE',
+  'belt':   'BELT',    'belts':   'BELT',
+  'shoes':  'SHOES',   'shoe':    'SHOES',
+};
+
+function detectQueryType(query: string): string | null {
+  // Check two-word phrases before word splitting
+  if (/bow[- ]tie/i.test(query) || query.includes('עניבת פרפר')) return 'BOW_TIE';
+
+  const words = query.trim().split(/[\s,]+/);
+  for (const word of words) {
+    const type = QUERY_TYPE_WORDS[word] ?? QUERY_TYPE_WORDS[word.toLowerCase()];
+    if (type) return type;
+  }
+  return null;
+}
+
 // Hebrew and English color words → base color code.
 // Covers grammatical variants (gender/number) common in Hebrew queries.
 const QUERY_COLOR_WORDS: Record<string, string> = {
@@ -407,6 +455,13 @@ export const searchByText = async (req: Request, res: Response) => {
       r.color?.toUpperCase().includes(`_${detectedPattern}`) ?? false
     );
     if (patternFiltered.length > 0) results = patternFiltered;
+  }
+
+  // Hard-filter by product type when a type word is detected in the query.
+  const detectedType = detectQueryType(query.trim());
+  if (detectedType) {
+    const typeFiltered = results.filter(r => r.type === detectedType);
+    if (typeFiltered.length > 0) results = typeFiltered;
   }
 
   logSearch(req, { query: query.trim(), queryType: 'TEXT', resultCount: results.length, detectedColor: detectedColor });

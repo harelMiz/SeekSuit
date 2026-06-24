@@ -132,7 +132,7 @@ export default function HomePage() {
       const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
         headers: { "Content-Type": "multipart/form-data" },
         params: { limit: 20, ...(productType ? { productType } : {}) },
-        timeout: 60000,
+        timeout: 150000,
       });
       setResults(data.results);
       sessionStorage.setItem(HOME_SEARCH_KEY, JSON.stringify({
@@ -171,7 +171,7 @@ export default function HomePage() {
         const { data } = await api.post<{ items: DetectedItem[]; multipleFound: boolean }>(
           "/search/detect",
           form,
-          { headers: { "Content-Type": "multipart/form-data" }, timeout: 60000 }
+          { headers: { "Content-Type": "multipart/form-data" }, timeout: 150000 }
         );
 
         if (data.multipleFound && data.items.length > 1) {
@@ -181,6 +181,12 @@ export default function HomePage() {
           setLoadingMsg("");
           return;
         }
+
+        // Single item detected — use its type for hard filtering
+        const detectedType = data.items?.[0]?.type;
+        setLoading(false);
+        await runImageSearch(file, dataUrl, detectedType);
+        return;
       } catch {
         // Detection failure is non-fatal — fall through to direct search
       }
@@ -209,8 +215,8 @@ export default function HomePage() {
           try {
             const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
               headers: { "Content-Type": "multipart/form-data" },
-              params: { limit: 10 },
-              timeout: 60000,
+              params: { limit: 10, ...(item.type ? { productType: item.type } : {}) },
+              timeout: 150000,
             });
             return data.results;
           } catch {
@@ -485,14 +491,6 @@ export default function HomePage() {
                     <ProductCard
                       key={result.id}
                       product={toProduct(result)}
-                      matchPercentage={
-                        searchMode === "image"
-                          ? Math.round(result.similarity * 100)
-                          : Math.min(
-                              Math.round(Math.sqrt(Math.max(result.similarity - 0.238, 0) / 0.072) * 100),
-                              100
-                            )
-                      }
                       source="SEARCH_RESULT"
                       searchQuery={searchMode === "text" ? textQuery : undefined}
                     />

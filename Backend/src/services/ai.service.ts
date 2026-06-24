@@ -99,6 +99,7 @@ export async function embedImage(
     method: 'POST',
     body: form,
     headers: form.getHeaders(),
+    signal: AbortSignal.timeout(140000),
   });
 
   if (!response.ok) {
