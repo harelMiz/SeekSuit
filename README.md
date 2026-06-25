@@ -23,8 +23,8 @@ SeekSuit is a fashion display website for an existing brick-and-mortar suit stor
 | Database | PostgreSQL + pgvector via Supabase (cloud) |
 | AI Service | Python 3.11 + FastAPI + BiRefNet + CLIP (ViT-B/32) |
 | Auth | Supabase Auth (admin only — no public registration) |
-| Runtime | Docker (all services containerized) |
-| CI/CD | GitHub Actions + GHCR (Virtual Try-On model builds) |
+| Runtime | Docker (Backend + AI Service containerized) |
+| CI/CD | GitHub Actions + GHCR (Virtual Try-On image builds) |
 
 ## Project Structure
 
@@ -35,19 +35,26 @@ SeekSuit/
 │   │   ├── controllers/  # Route handlers
 │   │   ├── services/     # Business logic + AI integration
 │   │   ├── routes/       # Express routers
-│   │   └── lib/          # Prisma client, Supabase client
+│   │   └── lib/          # Prisma client, LLM providers
 │   └── prisma/           # Schema + migrations
 ├── Frontend/             # React web app (port 5173)
 │   └── src/
 │       ├── pages/        # Route-level components
 │       ├── components/   # Shared UI components
-│       └── api/          # API client
+│       ├── services/     # API client functions
+│       └── context/      # Auth, language, color context
 ├── AIService/            # Python microservice (port 8001)
 │   ├── main.py           # FastAPI app
 │   ├── bg_removal.py     # BiRefNet background removal pipeline
 │   ├── image_search.py   # CLIP embeddings + color detection
 │   ├── clothing_detector.py  # YOLOS clothing item detection
 │   └── finetuned_models/ # Fine-tuned BiRefNet weights (gitignored)
+├── RunPod/               # FitDiT VTO serverless deployment (GPU)
+│   ├── handler.py        # RunPod entry point
+│   ├── Dockerfile        # CUDA image with FitDiT + SAM2
+│   └── requirements.txt  # RunPod handler dependencies
+├── scripts/              # AI/ML: training notebooks, data prep, VTO tools
+├── docs/                 # README screenshots
 └── Management/           # Project documentation
     └── Architecture/     # Architecture document + diagrams
 ```
@@ -99,6 +106,14 @@ All services are managed via a single script from the project root:
 .\dev.ps1 --rebuild
 ```
 
+```bash
+# Linux / Mac
+./dev.sh
+
+# With rebuild
+./dev.sh --rebuild
+```
+
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:5173 |
@@ -116,20 +131,22 @@ All services are managed via a single script from the project root:
 |--------|------|-------------|
 | GET | `/api/products` | List products (filters: `type`, `color`, `status`, `search`) |
 | GET | `/api/products/:id` | Get single product with images |
-| POST | `/api/products` | Create product |
-| PATCH | `/api/products/:id` | Update product |
-| DELETE | `/api/products/:id` | Delete product |
-| PATCH | `/api/products/:id/images/order` | Reorder product images |
+| POST | `/api/products` | Create product (admin) |
+| PATCH | `/api/products/:id` | Update product (admin) |
+| DELETE | `/api/products/:id` | Delete product (admin) |
 
-### Images
+### Uploads & Images
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/images/upload` | Upload raw image (Supabase storage) |
-| POST | `/api/images/:id/process` | Trigger AI background removal |
-| GET | `/api/images/unassigned` | List images not yet linked to a product |
-| PATCH | `/api/images/:id` | Assign image to product / set as main |
-| DELETE | `/api/images/:id` | Delete image |
+| POST | `/api/uploads/raw` | Upload single raw image |
+| POST | `/api/uploads/bulk` | Upload multiple images |
+| GET | `/api/uploads/unassigned` | List images not yet linked to a product |
+| POST | `/api/uploads/assign` | Assign images to a product |
+| DELETE | `/api/uploads/image/:imageId` | Delete image |
+| PATCH | `/api/uploads/image/:imageId/main` | Set as main image |
+| PATCH | `/api/uploads/image/:imageId/unpublish` | Unpublish image |
+| PATCH | `/api/uploads/product/:productId/reorder` | Reorder product images |
 
 ### Search
 
@@ -137,21 +154,90 @@ All services are managed via a single script from the project root:
 |--------|------|-------------|
 | POST | `/api/search/text` | Text search with Hebrew support + type/color hard filters |
 | POST | `/api/search/image` | CLIP image search (multipart image upload) |
-| POST | `/api/search/detect` | YOLOS fine-tuned clothing item detection on Fashionpedia dataset |
+| POST | `/api/search/detect` | YOLOS clothing item detection |
+| GET | `/api/search/similar/:productId` | Similar products by CLIP embedding |
 
-### AI
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/ai/insight` | LLM business insight agent (inventory analysis) |
-
-### Auth
+### AI Insights
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/login` | Admin login (email + password via Supabase Auth) |
-| POST | `/api/auth/logout` | Admin logout |
-| GET | `/api/auth/me` | Current session |
+| GET | `/api/insights/stats` | Dashboard stats (inventory, coverage, etc.) |
+| GET | `/api/insights/auto` | LLM-generated business insight |
+| POST | `/api/insights/chat` | Chat with insight agent |
+
+### Processing Jobs
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/jobs` | List all processing jobs |
+| POST | `/api/jobs/process-all` | Trigger background removal for all pending images |
+| POST | `/api/jobs/image/:imageId` | Trigger processing for a single image |
+| POST | `/api/jobs/product/:productId` | Trigger processing for all images of a product |
+
+### Virtual Try-On
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/vto/trigger` | Submit VTO job to RunPod |
+| GET | `/api/vto/status/:jobId` | Poll VTO job status |
+| GET | `/api/vto/product/:productId` | Get all VTO jobs for a product |
+| PATCH | `/api/vto/:jobId/selections` | Update selected try-on results |
+| POST | `/api/vto/:jobId/publish` | Publish VTO results to product gallery |
+| DELETE | `/api/vto/:jobId/result/:modelKey` | Delete a single try-on result |
+| PATCH | `/api/vto/image/:imageId/front-view` | Set image as front view for VTO |
+
+### VTO Models
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/vto-models` | List all virtual model folders |
+| POST | `/api/vto-models/:folderName/photos` | Upload photo for a model |
+| DELETE | `/api/vto-models/:folderName/photos/:filename` | Delete model photo |
+| DELETE | `/api/vto-models/:folderName` | Delete model folder |
+| PATCH | `/api/vto-models/:folderName/rename` | Rename model folder |
+
+### Analytics
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/analytics/view` | Record a product page view |
+| GET | `/api/analytics/searches` | Search history (admin) |
+| GET | `/api/analytics/top-products` | Top viewed products (admin) |
+
+### Colors
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/colors` | Get all color options |
+| POST | `/api/colors` | Create color (admin) |
+
+### Gallery
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/gallery` | Get public gallery images |
+| POST | `/api/gallery/upload` | Upload gallery image (admin) |
+| POST | `/api/gallery/upload-bulk` | Bulk upload gallery images (admin) |
+| PUT | `/api/gallery/reorder` | Reorder gallery (admin) |
+| DELETE | `/api/gallery/:id` | Delete gallery image (admin) |
+
+### Content
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/content` | Get site content (about text, images, etc.) |
+| PUT | `/api/content` | Update content (admin) |
+| POST | `/api/content/seed` | Seed default content (admin) |
+| POST | `/api/content/upload-image` | Upload site image asset (admin) |
+| DELETE | `/api/content/:key` | Delete content entry (admin) |
+
+### Contact
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/contact` | Send contact email |
+
+> Authentication is handled client-side via Supabase Auth SDK. Admin routes require a valid Supabase session cookie validated by the `requireAdmin` middleware.
 
 ## Frontend Routes
 
@@ -159,12 +245,19 @@ All services are managed via a single script from the project root:
 |------|------|--------|
 | `/` | Home — image/text search + featured products | Public |
 | `/shop` | Full product catalog with filters | Public |
-| `/products/:id` | Product detail + image gallery | Public |
+| `/products/:id` | Product detail + image gallery + VTO results | Public |
+| `/about` | About the store | Public |
+| `/contact` | Contact form | Public |
+| `/gallery` | Store gallery | Public |
 | `/admin/login` | Admin login | Public |
 | `/admin` | Dashboard — stats + AI insight agent | Admin |
 | `/admin/inventory` | Product list + CRUD | Admin |
+| `/admin/inventory/new` | Create new product | Admin |
+| `/admin/inventory/:id/edit` | Edit product | Admin |
 | `/admin/uploads` | Bulk image upload queue + AI processing | Admin |
-| `/admin/models` | Virtual try-on — assign garments to model photos | Admin |
+| `/admin/vto-models` | Virtual try-on model management | Admin |
+| `/admin/gallery` | Gallery management | Admin |
+| `/admin/content` | Site content editor | Admin |
 
 ## Database Schema
 
@@ -189,6 +282,7 @@ All services are managed via a single script from the project root:
 | isMain | bool | Primary display image |
 | order | int | Display order within product |
 | embedding | vector(512)? | CLIP embedding for image search |
+| dominantColor | string? | Extracted dominant color hex |
 
 ### ProcessingJob
 Tracks background-removal jobs: `PENDING → PROCESSING → DONE / FAILED`.
@@ -207,10 +301,10 @@ Upload a photo or crop a garment — CLIP (ViT-B/32) encodes the image and queri
 Full-text search with synonym expansion and hard filters for product type (Hebrew grammatical variants supported) and color.
 
 ### Virtual Try-On
-FitDiT model (via RunPod serverless GPU) composites a selected garment onto a model photo. Admin interface assigns garments to model images and manages the try-on gallery.
+FitDiT model (via RunPod serverless GPU) composites a selected garment onto a model photo. SAM2 generates garment segmentation masks for vests. Admin interface assigns garments to model images and manages the try-on gallery.
 
 ### Business Insight Agent
-LLM agent reads live inventory data and generates natural-language business insights on the admin dashboard (stock gaps, popular types, etc.).
+LLM agent reads live inventory data and generates natural-language business insights on the admin dashboard (stock gaps, popular types, catalog coverage, etc.).
 
 ## Progress
 

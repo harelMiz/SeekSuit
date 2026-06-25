@@ -1,0 +1,6 @@
+runpod
+supabase
+requests
+Pillow
+numpy<2
+sam2

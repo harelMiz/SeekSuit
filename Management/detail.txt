@@ -1,3 +1,8 @@
 קוד פרויקט: 051
 דניאל חיים ג'נודי 318852571   קבוצה באינבר: 21
 הראל מזרחי       322809922   קבוצה באינבר: 21
+Links:
+GitHub: https://github.com/danieljenudi/SeekSuit
+Jira: https://danieljenudi-1772957732412.atlassian.net/jira/software/projects/KAN/boards/1
+YouTube: https://youtu.be/OQ0ksnRKvLk
+Architecture: https://github.com/danieljenudi/SeekSuit/blob/master/Management/Architecture/SeekSuit_Architecture_Document.pdf

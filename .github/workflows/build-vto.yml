@@ -5,9 +5,9 @@ on:
   push:
     branches: [master]
     paths:
-      - Dockerfile
-      - requirements.txt
-      - handler.py
+      - RunPod/Dockerfile
+      - RunPod/requirements.txt
+      - RunPod/handler.py
       - scripts/**
 
 jobs:
@@ -47,6 +47,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: RunPod/Dockerfile
           push: true
           provenance: false
           tags: |
