@@ -238,6 +238,8 @@ export async function runReadOnlyQuery(sql: string): Promise<unknown> {
   }
   console.log(`[insights:runQuery] SQL: ${sql}`);
   const result = await prisma.$queryRawUnsafe(sql);
-  console.log(`[insights:runQuery] result:`, JSON.stringify(result).slice(0, 300));
-  return result;
+  // BigInt values (e.g. from COUNT) are not JSON-serializable — convert them to numbers
+  const serializable = JSON.parse(JSON.stringify(result, (_k, v) => typeof v === 'bigint' ? Number(v) : v));
+  console.log(`[insights:runQuery] result:`, JSON.stringify(serializable).slice(0, 300));
+  return serializable;
 }
