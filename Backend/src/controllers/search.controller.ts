@@ -48,6 +48,13 @@ const COLOR_BOOST = 0.20;
 const COLOR_SIGMA = 45; // Gaussian std-dev in RGB space — tighter decay so wrong colors get less credit
 const RELATIVE_WINDOW = 0.15;
 const ABSOLUTE_FLOOR = 0.65;
+// Belts are photographed as a thin worn accessory in picker searches but as a
+// standalone studio product in the catalog — a bigger visual context gap than
+// large garments (jacket/pants) have, so genuinely matching belts still land
+// noticeably lower in raw CLIP similarity. Give BELT its own, lower floor.
+const ABSOLUTE_FLOOR_BY_TYPE: Record<string, number> = {
+  BELT: 0.60,
+};
 // Text-image CLIP similarities are naturally lower (0.15–0.35).
 // TEXT_ABSOLUTE_FLOOR: if even the best result is below this, the query has no fashion relevance — return empty.
 // TEXT_RELATIVE_WINDOW: only show results within this delta of the best score.
@@ -137,7 +144,7 @@ const COLOR_FILTER_FAMILY: Record<string, string[]> = {
   WHITE:     ['WHITE', 'IVORY', 'CREAM'],
   GRAY:      ['GRAY'],
   // Warm neutrals — all adjacent to each other (CLIP often confuses them)
-  BROWN:     ['BROWN', 'BEIGE', 'CREAM', 'IVORY', 'ORANGE'],
+  BROWN:     ['BROWN', 'BEIGE', 'ORANGE'],
   BEIGE:     ['BEIGE', 'CREAM', 'IVORY', 'BROWN', 'YELLOW'],
   CREAM:     ['CREAM', 'IVORY', 'BEIGE', 'BROWN', 'YELLOW'],
   IVORY:     ['IVORY', 'CREAM', 'WHITE', 'BEIGE'],
@@ -481,6 +488,11 @@ export const searchByImage = async (req: Request, res: Response) => {
 
   const limit = Math.min(parseInt(String(req.query.limit ?? DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, 50);
   const productType = req.query.productType as string | undefined;
+  // Types with a lowered ABSOLUTE_FLOOR (see above) need a wider candidate pool
+  // fetched from the DB too — otherwise a genuinely matching item ranked just
+  // outside the top `limit` by raw similarity never even reaches that lower
+  // floor to be considered. The final response is still trimmed to `limit`.
+  const fetchLimit = productType && ABSOLUTE_FLOOR_BY_TYPE[productType] ? Math.max(limit, 30) : limit;
 
   let embedding: number[];
   let dominantColor: string | null = null;
@@ -536,7 +548,7 @@ export const searchByImage = async (req: Request, res: Response) => {
         FROM scored s
         JOIN main_img mi ON mi."productId" = s.id
         ORDER BY s.similarity DESC
-        LIMIT ${limit}
+        LIMIT ${fetchLimit}
       `
     : await prisma.$queryRaw<SearchResult[]>`
         WITH scored AS (
@@ -587,19 +599,22 @@ export const searchByImage = async (req: Request, res: Response) => {
   boosted.sort((a, b) => b.similarity - a.similarity);
 
   const bestScore = boosted.length > 0 ? boosted[0].similarity : 0;
-  const minThreshold = Math.max(bestScore - RELATIVE_WINDOW, ABSOLUTE_FLOOR);
+  const absoluteFloor = productType ? (ABSOLUTE_FLOOR_BY_TYPE[productType] ?? ABSOLUTE_FLOOR) : ABSOLUTE_FLOOR;
+  const minThreshold = Math.max(bestScore - RELATIVE_WINDOW, absoluteFloor);
 
   let results = boosted.filter(r => r.similarity >= minThreshold);
 
   // For picker searches: apply a color hard-filter when BiRefNet detected a specific
   // chromatic color. Skip when BLACK is detected — it often misidentifies dark-toned
   // items (e.g. brown shoes with dark soles), and CLIP handles black items correctly anyway.
-  console.log(`[search] productType=${productType} dominantColor=${dominantColor} results=${results.length}`);
   if (productType && dominantColor && dominantColor !== 'BLACK') {
     const colorFiltered = results.filter(r => productMatchesColorFamily(dominantColor, r.dominantColor, r.color));
-    console.log(`[search] color family filter ${dominantColor} → ${colorFiltered.length} results`);
     if (colorFiltered.length > 0) results = colorFiltered;
   }
+
+  // fetchLimit may have pulled in a wider candidate pool than requested (see above) —
+  // trim back down to what the caller asked for.
+  results = results.slice(0, limit);
 
   logSearch(req, { queryType: 'IMAGE', resultCount: results.length, detectedColor: dominantColor, detectedType: productType ?? null });
   res.json({ results, dominantColor });

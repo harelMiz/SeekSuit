@@ -40,6 +40,16 @@ SCORE_THRESHOLD = 0.40         # global floor for post_process (catches small ac
 SCORE_THRESHOLD_LARGE = 0.50   # stricter floor for large garments (jacket, pants, shirt, vest)
 MIN_AREA_FRACTION_LARGE = 0.03 # 3 % of image area — large garments
 MIN_AREA_FRACTION_SMALL = 0.008 # 0.8 % — accessories visible only as small regions
+# Ties/bow-ties are small enough that their tightest, most accurate candidate
+# box often falls below MIN_AREA_FRACTION_SMALL — which then lets a looser,
+# less accurate (but bigger) box win instead. Give them their own, lower floor.
+MIN_AREA_FRACTION_TIE = 0.003
+# A full suit/blazer is sometimes labeled "shirt, blouse" by the model with
+# high confidence while its own "jacket" label never clears SCORE_THRESHOLD_LARGE.
+# "lapel" is a much lower bar to treat as jacket evidence — lapels don't exist
+# on a plain shirt, so any reasonably confident lapel detection is a reliable
+# proxy signal even when the model won't commit to labeling the jacket itself.
+LAPEL_CONFIDENCE_THRESHOLD = 0.35
 
 
 def _get_model() -> tuple[AutoModelForObjectDetection, AutoImageProcessor]:
@@ -99,9 +109,23 @@ def detect_items(image_bytes: bytes) -> list[dict]:
     )[0]
 
     best_per_type: dict[str, dict] = {}
+    # Neckwear (ties/bow-ties): track only the single highest-confidence candidate
+    # across TIE and BOW_TIE together, checked against the area floor *after*
+    # picking it (fail-closed). A tie's tightest, correct box is often tiny, and
+    # its next-best alternative is usually a looser box that grabbed nearby
+    # collar/shirt fabric rather than a better detection of the tie itself — so
+    # falling back to it just trades one wrong box for another. Better to show
+    # no tie/bow-tie than a mislocated one. They compete in one shared bucket
+    # (not one per type) so the same physical item can't surface twice as both
+    # a "tie" and a "bow tie" candidate.
+    neckwear_top_candidate: dict | None = None
+    best_lapel_confidence = 0.0
 
     for score, label_id, box in zip(results["scores"], results["labels"], results["boxes"]):
         label = model.config.id2label[int(label_id)]
+        if "lapel" in label.lower():
+            best_lapel_confidence = max(best_lapel_confidence, float(score))
+
         product_type = _resolve_type(label)
         if product_type is None:
             continue
@@ -111,12 +135,23 @@ def detect_items(image_bytes: bytes) -> list[dict]:
 
         is_small = product_type in SMALL_TYPES
         min_conf = SCORE_THRESHOLD if is_small else SCORE_THRESHOLD_LARGE
-        min_area = MIN_AREA_FRACTION_SMALL if is_small else MIN_AREA_FRACTION_LARGE
-
         if confidence < min_conf:
             continue
 
         box_area = max(0, bbox[2] - bbox[0]) * max(0, bbox[3] - bbox[1])
+
+        if product_type == "TIE" or product_type == "BOW_TIE":
+            if neckwear_top_candidate is None or confidence > neckwear_top_candidate["confidence"]:
+                neckwear_top_candidate = {
+                    "type":       product_type,
+                    "label":      label,
+                    "confidence": round(confidence, 3),
+                    "bbox":       bbox,
+                    "box_area":   box_area,
+                }
+            continue
+
+        min_area = MIN_AREA_FRACTION_SMALL if is_small else MIN_AREA_FRACTION_LARGE
         if box_area < img_area * min_area:
             continue
 
@@ -127,6 +162,31 @@ def detect_items(image_bytes: bytes) -> list[dict]:
                 "confidence": round(confidence, 3),
                 "bbox":       bbox,
             }
+
+    if neckwear_top_candidate is not None and neckwear_top_candidate.pop("box_area") >= img_area * MIN_AREA_FRACTION_TIE:
+        # Fashionpedia has no real "bow tie" neckwear class (its "bow" label is a
+        # decorative-bow embellishment, unrelated to neckwear) — every bow tie is
+        # detected as "TIE". Tell them apart by the winning box's own shape: a
+        # necktie hangs down the chest (tall/narrow), a bow tie sits at the
+        # collar (wide/short).
+        if neckwear_top_candidate["type"] == "TIE":
+            x1, y1, x2, y2 = neckwear_top_candidate["bbox"]
+            if (x2 - x1) > (y2 - y1):
+                neckwear_top_candidate["type"] = "BOW_TIE"
+        best_per_type[neckwear_top_candidate["type"]] = neckwear_top_candidate
+
+    # A shirt's bbox typically spans the whole visible torso, so when a jacket or
+    # vest is also detected in the same photo, the shirt crop is mostly covered by
+    # that outer garment and its color/embedding can't be trusted — drop it. A
+    # confident lapel detection counts as jacket evidence too, since lapels only
+    # exist on jackets/blazers/suits, never on a plain shirt.
+    has_jacket_evidence = (
+        "JACKET" in best_per_type
+        or "VEST" in best_per_type
+        or best_lapel_confidence >= LAPEL_CONFIDENCE_THRESHOLD
+    )
+    if "SHIRT" in best_per_type and has_jacket_evidence:
+        del best_per_type["SHIRT"]
 
     # Attach crop previews and sort by confidence
     detected = []
