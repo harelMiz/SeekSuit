@@ -215,7 +215,7 @@ export default function HomePage() {
           try {
             const { data } = await api.post<{ results: SearchResult[] }>("/search/image", form, {
               headers: { "Content-Type": "multipart/form-data" },
-              params: { limit: 10, ...(item.type ? { productType: item.type } : {}) },
+              params: { limit: 20, ...(item.type ? { productType: item.type } : {}) },
               timeout: 150000,
             });
             return data.results;
