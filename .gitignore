@@ -68,3 +68,8 @@ Management/Architecture/architecture_update.md
 ~$*.docx
 ~$*.doc
 ~WRL*.tmp
+
+# ── Local-only presentation prep (study guide, checklist, demo images) ──
+Management/project-study-guide.md
+Management/presentation-checklist.md
+presentation/
